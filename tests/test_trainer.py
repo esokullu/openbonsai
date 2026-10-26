@@ -5,7 +5,7 @@ import pytest
 import torch
 
 from openbonsai.adapter import tiny_model, replace_projections, get_text_layers, iter_ternary_modules, set_progress
-from openbonsai.trainer import TrainingConfig, build_windows, cache_window, replay_window, train
+from openbonsai.trainer import TrainingConfig, build_windows, cache_window, replay_window, train, window_mse
 
 
 @pytest.fixture
@@ -47,21 +47,130 @@ def test_disk_cache_matches_memory_and_removes_hooks(model, tmp_path):
     assert before == sum(len(module._forward_hooks) + len(module._forward_pre_hooks) for module in model.modules())
 
 
+def test_cached_teacher_ignores_nonzero_window_corrections(model):
+    layers = get_text_layers(model)
+    before = cache_window(model, samples(), 1, 4)[0]
+    with torch.no_grad():
+        student_before = replay_window(layers, before, 1, 4, "cpu")
+        for layer in layers[1:4]:
+            for module in layer.modules():
+                if hasattr(module, "lora_parameters"):
+                    module.lora_A.normal_(std=0.2)
+                    module.lora_B.normal_(std=0.2)
+                    module.raw_scale.add_(0.1)
+    after = cache_window(model, samples(), 1, 4)[0]
+    # The quantized prefix is unchanged and the teacher must still use only
+    # original window weights, even though the student's correction is large.
+    torch.testing.assert_close(after["input"], before["input"], rtol=0, atol=0)
+    torch.testing.assert_close(after["target"], before["target"], rtol=0, atol=0)
+    with torch.no_grad():
+        student_after = replay_window(layers, after, 1, 4, "cpu")
+    assert not torch.equal(student_after, student_before)
+    assert all(module.quant_enabled for _, module in iter_ternary_modules(model))
+
+
 @pytest.mark.parametrize("checkpointing", [False, True])
-def test_train_factors_only_with_overlap(model, tmp_path, checkpointing):
+def test_train_factors_and_corrections_with_overlap(model, tmp_path, checkpointing):
     base = {name: tensor.clone() for name, tensor in model.named_buffers()
             if not name.rsplit(".", 1)[-1].startswith("_hard_snapshot")}
     factors = {name: p.clone() for name, p in model.named_parameters() if ".raw_" in name}
+    corrections = {name: p.clone() for name, p in model.named_parameters() if ".lora_" in name}
     report = train(model, samples(), TrainingConfig(epochs=3, batch_size=1, window_size=3,
                  stride=2, gradient_checkpointing=checkpointing), cache_directory=tmp_path)
     assert [(w["start"], w["end"]) for w in report["windows"]] == [(0, 3), (2, 4)]
     assert all(math.isfinite(loss) for w in report["windows"] for loss in w["losses"])
     assert all(torch.equal(dict(model.named_buffers())[name], value) for name, value in base.items())
     assert any(not torch.equal(dict(model.named_parameters())[name], value) for name, value in factors.items())
+    for suffix in ("lora_A", "lora_B"):
+        assert any(not torch.equal(dict(model.named_parameters())[name], value)
+                   for name, value in corrections.items() if name.endswith(suffix))
     assert all(not p.requires_grad for p in model.parameters())
     assert all(p.grad is None for p in model.parameters())
     assert not list(tmp_path.iterdir())
     assert all(m.progress == 1 for _, m in iter_ternary_modules(model))
+
+
+def test_native_reconstruction_materially_reduces_hard_error():
+    """A corrective optimization regression, not a pretrained quality claim."""
+    torch.set_num_threads(2)
+    results = {}
+    for rank in (0, 4):
+        model = tiny_model(seed=3)
+        torch.manual_seed(3)
+        replace_projections(model, lora_rank=rank)
+        set_progress(model, 1)
+        layers = get_text_layers(model)
+        records = cache_window(model, samples(), 0, 4)
+        source_weights = {name: module.weight.clone() for name, module in iter_ternary_modules(model)}
+        initial_corrections = {name: p.clone() for name, p in model.named_parameters() if ".lora_" in name}
+        before = window_mse(layers, records, 0, 4, "cpu")
+        report = train(model, samples(), TrainingConfig(
+            epochs=32, batch_size=1, window_size=4, stride=4,
+            learning_rate=0.01, lora_learning_rate=0.02,
+        ))
+        after = window_mse(layers, records, 0, 4, "cpu")
+        assert after < before * 0.25
+        assert report["windows"][0]["steps"] == 32
+        assert report["windows"][0]["hard_mse_before"] == pytest.approx(before)
+        assert report["windows"][0]["hard_mse_after"] == pytest.approx(after)
+        assert report["quantization"]["lora_ranks"] == [rank]
+        for name, module in iter_ternary_modules(model):
+            torch.testing.assert_close(module.weight, source_weights[name], rtol=0, atol=0)
+        if rank:
+            for suffix in ("lora_A", "lora_B"):
+                assert any(not torch.equal(dict(model.named_parameters())[name], value)
+                           for name, value in initial_corrections.items() if name.endswith(suffix))
+        else:
+            assert report["quantization"]["lora_parameters"] == 0
+        results[rank] = after
+    # This controlled fitting task must exercise the extra corrective capacity.
+    # It says nothing about downstream language-model scores or generalization.
+    assert results[4] < results[0] * 0.25
+
+
+@pytest.mark.parametrize("rank", [0, 4])
+def test_optimizer_preserves_distinct_factor_and_lora_learning_rates(monkeypatch, rank):
+    model = tiny_model(seed=6)
+    replace_projections(model, lora_rank=rank)
+    modules = [module for _, module in iter_ternary_modules(model)]
+    factor_ids = {id(p) for module in modules for p in module.factor_parameters()}
+    lora_ids = {id(p) for module in modules for p in module.lora_parameters()}
+    original_step = torch.optim.AdamW.step
+    observed = []
+
+    def step(optimizer, *args, **kwargs):
+        observed.append([(group["lr"], {id(p) for p in group["params"]})
+                         for group in optimizer.param_groups])
+        return original_step(optimizer, *args, **kwargs)
+
+    monkeypatch.setattr(torch.optim.AdamW, "step", step)
+    train(model, samples(), TrainingConfig(epochs=3, batch_size=1, window_size=4, stride=4,
+                                          learning_rate=0.001, lora_learning_rate=0.002))
+    assert len(observed) == 3
+    assert factor_ids.isdisjoint(lora_ids)
+    for index, groups in enumerate(observed):
+        decay = 1 - index / 3
+        assert len(groups) == (2 if rank else 1)
+        assert groups[0][0] == pytest.approx(0.001 * decay)
+        assert groups[0][1] == factor_ids
+        if rank:
+            assert groups[1][0] == pytest.approx(0.002 * decay)
+            assert groups[1][1] == lora_ids
+
+
+def test_one_step_schedule_rejected_before_model_mutation(model, tmp_path):
+    model.train()
+    set_progress(model, 0.3)
+    state = {name: value.clone() for name, value in model.state_dict().items()}
+    flags = {name: p.requires_grad for name, p in model.named_parameters()}
+    with pytest.raises(ValueError, match="soft update"):
+        train(model, samples(), TrainingConfig(epochs=1, batch_size=1), cache_directory=tmp_path / "cache")
+    assert model.training
+    assert all(module.progress == 0.3 for _, module in iter_ternary_modules(model))
+    assert flags == {name: p.requires_grad for name, p in model.named_parameters()}
+    assert not (tmp_path / "cache").exists()
+    for name, value in model.state_dict().items():
+        torch.testing.assert_close(value, state[name], rtol=0, atol=0)
 
 
 def test_window_validation():
@@ -70,7 +179,10 @@ def test_window_validation():
         TrainingConfig(stride=5, window_size=4).validate()
     with pytest.raises(ValueError):
         build_windows(4, 2, 3)
-    for field in ("learning_rate", "weight_decay", "grad_clip"):
+    for field in ("learning_rate", "lora_learning_rate", "weight_decay", "grad_clip"):
         for value in (float("nan"), float("inf")):
             with pytest.raises(ValueError, match="finite"):
                 TrainingConfig(**{field: value}).validate()
+    for value in (0, -0.001):
+        with pytest.raises(ValueError, match="positive"):
+            TrainingConfig(lora_learning_rate=value).validate()

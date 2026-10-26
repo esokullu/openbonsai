@@ -24,6 +24,23 @@ def logits(model):
         return model(input_ids=torch.tensor([[3, 4, 5, 6, 7]]), use_cache=False).logits
 
 
+def learn_nonzero_corrections(model):
+    """Give export a real adapted state, not the zero-initialized LoRA path."""
+    torch.set_num_threads(2)
+    modules = [module for _, module in iter_ternary_modules(model)]
+    initial_a = [module.lora_A.detach().clone() for module in modules]
+    optimizer = torch.optim.Adam([p for module in modules for p in module.lora_parameters()], lr=0.02)
+    set_progress(model, 0.25)
+    for _ in range(2):
+        optimizer.zero_grad(set_to_none=True)
+        for module in modules:
+            (module.quantized_weight().float() - module.weight.float()).square().mean().backward()
+        optimizer.step()
+    assert all(torch.count_nonzero(module.lora_A) and torch.count_nonzero(module.lora_B) for module in modules)
+    assert any(not torch.equal(module.lora_A, initial) for module, initial in zip(modules, initial_a))
+    set_progress(model, 1)
+
+
 def test_native_hybrid_projection_policy_and_dense_teacher():
     model = tiny_model(seed=13)
     expected = logits(model)
@@ -36,11 +53,49 @@ def test_native_hybrid_projection_policy_and_dense_teacher():
     assert isinstance(model.model.layers[0].linear_attn.in_proj_b, nn.Linear)
     assert isinstance(model.model.layers[0].linear_attn.conv1d, nn.Conv1d)
     assert isinstance(model.lm_head, nn.Linear)
+    assert all(module.lora_rank == 64 for _, module in iter_ternary_modules(model))
+    learn_nonzero_corrections(model)
+    assert not torch.equal(logits(model), expected)
+    # Neither a disabled quantizer nor the explicit dense endpoint may leak
+    # its learned correction into the original-weight teacher.
+    set_progress(model, 0)
+    torch.testing.assert_close(logits(model), expected, rtol=0, atol=0)
     set_progress(model, 1)
     set_quant_enabled(model, False)
     torch.testing.assert_close(logits(model), expected, rtol=0, atol=0)
     assert replace_projections(model) == []
     assert len(replace_projections(model, aggressive_gates=True)) == 6
+
+
+def test_native_dtype_conversion_preserves_fp32_calibration_state():
+    model = tiny_model(seed=19)
+    replace_projections(model, lora_rank=4)
+    learn_nonzero_corrections(model)
+    modules = dict(iter_ternary_modules(model))
+    protected = {}
+    gradients = {}
+    for name, module in modules.items():
+        values = dict(module.named_parameters(recurse=False))
+        values.update((key, value) for key, value in module.named_buffers(recurse=False)
+                      if key not in {"weight", "bias"})
+        assert {"_hard_snapshot_lora_A", "_hard_snapshot_lora_B"}.issubset(values)
+        protected[name] = {key: value.detach().clone() for key, value in values.items()}
+        gradients[name] = {key: p.grad.clone() for key, p in module.named_parameters(recurse=False)
+                           if p.grad is not None}
+    for dtype in (torch.bfloat16, torch.float32):
+        model.to(dtype=dtype)
+        assert model.get_input_embeddings().weight.dtype == dtype
+        for name, module in modules.items():
+            assert module.weight.dtype == dtype
+            for key, expected in protected[name].items():
+                actual = getattr(module, key)
+                assert actual.dtype == torch.float32
+                torch.testing.assert_close(actual, expected, rtol=0, atol=0)
+            for key, expected in gradients[name].items():
+                actual = getattr(module, key).grad
+                assert actual.dtype == torch.float32
+                torch.testing.assert_close(actual, expected, rtol=0, atol=0)
+        assert torch.isfinite(logits(model)).all()
 
 
 def test_layer_progress_changes_only_selected_blocks_and_validates_indices():
@@ -81,8 +136,8 @@ def test_projection_conversion_releases_each_original_before_the_next(monkeypatc
 @pytest.mark.parametrize("packing", ["2bit", "bitcos", "auto"])
 def test_standalone_export_preserves_floats_and_roundtrip_logits(tmp_path, multimodal, packing):
     model = tiny_model(seed=7, multimodal=multimodal)
-    names = replace_projections(model)
-    set_progress(model, 1)
+    names = replace_projections(model, lora_rank=4)
+    learn_nonzero_corrections(model)
     expected = logits(model)
     artifact = tmp_path / "packed"
     manifest = save_compressed(model, artifact, metadata={"test_fixture": True}, packing=packing)
@@ -114,7 +169,9 @@ def test_standalone_export_preserves_floats_and_roundtrip_logits(tmp_path, multi
     if multimodal:
         assert any(name.startswith("model.visual.") for name in expected_retained)
         assert all(name.startswith("model.language_model.layers.") for name in names)
-    assert not any("raw_scale" in name or "mu0" in name for name in manifest["retained_tensors"])
+    assert not any("raw_scale" in name or "mu0" in name or "lora_" in name
+                   for name in manifest["retained_tensors"])
+    assert not any("lora_" in name for name in loaded.state_dict())
 
     for info in manifest["packed_modules"].values():
         payload = load_file(str(artifact / info["file"]))
@@ -130,6 +187,7 @@ def test_standalone_export_preserves_floats_and_roundtrip_logits(tmp_path, multi
         assert payload["scales"].numel() == state["num_groups"]
         assert payload["scales"].dtype == torch.float16
         assert "weight" not in payload
+        assert not any("lora_" in name for name in payload)
     has_bitcos = any(item["state"]["format"] == BITCOS_FORMAT for item in manifest["packed_modules"].values())
     assert manifest["format"] == (BITCOS_ARTIFACT_FORMAT if has_bitcos else FORMAT)
     if packing in ("2bit", "bitcos"):
@@ -141,10 +199,14 @@ def test_standalone_export_preserves_floats_and_roundtrip_logits(tmp_path, multi
         set_progress(loaded, 0.2)
     set_progress(loaded, 1)
 
-    # A packed artifact remains standalone when re-exported, with exact logits.
+    # Re-encoding the learned model with the other codec preserves exact
+    # packed weights and logits, in addition to staying standalone.
     again = tmp_path / "again"
-    save_compressed(loaded, again)
-    torch.testing.assert_close(logits(load_compressed(again)), actual, rtol=0, atol=0)
+    save_compressed(loaded, again, packing="2bit" if packing == "bitcos" else "bitcos")
+    reloaded = load_compressed(again)
+    torch.testing.assert_close(logits(reloaded), actual, rtol=0, atol=0)
+    for name, module in iter_ternary_modules(loaded):
+        torch.testing.assert_close(reloaded.get_submodule(name).weight, module.weight, rtol=0, atol=0)
 
 
 def test_export_refuses_overwrite_and_detects_corruption(tmp_path):

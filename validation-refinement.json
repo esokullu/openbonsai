@@ -1,0 +1,99 @@
+{
+  "project": "OpenBonsai",
+  "date": "2026-10-26",
+  "change": "Pre-ternarization low-rank corrections and actual last-soft Jacobian",
+  "base_commit": "997b9c3fa8788bf31b12b1cecb713655a7953361",
+  "reference_commit": "IntelChina-AI/BitTern@5a8fcd4f7e0366554b732d300a37e6ea467c3c35",
+  "environment": {
+    "python": "3.12.9",
+    "torch": "2.14.1",
+    "transformers": "5.20.2",
+    "device": "cpu"
+  },
+  "tests": {
+    "command": "python -m pytest -q",
+    "passed": 248,
+    "focused_rerun_after_fixing_fixture_seed": "test_native_reconstruction_materially_reduces_hard_error passed"
+  },
+  "verified": [
+    "Original teacher remains unchanged with nonzero low-rank corrections",
+    "Independent soft-equation oracle matches hard-stage gradients after all five parameters change",
+    "Corrections change hard codes and are absorbed before export",
+    "Separate optimizer groups retain their learning-rate ratio during decay",
+    "Native tiny reconstruction improves with learned corrections compared with rank zero",
+    "FP32 optimizer variables and snapshots survive BF16 model conversion",
+    "BITCOS and legacy packed weights and reloaded logits match exactly",
+    "Packed artifacts contain no low-rank inference adapter"
+  ],
+  "smoke": {
+    "project": "OpenBonsai",
+    "test": "offline native hybrid training and packed round trip",
+    "seed": 2,
+    "real_9b_weights_loaded": false,
+    "real_model_quality_evaluated": false,
+    "original_parameters": 728376,
+    "original_parameter_bytes": 2913504,
+    "converted_projections": 25,
+    "packed_roundtrip_max_logit_error": 0.0,
+    "fp16_scale_rounding_max_logit_error": 0.00015348196029663086,
+    "packing": "auto",
+    "storage": {
+      "packed_tensor_bytes": 148766,
+      "retained_tensor_bytes": 292096,
+      "manifest_bytes": 42977,
+      "artifact_bytes": 493740
+    },
+    "training": {
+      "training_config": {
+        "epochs": 3,
+        "batch_size": 1,
+        "window_size": 4,
+        "stride": 4,
+        "learning_rate": 0.001,
+        "lora_learning_rate": 0.001,
+        "weight_decay": 0.0,
+        "grad_clip": 1.0,
+        "seed": 2,
+        "gradient_checkpointing": true
+      },
+      "windows": [
+        {
+          "start": 0,
+          "end": 4,
+          "hard_mse_before": 0.00039912933217627663,
+          "hard_mse_after": 0.0003816676547839528,
+          "steps": 6,
+          "losses": [
+            0.0004127861466258764,
+            0.0003738872765097767,
+            0.00040900043677538633,
+            0.0003714866761583835,
+            0.00040515646105632186,
+            0.0003699112276080996
+          ]
+        }
+      ],
+      "samples": 2,
+      "nonpadding_tokens": 21,
+      "quantization": {
+        "lora_ranks": [
+          64
+        ],
+        "lora_scaling": "1/rank; correction merged before ternarization",
+        "hard_phases": [
+          "frozen_jacobian"
+        ],
+        "frozen_jacobian_reference": "last actual soft forward, before its optimizer update",
+        "factor_parameters": 15360,
+        "lora_parameters": 532480
+      },
+      "quality_claim": "software execution only; no full-model benchmark reproduction"
+    }
+  },
+  "limits": [
+    "No real 9B weights used in this validation",
+    "No CUDA memory or throughput measurement for the new path",
+    "No pretrained-model quality recovery established",
+    "Independent training reconstruction; official training code unavailable"
+  ]
+}

@@ -28,6 +28,7 @@ def smoke(output, seed=2, packing="auto"):
     model = tiny_model(seed=seed)
     original_parameters = sum(p.numel() for p in model.parameters())
     original_bytes = sum(p.numel() * p.element_size() for p in model.parameters())
+    torch.manual_seed(seed)
     names = replace_projections(model)
     generator = torch.Generator().manual_seed(seed)
     samples = [{"input_ids": torch.randint(3, 240, (1, 12), generator=generator),
@@ -67,6 +68,7 @@ def smoke(output, seed=2, packing="auto"):
 
 
 def train_command(args):
+    import torch
     from transformers import AutoTokenizer
     from .adapter import load_base_model, replace_projections
     from .calibration import load_calibration
@@ -76,9 +78,12 @@ def train_command(args):
     output = _empty_output(args.output)
     config = TrainingConfig(epochs=args.epochs, batch_size=args.batch_size,
         window_size=args.window_size, stride=args.stride, learning_rate=args.learning_rate,
+        lora_learning_rate=args.lora_learning_rate,
         weight_decay=args.weight_decay, grad_clip=args.grad_clip, seed=args.seed,
         gradient_checkpointing=args.gradient_checkpointing)
     config.validate()
+    if args.lora_rank < 0:
+        raise ValueError("lora-rank must be nonnegative")
     # Read local input before loading any model weights.
     if not Path(args.calibration).is_file():
         raise FileNotFoundError(args.calibration)
@@ -93,7 +98,9 @@ def train_command(args):
     vocab_size = model.get_input_embeddings().num_embeddings
     if any(int(sample["input_ids"].max()) >= vocab_size for sample in samples):
         raise ValueError("Calibration contains tokens outside this model's vocabulary")
-    replaced = replace_projections(model, group_size=args.group_size, aggressive_gates=args.aggressive_gates)
+    torch.manual_seed(args.seed)
+    replaced = replace_projections(model, group_size=args.group_size,
+        aggressive_gates=args.aggressive_gates, lora_rank=args.lora_rank)
 
     def progress(entry):
         if entry["step"] == 1 or entry["step"] % args.log_every == 0 or entry["step"] == entry["total_steps"]:
@@ -104,6 +111,7 @@ def train_command(args):
     metadata = {"project": "OpenBonsai", "base_model": args.model, "resolved_revision": revision,
         "method": "independent ScaleQ-style Qwen3.5 research adaptation",
         "calibration": calibration, "training": report,
+        "lora_rank": args.lora_rank, "lora_initialization_seed": args.seed,
         "aggressive_recurrent_gates": args.aggressive_gates, "converted_projections": replaced}
     manifest = save_compressed(model, output, metadata=metadata, packing=args.packing)
     # Tokenizer assets are supplementary and excluded from manifest storage totals.
@@ -166,6 +174,10 @@ def parser():
     run.add_argument("--window-size", type=int, default=4)
     run.add_argument("--stride", type=int, default=2)
     run.add_argument("--learning-rate", type=float, default=0.001)
+    run.add_argument("--lora-rank", type=int, default=64,
+        help="Rank of the learned pre-quantization correction (default: 64; 0 disables it)")
+    run.add_argument("--lora-learning-rate", type=float, default=0.001,
+        help="Learning rate for low-rank correction matrices, separate from group factors")
     run.add_argument("--weight-decay", type=float, default=0.0)
     run.add_argument("--grad-clip", type=float, default=1.0)
     run.add_argument("--seed", type=int, default=2)

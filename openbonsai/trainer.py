@@ -26,6 +26,7 @@ class TrainingConfig:
     window_size: int = 4
     stride: int = 2
     learning_rate: float = 0.001
+    lora_learning_rate: float = 0.001
     weight_decay: float = 0.0
     grad_clip: float = 1.0
     seed: int = 2
@@ -37,9 +38,11 @@ class TrainingConfig:
                 raise ValueError(f"{name} must be a positive integer")
         if self.stride > self.window_size:
             raise ValueError("stride must not exceed window_size (would skip layers)")
-        if (not all(isfinite(value) for value in (self.learning_rate, self.weight_decay, self.grad_clip))
-                or self.learning_rate <= 0 or self.weight_decay < 0 or self.grad_clip <= 0):
-            raise ValueError("learning_rate/grad_clip must be finite and positive; weight_decay finite and nonnegative")
+        if (not all(isfinite(value) for value in (
+                self.learning_rate, self.lora_learning_rate, self.weight_decay, self.grad_clip))
+                or self.learning_rate <= 0 or self.lora_learning_rate <= 0
+                or self.weight_decay < 0 or self.grad_clip <= 0):
+            raise ValueError("learning rates/grad_clip must be finite and positive; weight_decay finite and nonnegative")
 
 
 class _Captured(Exception):
@@ -208,7 +211,7 @@ def window_mse(layers, records, start, end, device):
 
 
 def train(model, samples, config: TrainingConfig, progress_callback=None, cache_directory=None):
-    """Optimize modulation factors only; return a machine-readable audit log.
+    """Optimize group factors and low-rank corrections; return an audit log.
 
     Batch size is implemented by gradient accumulation over samples to avoid
     incorrectly batching multi-axis rotary tensors and hybrid attention masks.
@@ -218,19 +221,33 @@ def train(model, samples, config: TrainingConfig, progress_callback=None, cache_
     config.validate()
     if not samples:
         raise ValueError("No calibration samples")
-    model.eval()
     layers = get_text_layers(model)
     all_modules = _module_values(model)
     if not all_modules:
         raise ValueError("No ternary projections; call replace_projections first")
+    total_steps = config.epochs * ceil(len(samples) / config.batch_size)
+    if any(module.hard_phase == "frozen_jacobian" and 1 / total_steps > module.soft_fraction
+           for module in all_modules):
+        raise ValueError("The schedule needs at least one soft update before the hard phase; "
+                         "increase epochs or use a smaller batch size")
+    model.eval()
     for parameter in model.parameters():
         parameter.requires_grad_(False)
         parameter.grad = None
     for module in all_modules:
+        module.clear_soft_snapshot()
         module.set_progress(1.0)
     set_quant_enabled(model, True)
     report = {"training_config": asdict(config), "windows": [], "samples": len(samples),
               "nonpadding_tokens": sum(int(x["attention_mask"].sum()) for x in samples),
+              "quantization": {
+                  "lora_ranks": sorted({module.lora_rank for module in all_modules}),
+                  "lora_scaling": "1/rank; correction merged before ternarization",
+                  "hard_phases": sorted({module.hard_phase for module in all_modules}),
+                  "frozen_jacobian_reference": "last actual soft forward, before its optimizer update",
+                  "factor_parameters": sum(p.numel() for m in all_modules for p in m.factor_parameters()),
+                  "lora_parameters": sum(p.numel() for m in all_modules for p in m.lora_parameters()),
+              },
               "quality_claim": "software execution only; no full-model benchmark reproduction"}
     device = _device(model)
     if cache_directory is not None:
@@ -252,7 +269,13 @@ def train(model, samples, config: TrainingConfig, progress_callback=None, cache_
             for parameter in module.trainable_parameters():
                 parameter.requires_grad_(True)
                 parameters.append(parameter)
-        optimizer = torch.optim.AdamW(parameters, lr=config.learning_rate, weight_decay=config.weight_decay)
+        parameter_groups = [{"params": [p for m in active for p in m.factor_parameters()],
+                             "lr": config.learning_rate, "initial_lr": config.learning_rate}]
+        lora_parameters = [p for m in active for p in m.lora_parameters()]
+        if lora_parameters:
+            parameter_groups.append({"params": lora_parameters, "lr": config.lora_learning_rate,
+                                     "initial_lr": config.lora_learning_rate})
+        optimizer = torch.optim.AdamW(parameter_groups, weight_decay=config.weight_decay)
         total_steps = config.epochs * ceil(len(records) / config.batch_size)
         losses = []
         step = 0
@@ -266,7 +289,7 @@ def train(model, samples, config: TrainingConfig, progress_callback=None, cache_
                     module.set_progress((step + 1) / total_steps)
                 # First update uses the stated LR; final positive update uses LR/steps.
                 for group in optimizer.param_groups:
-                    group["lr"] = config.learning_rate * (1.0 - step / total_steps)
+                    group["lr"] = group["initial_lr"] * (1.0 - step / total_steps)
                 optimizer.zero_grad(set_to_none=True)
                 denominator = sum(_elements(r) for r in batch)
                 if denominator <= 0:
@@ -288,10 +311,11 @@ def train(model, samples, config: TrainingConfig, progress_callback=None, cache_
                                        "step": step, "total_steps": total_steps, "loss": value,
                                        "grad_norm": float(norm)})
         for module in active:
-            module.set_progress(1.0)
             for parameter in module.trainable_parameters():
                 parameter.requires_grad_(False)
                 parameter.grad = None
+            module.clear_soft_snapshot()
+            module.set_progress(1.0)
         after = window_mse(layers, records, start, end, device)
         report["windows"].append({"start": start, "end": end, "hard_mse_before": before,
                                   "hard_mse_after": after, "steps": step, "losses": losses})

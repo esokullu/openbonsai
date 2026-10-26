@@ -2,18 +2,19 @@
 
 Based on arXiv:2606.26650, inherited by ScaleQ-1.58 (arXiv:2608.01078).
 This is a research reconstruction, not the authors' unreleased training code.
-No LoRA is used. The original weight/bias are frozen; three factors per group
-modulate centering, scale, and threshold. There is no mean addback.
+The original weight/bias are frozen. An optional low-rank correction is merged
+before ternarization; three factors per group modulate centering, scale, and
+threshold. There is no mean addback. Rank 64 is the default; rank 0 disables LoRA.
 
 The paper's 'last soft iteration' hard-stage backward rule is underspecified.
-Our explicit default freezes the terminal-soft Jacobian at the transition;
+Our explicit default freezes the Jacobian at the actual last soft forward point;
 an alternative recomputes the soft surrogate at the current factors. Neither
 choice is claimed to reproduce an unpublished implementation exactly.
 """
 from __future__ import annotations
 
 import math
-from typing import Any, Iterable
+from typing import Any
 
 import torch
 from torch import Tensor, nn
@@ -40,18 +41,22 @@ def hard_ternary(z: Tensor, threshold: Tensor | float) -> Tensor:
 
 
 class TernaryLinear(nn.Module):
-    """Trainable grouped factors around a frozen ``nn.Linear``.
+    """Trainable grouped factors and low-rank update around a frozen linear.
 
     Groups flatten the row-major weight, including a final partial group.
     Group statistics ignore padding. ``quant_enabled=False`` is the original
     dense teacher. At progress 0, the dense endpoint is also used; at 0<p<=.8
     the smooth map is used, and at p>.8 the exact ternary map is used.
-    This explicit dense endpoint avoids calling a centered weight 'original'.
+    Both dense paths ignore the low-rank update. For rank > 0, statistics are
+    computed on W + B @ A / rank, matching the released inference formulation.
+    Kaiming-uniform A / zero B initialization and differentiation through these
+    statistics are independent training choices, not a released training recipe.
     """
 
     def __init__(
         self, linear: nn.Linear, group_size: int = 128, *, soft_fraction: float = 0.8,
         max_sharpness: float = 30.0, hard_phase: str = "frozen_jacobian",
+        lora_rank: int = 64,
     ) -> None:
         super().__init__()
         if not isinstance(linear, nn.Linear):
@@ -60,6 +65,8 @@ class TernaryLinear(nn.Module):
             raise ValueError("source linear dimensions must be positive")
         if isinstance(group_size, bool) or not isinstance(group_size, int) or group_size <= 0:
             raise ValueError("group_size must be a positive integer")
+        if isinstance(lora_rank, bool) or not isinstance(lora_rank, int) or lora_rank < 0:
+            raise ValueError("lora_rank must be a nonnegative integer")
         if not 0 < soft_fraction < 1 or not math.isfinite(max_sharpness) or max_sharpness <= 0:
             raise ValueError("soft_fraction must be in (0,1) and max_sharpness positive")
         if hard_phase not in ("frozen_jacobian", "soft_surrogate"):
@@ -70,6 +77,7 @@ class TernaryLinear(nn.Module):
             raise ValueError("source bias must be finite")
         self.in_features, self.out_features = linear.in_features, linear.out_features
         self.group_size = group_size
+        self.lora_rank = lora_rank
         self.numel = linear.weight.numel()
         self.num_groups = math.ceil(self.numel / group_size)
         self.padded_numel = self.num_groups * group_size
@@ -78,32 +86,90 @@ class TernaryLinear(nn.Module):
         self.progress = 0.0
         self.register_buffer("weight", linear.weight.detach().clone())
         self.register_buffer("bias", None if linear.bias is None else linear.bias.detach().clone())
-        grouped = self._grouped_weight()
-        valid = torch.arange(self.padded_numel, device=grouped.device).reshape_as(grouped) < self.numel
-        counts = valid.sum(dim=1, keepdim=True).to(grouped.dtype)
-        mean = grouped.sum(dim=1, keepdim=True) / counts
-        alpha = ((grouped - mean).abs() * valid).sum(dim=1, keepdim=True) / counts
-        # Degenerate constant groups need a finite denominator; this is a
-        # numerical guard, not a claim of lossless representation of constants.
-        alpha = alpha.clamp_min(1e-8)
+        if lora_rank:
+            self.lora_A = nn.Parameter(torch.empty(lora_rank, self.in_features, device=linear.weight.device, dtype=torch.float32))
+            self.lora_B = nn.Parameter(torch.zeros(self.out_features, lora_rank, device=linear.weight.device, dtype=torch.float32))
+            nn.init.kaiming_uniform_(self.lora_A, a=math.sqrt(5))
+        else:
+            self.register_parameter("lora_A", None)
+            self.register_parameter("lora_B", None)
+        mean, alpha = self._statistics(self._group(self.weight.float()))
         self.register_buffer("mu0", mean)
         self.register_buffer("alpha0", alpha)
         self.raw_mu = nn.Parameter(torch.zeros_like(mean))
         self.raw_scale = nn.Parameter(torch.zeros_like(mean))
         self.raw_threshold = nn.Parameter(torch.zeros_like(mean))
-        for name in ("_hard_snapshot_mu", "_hard_snapshot_scale", "_hard_snapshot_threshold"):
-            self.register_buffer(name, None)
+        for name in self._snapshot_names():
+            self.register_buffer(name, None, persistent=False)
+        self._hard_snapshot_sharpness: float | None = None
 
     @classmethod
     def from_linear(cls, linear: nn.Linear, group_size: int = 128, **kwargs: Any) -> "TernaryLinear":
         return cls(linear, group_size, **kwargs)
 
-    def _grouped_weight(self) -> Tensor:
-        flat = self.weight.float().flatten()
-        return F.pad(flat, (0, self.padded_numel - self.numel)).reshape(self.num_groups, self.group_size)
+    @staticmethod
+    def _snapshot_names() -> tuple[str, ...]:
+        return ("_hard_snapshot_mu", "_hard_snapshot_scale", "_hard_snapshot_threshold",
+                "_hard_snapshot_lora_A", "_hard_snapshot_lora_B")
 
-    def trainable_parameters(self) -> Iterable[nn.Parameter]:
+    def _apply(self, fn, recurse: bool = True):
+        # Module-wide .to(dtype=...) must not silently round optimizer variables,
+        # group statistics, or a saved derivative point through BF16/FP16.
+        parameters = {name: (parameter.detach(), None if parameter.grad is None else parameter.grad.detach())
+                      for name, parameter in self.named_parameters(recurse=False)}
+        buffers = {name: self._buffers[name] for name in ("mu0", "alpha0", *self._snapshot_names())
+                   if self._buffers[name] is not None}
+        result = super()._apply(fn, recurse=recurse)
+        for name, (value, grad) in parameters.items():
+            parameter = getattr(self, name)
+            parameter.data = value.to(device=parameter.device, dtype=torch.float32)
+            if grad is not None:
+                parameter.grad = grad.to(device=parameter.device, dtype=torch.float32)
+        for name, value in buffers.items():
+            setattr(self, name, value.to(device=getattr(self, name).device, dtype=torch.float32))
+        return result
+
+    def _group(self, weight: Tensor) -> Tensor:
+        flat = weight.flatten()
+        if self.padded_numel != self.numel:
+            flat = F.pad(flat, (0, self.padded_numel - self.numel))
+        return flat.reshape(self.num_groups, self.group_size)
+
+    def _grouped_weight(self) -> Tensor:
+        return self._effective_grouped(self.lora_A, self.lora_B)
+
+    def _effective_grouped(self, lora_A: Tensor | None, lora_B: Tensor | None) -> Tensor:
+        weight = self.weight.float()
+        if self.lora_rank:
+            weight = weight + (lora_B @ lora_A) / self.lora_rank
+        return self._group(weight)
+
+    def _statistics(self, grouped: Tensor) -> tuple[Tensor, Tensor]:
+        # Only the last group can contain padding. Avoid a dense validity mask.
+        counts = grouped.new_full((self.num_groups, 1), self.group_size)
+        last_count = self.numel - (self.num_groups - 1) * self.group_size
+        counts[-1] = last_count
+        mean = grouped.sum(dim=1, keepdim=True) / counts
+        absolute = (grouped - mean).abs()
+        alpha = absolute.mean(dim=1, keepdim=True)
+        if last_count != self.group_size:
+            alpha = torch.cat((alpha[:-1], absolute[-1, :last_count].mean().reshape(1, 1)))
+        return mean, alpha.clamp_min(1e-8)
+
+    def factor_parameters(self) -> tuple[nn.Parameter, ...]:
         return (self.raw_mu, self.raw_scale, self.raw_threshold)
+
+    def lora_parameters(self) -> tuple[nn.Parameter, ...]:
+        return (self.lora_A, self.lora_B) if self.lora_rank else ()
+
+    def trainable_parameters(self) -> tuple[nn.Parameter, ...]:
+        return self.factor_parameters() + self.lora_parameters()
+
+    def clear_soft_snapshot(self) -> None:
+        """Release the derivative point after a window or before a new schedule."""
+        for name in self._snapshot_names():
+            setattr(self, name, None)
+        self._hard_snapshot_sharpness = None
 
     def reset_annealing(self) -> None:
         """Restart the schedule while preserving learned factors."""
@@ -113,30 +179,36 @@ class TernaryLinear(nn.Module):
         progress = float(progress)
         if not math.isfinite(progress) or not 0 <= progress <= 1:
             raise ValueError("progress must be finite and in [0,1]")
-        if progress <= self.soft_fraction:
-            self._hard_snapshot_mu = None
-            self._hard_snapshot_scale = None
-            self._hard_snapshot_threshold = None
-        elif self._hard_snapshot_mu is None and self.hard_phase == "frozen_jacobian":
-            self._hard_snapshot_mu = self.raw_mu.detach().clone()
-            self._hard_snapshot_scale = self.raw_scale.detach().clone()
-            self._hard_snapshot_threshold = self.raw_threshold.detach().clone()
+        if progress == 0 or progress < self.progress:
+            self.clear_soft_snapshot()
         self.progress = progress
 
-    def _factors(self, raw_mu: Tensor, raw_scale: Tensor, raw_threshold: Tensor) -> tuple[Tensor, Tensor, Tensor]:
-        mu = self.mu0 + torch.tanh(raw_mu) * self.alpha0
-        alpha = torch.exp(raw_scale) * self.alpha0
+    def _factors(
+        self, raw_mu: Tensor, raw_scale: Tensor, raw_threshold: Tensor,
+        *, statistics: tuple[Tensor, Tensor] | None = None,
+    ) -> tuple[Tensor, Tensor, Tensor]:
+        mu0, alpha0 = (self.mu0, self.alpha0) if statistics is None else statistics
+        mu = mu0 + torch.tanh(raw_mu) * alpha0
+        alpha = torch.exp(raw_scale) * alpha0
         threshold = 0.5 * torch.exp(raw_threshold)
         return mu, alpha, threshold
 
     def _soft_grouped(self, sharpness: float) -> Tensor:
-        mu, alpha, threshold = self._factors(self.raw_mu, self.raw_scale, self.raw_threshold)
-        z = (self._grouped_weight() - mu) / alpha
+        return self._soft_at(sharpness, *self.factor_parameters(), self.lora_A, self.lora_B)
+
+    def _soft_at(self, sharpness, raw_mu, raw_scale, raw_threshold, lora_A, lora_B) -> Tensor:
+        grouped = self._effective_grouped(lora_A, lora_B)
+        statistics = self._statistics(grouped) if self.lora_rank else None
+        mu, alpha, threshold = self._factors(raw_mu, raw_scale, raw_threshold, statistics=statistics)
+        z = (grouped - mu) / alpha
         return alpha * soft_ternary(z, threshold, sharpness)
 
-    def _hard_codes_and_scales(self) -> tuple[Tensor, Tensor]:
-        mu, alpha, threshold = self._factors(self.raw_mu, self.raw_scale, self.raw_threshold)
-        z = (self._grouped_weight() - mu) / alpha
+    def _hard_codes_and_scales(self, grouped: Tensor | None = None) -> tuple[Tensor, Tensor]:
+        if grouped is None:
+            grouped = self._grouped_weight()
+        statistics = self._statistics(grouped) if self.lora_rank else None
+        mu, alpha, threshold = self._factors(*self.factor_parameters(), statistics=statistics)
+        z = (grouped - mu) / alpha
         codes = hard_ternary(z, threshold)
         if self.padded_numel > self.numel:
             codes = codes.flatten().clone()
@@ -149,25 +221,28 @@ class TernaryLinear(nn.Module):
         codes, alpha = self._hard_codes_and_scales()
         return (codes * alpha).flatten()[:self.numel].reshape_as(self.weight).to(self.weight.dtype)
 
-    def _frozen_jacobian_surrogate(self) -> Tensor:
-        if self._hard_snapshot_mu is None:
-            # Also handle callers that set .progress directly; set_progress is
-            # the supported public entry point for deliberate schedule changes.
-            self.set_progress(self.progress)
-        rm, rs, rt = self._hard_snapshot_mu, self._hard_snapshot_scale, self._hard_snapshot_threshold
+    def _capture_soft_snapshot(self, sharpness: float) -> None:
+        # Record the forward point, before its optimizer update. Dense weights
+        # are frozen, so only compact factors/A/B and the actual k are needed.
         with torch.no_grad():
-            mu, alpha, threshold = self._factors(rm, rs, rt)
-            z = (self._grouped_weight() - mu) / alpha
-            k = self.max_sharpness
-            minus, plus = torch.tanh(k * (z - threshold)), torch.tanh(k * (z + threshold))
-            denominator = 2 * math.tanh(k)
-            f = (minus + plus) / denominator
-            fz = k * (2 - minus.square() - plus.square()) / denominator
-            ft = k * (minus.square() - plus.square()) / denominator
-            j_mu = -fz * self.alpha0 * (1 - torch.tanh(rm).square())
-            j_scale = alpha * (f - z * fz)
-            j_threshold = alpha * ft * threshold
-        return j_mu * (self.raw_mu - rm) + j_scale * (self.raw_scale - rs) + j_threshold * (self.raw_threshold - rt)
+            values = (*self.factor_parameters(), self.lora_A, self.lora_B)
+            for name, value in zip(self._snapshot_names(), values):
+                setattr(self, name, None if value is None else value.detach().clone())
+        self._hard_snapshot_sharpness = sharpness
+
+    def _frozen_jacobian_surrogate(self) -> Tensor:
+        if self._hard_snapshot_sharpness is None:
+            raise RuntimeError(
+                "Hard-stage training requires a preceding soft forward to capture its derivative; "
+                "use hard_weight() or torch.no_grad() for inference"
+            )
+        # Values equal the saved point; derivatives flow to today's parameters.
+        # Autograd then computes the full saved Jacobian, including the low-rank
+        # product and effective-weight statistics, without storing dense Jacobians.
+        current = (*self.factor_parameters(), self.lora_A, self.lora_B)
+        proxies = tuple(None if value is None else getattr(self, name) + (value - value.detach())
+                        for name, value in zip(self._snapshot_names(), current))
+        return self._soft_at(self._hard_snapshot_sharpness, *proxies)
 
     def quantized_weight(self) -> Tensor:
         if self.progress == 0:
@@ -176,12 +251,18 @@ class TernaryLinear(nn.Module):
             zero = sum(p.sum() * 0 for p in self.trainable_parameters())
             return self.weight + zero.to(self.weight.dtype)
         if self.progress <= self.soft_fraction:
-            grouped = self._soft_grouped(self.max_sharpness * self.progress / self.soft_fraction)
+            sharpness = self.max_sharpness * self.progress / self.soft_fraction
+            if (self.hard_phase == "frozen_jacobian" and torch.is_grad_enabled()
+                    and any(p.requires_grad for p in self.trainable_parameters())):
+                self._capture_soft_snapshot(sharpness)
+            grouped = self._soft_grouped(sharpness)
         else:
             if not torch.is_grad_enabled() or not any(p.requires_grad for p in self.trainable_parameters()):
                 return self.hard_weight()
-            codes, alpha = self._hard_codes_and_scales()
-            hard = (codes * alpha).detach()
+            with torch.no_grad():
+                codes, alpha = self._hard_codes_and_scales()
+                hard = codes * alpha
+            del codes, alpha
             surrogate = (self._frozen_jacobian_surrogate() if self.hard_phase == "frozen_jacobian"
                          else self._soft_grouped(self.max_sharpness))
             grouped = hard + (surrogate - surrogate.detach())
@@ -195,11 +276,13 @@ class TernaryLinear(nn.Module):
         """Export only hard codes/scales/bias, without dense training buffers."""
         if not all(bool(torch.isfinite(p).all()) for p in self.trainable_parameters()):
             raise ValueError("cannot pack nonfinite quantizer factors")
-        mu, alpha, threshold = self._factors(self.raw_mu, self.raw_scale, self.raw_threshold)
+        grouped = self._grouped_weight()
+        statistics = self._statistics(grouped) if self.lora_rank else None
+        mu, alpha, threshold = self._factors(*self.factor_parameters(), statistics=statistics)
         if (not all(bool(torch.isfinite(t).all()) for t in (mu, alpha, threshold))
                 or bool((alpha <= 0).any()) or bool((threshold <= 0).any())):
             raise ValueError("cannot pack invalid mapped quantizer factors")
-        codes, alpha = self._hard_codes_and_scales()
+        codes, alpha = self._hard_codes_and_scales(grouped)
         return pack_grouped_weight(codes, alpha, shape=list(self.weight.shape),
                                    group_size=self.group_size, bias=self.bias, packing=packing)
 

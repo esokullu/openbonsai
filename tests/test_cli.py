@@ -10,7 +10,8 @@ from openbonsai.cli import main, parser, train_command
 from openbonsai.export import load_compressed
 
 
-def test_train_entry_point_with_local_fixture_and_revision(monkeypatch, tmp_path):
+@pytest.mark.parametrize("lora_rank", [0, 4])
+def test_train_entry_point_with_local_fixture_and_revision(monkeypatch, tmp_path, lora_rank):
     torch.set_num_threads(2)
     data = tmp_path / "calibration.jsonl"
     data.write_text(json.dumps({"input_ids": [4, 5, 6, 7, 8, 9], "model_id": "fixture",
@@ -43,7 +44,8 @@ def test_train_entry_point_with_local_fixture_and_revision(monkeypatch, tmp_path
     args = parser().parse_args(["train", "--model", "fixture", "--revision", "test-commit",
         "--calibration", str(data), "--output", str(output), "--local-files-only",
         "--epochs", "3", "--batch-size", "1", "--sequence-length", "8", "--stride", "4",
-        "--cache-dir", str(tmp_path / "cache")])
+        "--cache-dir", str(tmp_path / "cache"), "--lora-rank", str(lora_rank),
+        "--lora-learning-rate", "0.002"])
     result = train_command(args)
     assert calls[0][1]["local_files_only"] and calls[1][1]["local_files_only"]
     assert calls[0][1]["revision"] == calls[1][1]["revision"] == "test-commit"
@@ -51,6 +53,12 @@ def test_train_entry_point_with_local_fixture_and_revision(monkeypatch, tmp_path
     manifest = json.loads((output / "manifest.json").read_text())
     assert manifest["metadata"]["resolved_revision"] == "test-commit"
     assert manifest["metadata"]["calibration"]["expected_revision"] == "test-commit"
+    assert manifest["metadata"]["lora_rank"] == lora_rank
+    assert manifest["metadata"]["lora_initialization_seed"] == args.seed
+    training = manifest["metadata"]["training"]
+    assert training["training_config"]["lora_learning_rate"] == 0.002
+    assert training["quantization"]["lora_ranks"] == [lora_rank]
+    assert (training["quantization"]["lora_parameters"] > 0) == (lora_rank > 0)
     assert (output / "tokenizer/test-tokenizer.json").is_file()
     loaded = load_compressed(output)
     with torch.no_grad():
@@ -66,6 +74,28 @@ def test_train_refuses_existing_output_before_loading_model(tmp_path, monkeypatc
     with pytest.raises(FileExistsError):
         train_command(args)
     assert (tmp_path / "keep.txt").read_text() == "keep"
+
+
+@pytest.mark.parametrize("option,value", [
+    ("--lora-rank", "-1"), ("--lora-learning-rate", "0"),
+    ("--lora-learning-rate", "nan"), ("--lora-learning-rate", "inf"),
+])
+def test_invalid_lora_config_rejected_before_model_loading(option, value, monkeypatch, tmp_path):
+    def forbid(*args, **kwargs):
+        raise AssertionError("must not load model for invalid correction settings")
+
+    monkeypatch.setattr(adapter, "load_base_model", forbid)
+    args = parser().parse_args(["train", "--calibration", "absent.jsonl",
+                              "--output", str(tmp_path / "unused"), option, value])
+    with pytest.raises(ValueError):
+        train_command(args)
+
+
+def test_default_lora_recipe():
+    args = parser().parse_args(["train", "--calibration", "unused", "--output", "unused"])
+    assert args.lora_rank == 64
+    assert args.lora_learning_rate == 0.001
+    assert args.learning_rate == 0.001
 
 
 def test_repack_cli_preserves_assets_and_reports_actual_savings(tmp_path, monkeypatch, capsys):

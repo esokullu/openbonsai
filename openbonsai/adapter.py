@@ -49,12 +49,14 @@ def iter_ternary_modules(model):
             yield name, module
 
 
-def replace_projections(model, group_size=128, aggressive_gates=False):
+def replace_projections(model, group_size=128, aggressive_gates=False, *, lora_rank=64):
     """Replace large text projections; protect tiny recurrence gates by default.
 
     This projection policy is an experimental Qwen3.5 adaptation, not a claim
     that the original ScaleQ paper evaluated this model or this policy.
     """
+    if type(lora_rank) is not int or lora_rank < 0:
+        raise ValueError("lora_rank must be a nonnegative integer")
     prefix, text_model = _text_module(model)
     allowlist = _PROJECTIONS | (_RECURRENT_GATES if aggressive_gates else set())
     candidates = []
@@ -73,7 +75,7 @@ def replace_projections(model, group_size=128, aggressive_gates=False):
     # retain every original GPU weight while the quantizers clone them all.
     for name in candidates:
         source = model.get_submodule(name)
-        replacement = TernaryLinear.from_linear(source, group_size=group_size)
+        replacement = TernaryLinear.from_linear(source, group_size=group_size, lora_rank=lora_rank)
         model.set_submodule(name, replacement)
         del source, replacement
     return candidates

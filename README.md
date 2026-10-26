@@ -10,7 +10,7 @@ The intended first target is `Qwen/Qwen3.5-9B`. No real 9B weights were download
 
 Prism ML's Ternary Bonsai 2 family already includes Qwen3.5-based **2B, 4B, and 9B** models, with publicly available Apache 2.0 weights. [Prism's release announcement](https://prismml.com/news/bonsai-2-family). We want developers to be able to apply ternary compression to their own fine-tuned models. The official [9B release](https://huggingface.co/prism-ml/Ternary-Bonsai-2-9B-mlx-2bit) and [demo repository](https://github.com/PrismML-Eng/Bonsai-demo) reviewed on October 26, 2026 provide weights and inference tooling, but do not include a reproducible Bonsai 2 training/compression pipeline for that workflow.
 
-**Our goal is to let everyone turn their own fine-tuned BF16 models into compact ternary models**, through an open, reproducible compression pipeline. Fine-tuning happens first, in BF16, using the developer's preferred training tools. OpenBonsai then calibrates ternary factors around that customized checkpoint's frozen weights. This workflow does not require fine-tuning the packed ternary model directly.
+**Our goal is to let everyone turn their own fine-tuned BF16 models into compact ternary models**, through an open, reproducible compression pipeline. Fine-tuning happens first, in BF16, using the developer's preferred training tools. OpenBonsai then learns ternary factors and a low-rank refinement around that customized checkpoint's frozen weights. The refinement is included before ternarization and is absorbed into the exported ternary weights. This workflow does not require fine-tuning the packed ternary model directly.
 
 ## Intended workflow
 
@@ -26,8 +26,9 @@ The compact model retains its parameter count; the storage reduction comes from 
 ## What works
 
 - Original-model generation preserves the exact question, reasoning, and answer token IDs; model ID and resolved revision are recorded.
-- Frozen original weights; three learned factors per group control centering, positive scale, and positive threshold.
+- Frozen original weights provide the teacher; three learned factors per group and a rank-64 low-rank refinement adapt the student. `--lora-rank 0` disables the refinement for an ablation.
 - Differentiable soft ternarization, followed by exact hard ternary forward values; no mean is added back to the reconstructed weights.
+- The hard-stage surrogate uses the parameters and sharpness from the actual last soft forward, with the current loss gradient. This is an explicit interpretation of the paper's backward rule.
 - Sliding windows reconstruct original-weight window outputs from the **same input** as the quantized window. The input comes from the previously quantized prefix. Padding is excluded from the loss.
 - Native Qwen3.5 blocks retain their individual masks, rotary inputs, gates, and recurrent behavior. Gradient checkpointing is supported in the tested CPU reference path.
 - Packed checkpoint export with lossless BITCOS or legacy two-bit storage, retained floating tensors, checksums, exact byte accounting, and offline reload.
@@ -53,6 +54,8 @@ The smoke command needs no network, model weights, or datasets. It trains a tiny
 
 The original `validation.json` records the initial **80 passing tests** and an end-to-end offline smoke run. The BITCOS update is recorded separately in [validation-bitcos.json](validation-bitcos.json): **221 passing tests**, an offline training/export smoke run, and exact full-model logits after repacking a pre-update artifact. On that tiny fixture, packed tensors shrink by **14.54%** and the complete model artifact by **3.54%**; these are software checks, not a size or quality benchmark for a real 9B model. The tested stack is Python 3.12.9, PyTorch 2.14.1, Transformers 5.20.2, Accelerate 1.15.0, Safetensors 0.8.0, and Pytest 9.1.1. Transformers is constrained to the tested minor version because this adapter calls native decoder blocks. The main suite runs on CPU; additional initial-prototype checks exercised MPS training and a 129-token multimodal-wrapper training run. CUDA, full-model mixed precision, and optimized DeltaNet kernels have not been validated here.
 
+The low-rank refinement and hard-gradient update is recorded in [validation-refinement.json](validation-refinement.json): **248 passing tests**, corrective optimization on a controlled tiny native model, and an offline rank-64 training/export smoke run with exact packed reload logits. These checks do not establish recovered pretrained-model quality or CUDA memory requirements.
+
 ## Run a small real-model pilot
 
 These commands **load/download the original 9B weights** and require substantial memory. They are examples; they were not run as part of this delivery. Start with a small pilot before the paper-sized recipe.
@@ -75,10 +78,15 @@ python -m openbonsai train \
   --device cuda --dtype bfloat16 \
   --max-samples 16 --sequence-length 512 --epochs 2 \
   --batch-size 1 --window-size 2 --stride 1 \
+  --lora-rank 64 --lora-learning-rate 0.001 \
   --cache-dir runs/window-cache --gradient-checkpointing
 ```
 
 This deliberately reduced pilot is an execution check, not a quality recipe. Both commands accept `--local-files-only` to require cached/local assets. Quantized source checkpoints are inappropriate: calibration must come from the original model. The loader rejects declared quantization metadata.
+
+The default rank-64 refinement adds `B @ A / 64` to each selected projection **before** ternarization; export contains no separate inference adapter. `--learning-rate` controls the group factors, while `--lora-learning-rate` controls the low-rank parameters; both default to `0.001`. Use `--lora-rank 0` to compare against factor-only calibration. A run needs at least one soft update before the hard stage; a one-update window is rejected.
+
+Existing packed artifacts cannot adopt the refinement or the corrected hard-stage derivative through `repack`. Start a new compression run from the original BF16 checkpoint, using a new output directory. Valid calibration traces from that same checkpoint can be reused. These changes do not establish restored 9B model quality; compare with the BF16 baseline and preserve the prior artifact for a controlled comparison. [Method details and source boundaries](docs/method.md).
 
 For the paper's default calibration budget, sample 1,024 mathematics prompts from MetaMathQA and 1,024 coding prompts from OpenCodeInstruct, generate traces with the original target model, then use 2,048 samples, sequence length 2,048, 60 epochs, and batch size 3. Dataset acquisition/sampling is left to the caller; it is not implemented or silently downloaded. Review dataset licenses and keep evaluation examples separate. The paper evaluates other model families; applying this recipe to Qwen3.5 is an experiment.
 
@@ -86,7 +94,7 @@ Generation is greedy by default (a documented implementation choice). Generation
 
 ## Memory and runtime
 
-This first trainer keeps the complete original model on one device, together with group factors and training intermediates. It has no model sharding, optimizer sharding, CPU layer offload, or training resume. BF16 original 9B weights alone are roughly 18 GB before these costs. Required VRAM is unmeasured; packed file size is not a VRAM estimate. Use a sufficiently provisioned machine and measure the pilot before scaling.
+This trainer keeps the complete original model on one device, together with group factors, low-rank parameters, derivative snapshots, and training intermediates. It has no model sharding, optimizer sharding, CPU layer offload, or training resume. BF16 original 9B weights alone are roughly 18 GB before these costs. The rank-64 path adds memory and computation during calibration, including reconstruction of the effective weight matrices. Its 9B peak VRAM is unmeasured; an earlier factor-only memory measurement does not validate this path. Run a fresh memory preflight before scaling. Packed file size is not a VRAM estimate.
 
 Without `--cache-dir`, all window inputs/targets live in CPU RAM. At 2,048 samples × 2,048 tokens × hidden size 4,096, two BF16 hidden-state streams alone occupy **64 GiB per window**, plus masks and rotary inputs. Disk caching moves these records to scratch storage; it still needs more than 64 GiB of free space at that budget and repeatedly reads them over 60 epochs. FP32 doubles the hidden-state storage. Completed window caches are removed. The Python reference attention/DeltaNet path and full-precision reconstruction can be slow; we make no runtime estimate for 9B.
 
@@ -131,18 +139,19 @@ Some details are not sufficiently specified to claim an exact reproduction. Thes
 
 | Detail | This implementation |
 |---|---|
-| Initialization | Group mean; centered mean absolute deviation; partial-group padding excluded |
+| Initialization | Low-rank `A` uses Kaiming uniform and `B` starts at zero; group statistics exclude partial-group padding |
+| Low-rank refinement | Default rank 64, fixed scaling `1/r`; group statistics recomputed from `W + B @ A / r`; rank 0 retains factor-only statistics |
 | Factor constraints | `tanh(raw_mu)` and exponential positive scale/threshold factors |
 | Schedule | First 80% soft, sharpness rising to 30; final 20% hard |
-| Hard-stage backward | Terminal-soft Jacobian frozen at transition, recomputed from frozen group-factor snapshots; an interpretation of the described final-soft gradients |
+| Hard-stage backward | Full soft-map Jacobian at the actual last soft forward's pre-update factors, low-rank parameters, and sharpness; applied to the current upstream loss gradient |
 | Progress zero | Exact original-weight bypass; training starts at positive progress |
 | Reconstruction | Mean squared output error over nonpadding elements; shared quantized-prefix input |
-| Optimizer | AdamW, learning rate 0.001 with linear decay, weight decay 0, gradient clipping 1 |
-| Windows | Default width 4, stride 2, shrinking tail; overlapping factors warm-start and restart annealing |
+| Optimizer | AdamW; separate factor and low-rank learning rates, both 0.001 by default; linear decay, weight decay 0, gradient clipping 1 |
+| Windows | Default width 4, stride 2, shrinking tail; overlapping factors and low-rank parameters warm-start and restart annealing |
 | Architecture | Native dense Qwen3.5; conservative projection policy described above |
-| Added adapters | None; no LoRA, answer cross-entropy, or external teacher |
+| Export | Ternarize the refined weights; no low-rank tensors or adapter computation remain at inference |
 
-The hard-stage surrogate is explicitly an approximation to an underspecified rule. A `soft_surrogate` alternative is available in the `TernaryLinear` Python API; it is not the CLI default. The frozen source weights remain recoverable only during training. No generic ternarization can guarantee bitwise lossless recovery or unchanged behavior for every input.
+The hard-stage surrogate is explicitly an approximation to an underspecified rule. It freezes a local Jacobian, not the previous batch's loss gradients. A `soft_surrogate` alternative is available in the `TernaryLinear` Python API; it is not the CLI default. The public CAT-Q release confirms pre-quantization low-rank refinement, but provides inference/export code rather than its training implementation. Our initialization, backward interpretation, and Qwen3.5 adaptation remain independent choices. See [the method notes](docs/method.md) for pinned source links and remaining differences. The frozen source weights remain recoverable only during training. No generic ternarization can guarantee bitwise lossless recovery or unchanged behavior for every input.
 
 Before using a compressed 9B model, evaluate the original and compressed checkpoints on the same held-out general, reasoning, coding, and intended-domain tasks with identical prompting/decoding. Check long-context and multimodal behavior separately if needed. This package does not yet include that evaluation harness. Neither toy loss improvement nor serialization parity establishes quality preservation, superiority to GSQ-RCO/SLQ, or equivalence to Bonsai.
 
@@ -151,7 +160,7 @@ Before using a compressed 9B model, evaluate the original and compressed checkpo
 - [ScaleQ-1.58, arXiv:2608.01078](https://arxiv.org/abs/2608.01078): AYOT and the CAT-Q composition; §2 and Appendix C.
 - [CAT-Q, arXiv:2606.26650](https://arxiv.org/abs/2606.26650): grouped modulation, soft ternarization, sliding-window reconstruction.
 - [BITCOS, arXiv:2609.16338](https://arxiv.org/abs/2609.16338): presence bitmap and compacted signs for lossless packing of already-ternary weights; §II-A. Our portable implementation does not include the paper's fused CPU/Intel GPU kernels.
-- [Official BitTern repository](https://github.com/IntelChina-AI/BitTern), inspected commit `5a8fcd4f7e0366554b732d300a37e6ea467c3c35`: release scope and configuration reference; its training code was unavailable in that snapshot.
+- [Official BitTern repository](https://github.com/IntelChina-AI/BitTern/tree/5a8fcd4f7e0366554b732d300a37e6ea467c3c35/projects/cat-q), refreshed October 26, 2026 at commit `5a8fcd4f7e0366554b732d300a37e6ea467c3c35`: released low-rank refinement, inference/export behavior, and model-specific configurations; its training code was unavailable in that snapshot.
 - [SliderQuant](https://github.com/deep-optimization/SliderQuant), inspected commit `bf2641ece550d5f6edb0028c2ae8b0ee658bc9bf`: sliding-window implementation context. This prototype does not vendor its code or reproduce its full training system.
 - [Qwen3.5-9B configuration](https://huggingface.co/Qwen/Qwen3.5-9B/blob/main/config.json) and [native Transformers Qwen3.5 implementation](https://github.com/huggingface/transformers/tree/main/src/transformers/models/qwen3_5): architecture adaptation.
 
