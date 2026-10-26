@@ -1,0 +1,106 @@
+{
+  "status": "passed",
+  "date": "2026-10-26",
+  "base_commit": "484ae1168794870be6fed77a6cda815df6c44431",
+  "scope": "Bounded MixedLinear output-row execution and explicit stored-head/original-teacher cache KL; software validation on tiny native CPU fixtures",
+  "source_files_sha256": {
+    "openbonsai/mixed_formats.py": "5240bf2a0a56b6c904b5b1894300ac48fbb91898cbc97c483c99aed484413f82",
+    "openbonsai/head_evaluation.py": "c92781b37b3edbaa083ec74d5a1bf0be78c972778334f17f47bfec426385582c",
+    "tests/test_mixed_forward_rows.py": "3b4b6a096db70e57ae8c2fee0c02c36018e7dd6319844a411f8acf115e05bac0",
+    "tests/test_head_evaluation.py": "ab706cb24d0b56469f6795b3f6805a45cfd4c5362948d1f684225e537d2f1391"
+  },
+  "environment": {
+    "python": "3.12.9",
+    "platform": "macOS-26.0.1-arm64-arm-64bit",
+    "torch": "2.14.1",
+    "transformers": "5.20.2"
+  },
+  "distinct_cases_passed": 247,
+  "test_runs": [
+    {
+      "command": "python -m pytest -q tests/test_mixed_forward_rows.py tests/test_mixed_formats.py tests/test_mixed_cache.py",
+      "passed": 211,
+      "seconds": 2.98,
+      "wall_seconds": 3.342435833066702,
+      "log_sha256": "e744b7642340e00780e96b687f5eee264d98649ac636534faf4ec4337625ccfc",
+      "scope": "New row primitive and existing mixed format/cache regression tests"
+    },
+    {
+      "command": "OMP_NUM_THREADS=2 ../scaleq-env/bin/python -m pytest -q tests/test_head_evaluation.py",
+      "result": {
+        "log_sha256": "a108a4cdd6db6ab4c6e6e641093c33e2cbd21fc8bcc3f771d699706f07dba668",
+        "passed": 34,
+        "seconds": 6.29
+      },
+      "scope": "Initial 34 cases; unchanged by later append-only integration tests",
+      "test_file_sha256": "32d7d86c30d1210857309e776aaf1c35935c8c4ba0b60b0e56df47e217cb47de"
+    },
+    {
+      "command": "OMP_NUM_THREADS=2 ../scaleq-env/bin/python -m pytest -q tests/test_head_evaluation.py -k actual_staged",
+      "result": {
+        "deselected": 34,
+        "log_sha256": "f0ac0c4318cccba3f4c48ec2d4d6300522e596e762d156cbea122a425c2db4a4",
+        "passed": 2,
+        "seconds": 2.39
+      },
+      "scope": "Added actual staged none/hadamard source/cache/fit/export/lazy-load compatibility",
+      "test_file_sha256": "ab706cb24d0b56469f6795b3f6805a45cfd4c5362948d1f684225e537d2f1391"
+    }
+  ],
+  "original_34_cases_unchanged_before_append": true,
+  "validation_reproduction": "OMP_NUM_THREADS=2 python -m pytest -q tests/test_mixed_forward_rows.py tests/test_mixed_formats.py tests/test_mixed_cache.py tests/test_head_evaluation.py",
+  "row_runtime_contract": {
+    "range": "Nonempty integer output-row range, within vocabulary and no larger than row_chunk_size",
+    "one_requested_row_gemm": true,
+    "whole_forward_partition_rotation_and_cache_behavior_preserved": true,
+    "input_gradients_preserved": true,
+    "encodings_tested": [
+      "ternary-2bit",
+      "ternary-bitcos",
+      "ternary-base3",
+      "affine-4bit",
+      "affine-6bit",
+      "bf16"
+    ]
+  },
+  "scorer_contract": {
+    "entry_point": "openbonsai.head_evaluation.evaluate_packed_head_from_cache",
+    "teacher": "Unchanged frozen original native BF16 nn.Linear",
+    "student": "Cold ternary MixedLinear using stored FP16 scales/bias and actual rotation",
+    "objective": "Full-vocabulary KL(original_teacher || stored_student), temperature1, native BF16 logits, global FP64 probability normalization",
+    "data": "Every valid position of the explicitly supplied role cache; no fitting or automatic role discovery",
+    "candidate_identity": "Streaming exact canonical file SHA256 and byte count including checksum",
+    "decoded_weight_cache_bytes": 0,
+    "warming_or_clearing_cache": false,
+    "implicit_full_candidate_blob_or_weight_materialization": false,
+    "pipeline_receipt_authentication": "Caller responsibility; low-level result explicitly says pipeline_receipt_verified=false",
+    "active_5090_source_changed": false
+  },
+  "scorer_proof_scope": [
+    "native multimodal original cache with masks and multiple records/shards",
+    "both rotation modes and all three ternary codecs",
+    "independent complete-vocabulary FP64 KL oracle",
+    "fresh-process rotated-base3 serialized reload with exact source/cache/candidate file hashes",
+    "bounded row calls without whole head, matrix or encoded blob",
+    "original/payload/gradients/modes/tensor identities/version counters/RNG/files unchanged",
+    "explicit supplied cache roles only",
+    "deliberate stored scale double-rounding divergence from pre-export hard head",
+    "bias/source/malformed/stale or warm decoded-cache rejection",
+    "Actual code-bound pipeline stages for both rotation modes: original source, role cache, fit/export, authenticated lazy candidate load, exact stored file SHA and unchanged completed receipts"
+  ],
+  "independent_review": {
+    "result": "No actionable findings",
+    "review_sha256": "7d9a4f57995ea1e633d60842bd1b9aadfb1af3ff55401ee406bc0166b947f5be"
+  },
+  "limitations": [
+    "cold packed reference reconstruction only",
+    "CPU testing does not establish Windows/CUDA/9B memory or duration",
+    "candidate source claims checked against original/cache; full pipeline job receipts not authenticated by low-level scorer",
+    "no pretrained quality claim, automatic role selection, fitting, CLI integration, full suite, GPU or remote action",
+    "247 distinct cases passed in three recorded batches; no full repository suite rerun.",
+    "Stored-head cache KL is not pre-export hard-state KL, full-model NLL, ARC or generation quality.",
+    "Resident source and compact payload memory, payload validation temporaries, cache-shard reads and repeated hashing remain outside row/token scratch alone.",
+    "Reference execution reconstructs floating-point weights; no inference acceleration or near2GB useful-model claim.",
+    "Use a new frozen source/job for any future experiment. The active preflight remains pinned to77e150e."
+  ]
+}

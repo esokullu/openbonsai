@@ -6,10 +6,9 @@ embedding is another equally large matrix. Compressing the head alone cannot
 meet the roughly 2 GB language-model target. The [embedding prototype](embedding-calibration.md)
 is a separate stage, and useful pretrained endpoint quality has not been demonstrated.
 
-The decoder rotation comparison has completed and remains a preserved
-baseline. This code is prepared for a later, separately reviewed experiment
-boundary; the next decoder diversity control does not integrate it, and it
-does not automatically launch a 9B run.
+The completed decoder comparisons remain preserved baselines. Endpoint work
+uses separate experiments and resource admission; these prototypes do not
+automatically launch a 9B run.
 
 ## Original source and hidden-state cache
 
@@ -39,8 +38,8 @@ After caching, release the original decoder before constructing the head's
 optimizer. Keep only its original BF16 head, cached hidden states, learned
 group factors and low-rank correction. Cache tensors must not retain a model
 autograd graph. The first real experiment should keep all non-head tensors
-BF16 and compare original, unrotated ternary and rotated ternary heads using
-the same inputs, initialization and optimizer budget.
+at their original saved precision and compare original, unrotated ternary and
+rotated ternary heads using the same inputs, initialization and optimizer budget.
 
 ## Bounded weight computation
 
@@ -108,6 +107,56 @@ head has 3,880 chunks at the reference default of 64 rows. Measure larger
 chunks or an explicitly reported dense latent-head cache before lengthy
 generation evaluation. Smaller files do not establish faster inference or
 smaller loaded VRAM. Keep vision bytes and modality scope explicit.
+
+## Measuring the stored head on original inputs
+
+`openbonsai.head_evaluation.evaluate_packed_head_from_cache` measures an exported
+ternary `MixedLinear` against the original frozen BF16 `nn.Linear` on one
+explicitly supplied original-input cache. It scores every valid position in
+that cache, using the same full-vocabulary teacher KL and global FP64
+normalization as head calibration. It does not fit parameters or discover other
+data roles.
+
+```python
+from openbonsai.head_evaluation import evaluate_packed_head_from_cache
+
+report = evaluate_packed_head_from_cache(
+    packed_head, original_head, search_cache,
+    source_provenance=source_provenance,
+    token_microbatch=256,
+    vocabulary_chunk=4096,
+)
+```
+
+Prepare both heads on the same device with BF16 computation; `original_head`
+must be the unchanged, frozen source endpoint. The packed head must have no
+decoded-weight cache. Its `forward_rows` method decodes only the requested
+output rows and applies the stored input rotation and bias. The effective row
+range is bounded by both `vocabulary_chunk` and the packed runtime's
+`row_chunk_size`; set and measure that runtime setting explicitly. The scorer
+does not require full-vocabulary logits and never warms a complete decoded-weight
+cache. Reconstructed-weight and logit scratch depend on the selected row and
+token bounds. Payload validation has its own temporary allocations, and the
+cache reader loads one stored shard at a time. The original head and compact
+payloads remain resident; this is not a total-memory bound.
+
+The report identifies the original source, cache, positions, stored candidate
+bytes and complete serialized SHA256, rotation, precision and actual chunk
+settings. Source hashes and supplied provenance claims must agree. A low-level
+score does not authenticate an entire staged job: the caller must separately
+verify its completed candidate/cache receipts. Streaming source and candidate
+checks also consume time and belong in the experiment's resource budget.
+
+Compare this stored-head KL with the final hard calibration/search KL using
+the same cache, token batches and row ranges. The former uses exported FP16
+scales and bias; the latter uses the learned pre-export scales. Their difference
+can reveal export rounding effects and is separate from exact codec/reload
+parity. Neither is a full-model NLL, ARC or generation result. The full-model
+evaluator's separately declared warm-cache policy is unchanged.
+
+[Focused validation](../validation-packed-head-scoring.json) covers bounded
+row execution, source binding, dense-oracle agreement and serialized reload on
+tiny CPU fixtures; it does not establish 9B quality or CUDA capacity.
 
 ## Offline integration check
 

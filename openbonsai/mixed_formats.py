@@ -717,7 +717,7 @@ class MixedLinear(_MixedBase):
         self.clear_decoded_weight_cache()
         return super()._load_from_state_dict(*args, **kwargs)
 
-    def forward(self, x):
+    def _prepare_forward(self, x):
         if x.shape[-1] != self.in_features or not x.is_floating_point():
             raise ValueError("linear input has incompatible width or dtype")
         candidate = self._candidate()
@@ -729,13 +729,35 @@ class MixedLinear(_MixedBase):
             cached = None  # Preserve the original decoder's input-dtype rounding.
         if "rotation" in self.metadata:
             x = rotate(x, self.payload_rotation_signs, self.metadata["rotation"]["block_size"])
+        return x, candidate, cached
+
+    def _linear_rows(self, x, candidate, cached, start, end):
+        weight = (cached[start:end] if cached is not None else
+                  _rows(candidate, torch.arange(start, end), x.dtype, x.device))
+        bias = None if self.bias is None else self.bias[start:end].to(device=x.device, dtype=x.dtype)
+        return F.linear(x, weight, bias)
+
+    def forward_rows(self, x, start, end):
+        """Compute one bounded output-row range without a full weight/output.
+
+        The existing cache is used only when its payload signature, device and
+        input dtype match. Otherwise only the requested rows are decoded. Each
+        call performs one row GEMM; use the same row ranges as ``forward`` for
+        identical GEMM shapes and rounding. This does not create a decode cache.
+        """
+        if (type(start) is not int or type(end) is not int
+                or not 0 <= start < end <= self.out_features
+                or end - start > self.row_chunk_size):
+            raise ValueError("linear row range must be nonempty, in bounds and no larger than row_chunk_size")
+        x, candidate, cached = self._prepare_forward(x)
+        return self._linear_rows(x, candidate, cached, start, end)
+
+    def forward(self, x):
+        x, candidate, cached = self._prepare_forward(x)
         chunks = []
         for start in range(0, self.out_features, self.row_chunk_size):
             end = min(start + self.row_chunk_size, self.out_features)
-            weight = (cached[start:end] if cached is not None else
-                      _rows(candidate, torch.arange(start, end), x.dtype, x.device))
-            bias = None if self.bias is None else self.bias[start:end].to(device=x.device, dtype=x.dtype)
-            chunks.append(F.linear(x, weight, bias))
+            chunks.append(self._linear_rows(x, candidate, cached, start, end))
         return torch.cat(chunks, dim=-1)
 
 
