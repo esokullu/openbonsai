@@ -149,6 +149,13 @@ not be added again. Equivalent represented-scope tensor bytes are 6,576,199,974
 and 6,576,245,389, versus 18,819,627,488 original BF16-loaded persistent tensor
 bytes. The latter is not an original deployable-folder measurement.
 
+The source checkpoint index reports 19,306,216,416 tensor bytes. Its difference
+from that native BF16 denominator is fully accounted for: 15 unused `mtp.*`
+prediction tensors occupy 486,581,248 bytes, and loading 48 retained FP32 tensors
+as BF16 removes another 7,680 bytes. The paired artifact audit records both
+adjustments; neither is a learned ternary compression gain. Checkpoint headers,
+configuration and tokenizer files are outside these tensor-only denominators.
+
 Peak training allocated memory was 20.221 and 20.219 GiB. The 128×1 training
 phase includes 2,604.822 seconds caching and 935.228 seconds optimization, so
 additional distinct records increased more than the optimizer work. Evaluation
