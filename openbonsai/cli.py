@@ -16,7 +16,8 @@ def _empty_output(path):
     return destination
 
 
-def smoke(output, seed=2, packing="auto"):
+def smoke(output, seed=2, packing="auto", *, factor_mapping="exp",
+          reconstruction_loss="mse", huber_delta=1.0):
     import torch
     from .adapter import tiny_model, replace_projections, iter_ternary_modules, set_progress
     from .export import save_compressed, load_compressed
@@ -24,19 +25,21 @@ def smoke(output, seed=2, packing="auto"):
     from .trainer import train, TrainingConfig
 
     output = _empty_output(output)
+    config = TrainingConfig(epochs=3, batch_size=1, window_size=4, stride=4, seed=seed,
+                            gradient_checkpointing=True, reconstruction_loss=reconstruction_loss,
+                            huber_delta=huber_delta)
+    config.validate()
     torch.set_num_threads(min(torch.get_num_threads(), 4))
     model = tiny_model(seed=seed)
     original_parameters = sum(p.numel() for p in model.parameters())
     original_bytes = sum(p.numel() * p.element_size() for p in model.parameters())
     torch.manual_seed(seed)
-    names = replace_projections(model)
+    names = replace_projections(model, factor_mapping=factor_mapping)
     generator = torch.Generator().manual_seed(seed)
     samples = [{"input_ids": torch.randint(3, 240, (1, 12), generator=generator),
                 "attention_mask": torch.ones((1, 12), dtype=torch.long)} for _ in range(2)]
     samples[1]["attention_mask"][:, -3:] = 0
     samples[1]["input_ids"][:, -3:] = 0
-    config = TrainingConfig(epochs=3, batch_size=1, window_size=4, stride=4, seed=seed,
-                            gradient_checkpointing=True)
     report = train(model, samples, config)
     set_progress(model, 1)
     # FP16 export scales introduce small rounding versus FP32 learned scales.
@@ -79,11 +82,14 @@ def train_command(args):
     config = TrainingConfig(epochs=args.epochs, batch_size=args.batch_size,
         window_size=args.window_size, stride=args.stride, learning_rate=args.learning_rate,
         lora_learning_rate=args.lora_learning_rate,
+        reconstruction_loss=args.reconstruction_loss, huber_delta=args.huber_delta,
         weight_decay=args.weight_decay, grad_clip=args.grad_clip, seed=args.seed,
         gradient_checkpointing=args.gradient_checkpointing)
     config.validate()
     if args.lora_rank < 0:
         raise ValueError("lora-rank must be nonnegative")
+    if args.factor_mapping not in ("exp", "sigmoid"):
+        raise ValueError("factor-mapping must be exp or sigmoid")
     # Read local input before loading any model weights.
     if not Path(args.calibration).is_file():
         raise FileNotFoundError(args.calibration)
@@ -100,7 +106,8 @@ def train_command(args):
         raise ValueError("Calibration contains tokens outside this model's vocabulary")
     torch.manual_seed(args.seed)
     replaced = replace_projections(model, group_size=args.group_size,
-        aggressive_gates=args.aggressive_gates, lora_rank=args.lora_rank)
+        aggressive_gates=args.aggressive_gates, lora_rank=args.lora_rank,
+        factor_mapping=args.factor_mapping)
 
     def progress(entry):
         if entry["step"] == 1 or entry["step"] % args.log_every == 0 or entry["step"] == entry["total_steps"]:
@@ -112,6 +119,7 @@ def train_command(args):
         "method": "independent ScaleQ-style Qwen3.5 research adaptation",
         "calibration": calibration, "training": report,
         "lora_rank": args.lora_rank, "lora_initialization_seed": args.seed,
+        "factor_mapping": args.factor_mapping,
         "aggressive_recurrent_gates": args.aggressive_gates, "converted_projections": replaced}
     manifest = save_compressed(model, output, metadata=metadata, packing=args.packing)
     # Tokenizer assets are supplementary and excluded from manifest storage totals.
@@ -144,6 +152,15 @@ def _packing_argument(command):
         help="Storage codec: auto uses BITCOS only when its code payload is smaller (default: auto)")
 
 
+def _reconstruction_arguments(command):
+    command.add_argument("--factor-mapping", choices=["exp", "sigmoid"], default="exp",
+        help="exp keeps the original mappings; sigmoid uses CAT-Q mappings and its scale epsilon")
+    command.add_argument("--reconstruction-loss", choices=["mse", "huber"], default="mse",
+        help="Calibration objective (default: mse); hard reconstruction diagnostics always report MSE")
+    command.add_argument("--huber-delta", type=float, default=1.0,
+        help="Positive Huber transition threshold; 1.0 is an independent choice, not an authors' default")
+
+
 def parser():
     from . import prepare
     root = argparse.ArgumentParser(prog="openbonsai", description=__doc__)
@@ -153,12 +170,14 @@ def parser():
     demo.add_argument("--output", required=True)
     demo.add_argument("--seed", type=int, default=2)
     _packing_argument(demo)
+    _reconstruction_arguments(demo)
     repack = sub.add_parser("repack", help="Repack an existing artifact losslessly on CPU; no training or model download")
     repack.add_argument("--input", required=True, help="Existing OpenBonsai artifact directory")
     repack.add_argument("--output", required=True, help="New or empty destination directory")
     _packing_argument(repack)
     run = sub.add_parser("train", help="Compress original dense Qwen3.5 weights")
     _packing_argument(run)
+    _reconstruction_arguments(run)
     run.add_argument("--model", default="Qwen/Qwen3.5-9B")
     run.add_argument("--revision", default="main")
     run.add_argument("--local-files-only", action="store_true")
@@ -194,7 +213,8 @@ def main(argv=None):
         from .prepare import run
         result = run(args)
     elif args.command == "smoke":
-        result = smoke(args.output, args.seed, args.packing)
+        result = smoke(args.output, args.seed, args.packing, factor_mapping=args.factor_mapping,
+                       reconstruction_loss=args.reconstruction_loss, huber_delta=args.huber_delta)
     elif args.command == "repack":
         result = repack_command(args)
     else:

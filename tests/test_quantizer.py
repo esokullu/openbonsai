@@ -126,9 +126,10 @@ def test_dynamic_soft_surrogate_has_hard_forward_and_current_soft_gradient():
 
 
 @pytest.mark.parametrize("packing", ["2bit", "bitcos", "auto"])
-def test_packed_restore_matches_hard_inference_with_fp16_rounding(packing):
+@pytest.mark.parametrize("factor_mapping", ["exp", "sigmoid"])
+def test_packed_restore_matches_hard_inference_with_fp16_rounding(packing, factor_mapping):
     torch.manual_seed(4)
-    layer = TernaryLinear.from_linear(nn.Linear(7, 5), group_size=4)
+    layer = TernaryLinear.from_linear(nn.Linear(7, 5), group_size=4, factor_mapping=factor_mapping)
     with torch.no_grad():
         layer.raw_mu.uniform_(-0.1, 0.1)
         layer.raw_scale.uniform_(-0.1, 0.1)
@@ -271,6 +272,130 @@ def test_rank_zero_keeps_legacy_hard_formula_and_no_lora_parameters():
     torch.testing.assert_close(layer.hard_weight(), expected.reshape_as(source.weight), rtol=0, atol=0)
 
 
+@pytest.mark.parametrize("factor_mapping", [None, True, "", "softplus", "SIGMOID"])
+def test_reject_invalid_factor_mapping(factor_mapping):
+    with pytest.raises(ValueError, match="factor_mapping must be exp or sigmoid"):
+        TernaryLinear(nn.Linear(2, 2), factor_mapping=factor_mapping)
+
+
+def test_exp_is_unchanged_default_with_nonzero_factors():
+    source = linear_with_weight([[-.8, -.1, .3, .9], [.2, -.4, .7, -.6]], bias=[.1, -.2])
+    default = TernaryLinear(source, group_size=4, lora_rank=0)
+    explicit = TernaryLinear(source, group_size=4, lora_rank=0, factor_mapping="exp")
+    assert default.factor_mapping == "exp"
+    with torch.no_grad():
+        for parameter in default.trainable_parameters():
+            parameter.copy_(torch.tensor([[-.2], [.3]]))
+    explicit.load_state_dict(default.state_dict())
+    x = torch.tensor([[.25, -.5, 1., 2.]])
+    for progress in (0., .25, .8, 1.):
+        default.set_progress(progress)
+        explicit.set_progress(progress)
+        torch.testing.assert_close(default(x), explicit(x), rtol=0, atol=0)
+    groups = source.weight.detach().reshape(-1, 4)
+    mu0 = groups.mean(1, keepdim=True)
+    alpha0 = (groups - mu0).abs().mean(1, keepdim=True).clamp_min(1e-8)
+    mu = mu0 + default.raw_mu.tanh() * alpha0
+    alpha = default.raw_scale.exp() * alpha0
+    threshold = .5 * default.raw_threshold.exp()
+    z = (groups - mu) / alpha
+    expected = ((z > threshold).float() - (z < -threshold).float()) * alpha
+    torch.testing.assert_close(default.hard_weight(), expected.reshape_as(source.weight), rtol=0, atol=0)
+
+
+@pytest.mark.parametrize("rank", [0, 2])
+@pytest.mark.parametrize("factor_mapping", ["exp", "sigmoid"])
+def test_selected_mapping_initial_statistics_and_padding(rank, factor_mapping):
+    source = linear_with_weight([[2., 3., 5.], [7., 7., 7.]])
+    layer = TernaryLinear(source, group_size=3, lora_rank=rank, factor_mapping=factor_mapping)
+    expected_mu = source.weight.detach().mean(1, keepdim=True)
+    expected_alpha = (source.weight.detach() - expected_mu).abs().mean(1, keepdim=True)
+    expected_alpha = expected_alpha + 1e-6 if factor_mapping == "sigmoid" else expected_alpha.clamp_min(1e-8)
+    torch.testing.assert_close(layer.mu0, expected_mu, rtol=0, atol=0)
+    torch.testing.assert_close(layer.alpha0, expected_alpha, rtol=0, atol=0)
+    mu, alpha, threshold = layer._factors(*layer.factor_parameters())
+    torch.testing.assert_close(mu, expected_mu, rtol=0, atol=0)
+    torch.testing.assert_close(alpha, expected_alpha, rtol=0, atol=0)
+    torch.testing.assert_close(threshold, torch.full_like(threshold, .5), rtol=0, atol=0)
+    partial = TernaryLinear(linear_with_weight([[2., 3., 5.]]), group_size=4,
+                            lora_rank=rank, factor_mapping=factor_mapping)
+    torch.testing.assert_close(partial.mu0, expected_mu[:1], rtol=0, atol=0)
+    torch.testing.assert_close(partial.alpha0, expected_alpha[:1], rtol=0, atol=0)
+
+
+@pytest.mark.parametrize("rank", [0, 2])
+@pytest.mark.parametrize("factor_mapping", ["exp", "sigmoid"])
+def test_hard_public_forward_matches_independent_round_clamp_oracle(rank, factor_mapping):
+    source = linear_with_weight([[-2., -.5, .25, 1.], [-.25, .5, 1.5, 2.], [1., -1., .5, -.5]],
+                                bias=[.25, -.125, .5])
+    layer = TernaryLinear(source, group_size=4, lora_rank=rank, factor_mapping=factor_mapping)
+    with torch.no_grad():
+        layer.raw_mu.copy_(torch.tensor([[-.8], [.4], [1.2]]))
+        layer.raw_scale.copy_(torch.tensor([[.5], [-.7], [.9]]))
+        layer.raw_threshold.copy_(torch.tensor([[-.4], [.3], [.2]]))
+        if rank:
+            layer.lora_A.copy_(torch.tensor([[.5, -.25, 0., 1.], [0., .25, .5, -.5]]))
+            layer.lora_B.copy_(torch.tensor([[.25, -.5], [1., .5], [-.5, .25]]))
+        effective = source.weight.detach()
+        if rank:
+            effective = effective + layer.lora_B @ layer.lora_A / rank
+        grouped = effective.reshape(-1, 4)
+        mean = grouped.mean(1, keepdim=True)
+        scale = (grouped - mean).abs().mean(1, keepdim=True)
+        if factor_mapping == "sigmoid":
+            scale = scale + 1e-6
+            mean = mean + (2 * layer.raw_mu.sigmoid() - 1) * scale
+            scale = 2 * layer.raw_scale.sigmoid() * scale
+            threshold = layer.raw_threshold.sigmoid()
+        else:
+            scale = scale.clamp_min(1e-8)
+            mean = mean + layer.raw_mu.tanh() * scale
+            scale = layer.raw_scale.exp() * scale
+            threshold = .5 * layer.raw_threshold.exp()
+        # The released quantizer uses round/clamp, independently of our
+        # comparison-based hard ternary helper and packed representations.
+        codes = torch.round(((grouped - mean) / scale) * .5 / threshold).clamp(-1, 1)
+        expected_weight = (codes * scale).reshape_as(source.weight)
+        x = torch.tensor([[.5, 1., -.25, -1.], [1., -2., .5, .25]])
+        layer.set_progress(1)
+        torch.testing.assert_close(layer(x), F.linear(x, expected_weight, source.bias), rtol=0, atol=0)
+        for packing in ("2bit", "bitcos"):
+            restored = restore_ternary_linear(layer.packed_state(packing=packing))
+            rounded_weight = (codes * scale.half().float()).reshape_as(source.weight)
+            torch.testing.assert_close(restored(x), F.linear(x, rounded_weight, source.bias), rtol=0, atol=0)
+        layer.quant_enabled = False
+        torch.testing.assert_close(layer(x), source(x), rtol=0, atol=0)
+
+
+def test_sigmoid_factor_bounds_and_finite_large_raw_values():
+    layer = TernaryLinear(linear_with_weight([[-1., 1.]] * 4), group_size=2,
+                          lora_rank=0, factor_mapping="sigmoid")
+    raw = torch.tensor([[-80.], [0.], [80.], [1000.]])
+    with torch.no_grad():
+        for parameter in layer.factor_parameters():
+            parameter.copy_(raw)
+    mu, alpha, threshold = layer._factors(*layer.factor_parameters())
+    assert torch.isfinite(mu).all() and torch.isfinite(alpha).all() and torch.isfinite(threshold).all()
+    assert ((mu >= layer.mu0 - layer.alpha0) & (mu <= layer.mu0 + layer.alpha0)).all()
+    assert ((alpha > 0) & (alpha <= 2 * layer.alpha0)).all()
+    assert ((threshold > 0) & (threshold <= 1)).all()
+    for progress in (.25, .8, 1.):
+        layer.set_progress(progress)
+        with torch.no_grad():
+            assert torch.isfinite(layer(torch.ones(1, 2))).all()
+    # Exact FP32 sigmoid eventually reaches zero. Do not silently replace the
+    # source mapping with a different clamp, or serialize an invalid endpoint.
+    with torch.no_grad():
+        layer.raw_scale.fill_(-1000)
+    with pytest.raises(ValueError, match="mapped quantizer factors"):
+        layer.packed_state()
+    with torch.no_grad():
+        layer.raw_scale.zero_()
+        layer.raw_threshold.fill_(-1000)
+    with pytest.raises(ValueError, match="mapped quantizer factors"):
+        layer.packed_state()
+
+
 @pytest.mark.parametrize("packing", ["2bit", "bitcos"])
 def test_low_rank_update_changes_codes_and_is_merged_before_export(packing):
     source = linear_with_weight([[-2, -1, 1, 2]], bias=[.125])
@@ -318,7 +443,7 @@ def test_lora_gradients_start_in_b_then_reach_both_matrices():
     assert layer.weight.grad is None and layer.bias.grad is None
 
 
-def _independent_soft_weight(weight, parameters, rank, group_size, sharpness):
+def _independent_soft_weight(weight, parameters, rank, group_size, sharpness, factor_mapping="exp"):
     """Direct paper equations, independent of the module's factor/snapshot helpers."""
     rm, rs, rt = parameters[:3]
     if rank:
@@ -332,28 +457,38 @@ def _independent_soft_weight(weight, parameters, rank, group_size, sharpness):
     count = valid.sum(1, keepdim=True)
     mu0 = (grouped * valid).sum(1, keepdim=True) / count
     alpha0 = ((grouped - mu0).abs() * valid).sum(1, keepdim=True) / count
-    alpha0 = alpha0.clamp_min(1e-8)
-    mu, alpha, threshold = mu0 + rm.tanh() * alpha0, rs.exp() * alpha0, .5 * rt.exp()
+    if factor_mapping == "sigmoid":
+        alpha0 = alpha0 + 1e-6
+        mu = mu0 + (2 * rm.sigmoid() - 1) * alpha0
+        alpha, threshold = 2 * rs.sigmoid() * alpha0, rt.sigmoid()
+    else:
+        alpha0 = alpha0.clamp_min(1e-8)
+        mu, alpha, threshold = mu0 + rm.tanh() * alpha0, rs.exp() * alpha0, .5 * rt.exp()
     z = (grouped - mu) / alpha
     soft = alpha * (torch.tanh(sharpness * (z - threshold)) + torch.tanh(sharpness * (z + threshold))) / (2 * math.tanh(sharpness))
     return soft.flatten()[:weight.numel()].reshape_as(weight)
 
 
 @pytest.mark.parametrize("rank", [0, 3])
-def test_hard_backward_retains_actual_last_soft_point_before_all_parameter_updates(rank):
+@pytest.mark.parametrize("factor_mapping", ["exp", "sigmoid"])
+def test_hard_backward_retains_actual_last_soft_point_before_all_parameter_updates(rank, factor_mapping):
     torch.manual_seed(61)
-    layer = TernaryLinear(nn.Linear(17, 5, bias=False), group_size=13, lora_rank=rank)
+    layer = TernaryLinear(nn.Linear(17, 5, bias=False), group_size=13, lora_rank=rank,
+                          factor_mapping=factor_mapping)
     with torch.no_grad():
         for parameter in layer.trainable_parameters():
             parameter.uniform_(-.12, .12)
     snapshot = tuple(p.detach().clone().requires_grad_(True) for p in layer.trainable_parameters())
     coeff = torch.randn_like(layer.weight)
     actual_k = 30 * (12 / 16) / .8
-    independent = _independent_soft_weight(layer.weight.float(), snapshot, rank, 13, actual_k)
+    independent = _independent_soft_weight(layer.weight.float(), snapshot, rank, 13, actual_k, factor_mapping)
     expected = torch.autograd.grad((independent * coeff).sum(), snapshot)
     layer.set_progress(12 / 16)
     soft = layer.quantized_weight()
     torch.testing.assert_close(soft, independent, rtol=1e-5, atol=1e-7)
+    actual_soft_gradients = torch.autograd.grad((soft * coeff).sum(), layer.trainable_parameters())
+    for got, want in zip(actual_soft_gradients, expected):
+        torch.testing.assert_close(got, want, rtol=2e-4, atol=3e-6)
     assert layer._hard_snapshot_sharpness == actual_k
     # Update every parameter after the last soft forward, including both LoRA
     # matrices. Hard-stage derivatives must still use that pre-update point.

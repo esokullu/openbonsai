@@ -49,7 +49,8 @@ def iter_ternary_modules(model):
             yield name, module
 
 
-def replace_projections(model, group_size=128, aggressive_gates=False, *, lora_rank=64):
+def replace_projections(model, group_size=128, aggressive_gates=False, *, lora_rank=64,
+                        factor_mapping="exp"):
     """Replace large text projections; protect tiny recurrence gates by default.
 
     This projection policy is an experimental Qwen3.5 adaptation, not a claim
@@ -57,6 +58,8 @@ def replace_projections(model, group_size=128, aggressive_gates=False, *, lora_r
     """
     if type(lora_rank) is not int or lora_rank < 0:
         raise ValueError("lora_rank must be a nonnegative integer")
+    if factor_mapping not in ("exp", "sigmoid"):
+        raise ValueError("factor_mapping must be exp or sigmoid")
     prefix, text_model = _text_module(model)
     allowlist = _PROJECTIONS | (_RECURRENT_GATES if aggressive_gates else set())
     candidates = []
@@ -75,7 +78,8 @@ def replace_projections(model, group_size=128, aggressive_gates=False, *, lora_r
     # retain every original GPU weight while the quantizers clone them all.
     for name in candidates:
         source = model.get_submodule(name)
-        replacement = TernaryLinear.from_linear(source, group_size=group_size, lora_rank=lora_rank)
+        replacement = TernaryLinear.from_linear(source, group_size=group_size,
+                                                lora_rank=lora_rank, factor_mapping=factor_mapping)
         model.set_submodule(name, replacement)
         del source, replacement
     return candidates

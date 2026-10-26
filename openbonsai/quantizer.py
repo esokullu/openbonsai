@@ -51,12 +51,16 @@ class TernaryLinear(nn.Module):
     computed on W + B @ A / rank, matching the released inference formulation.
     Kaiming-uniform A / zero B initialization and differentiation through these
     statistics are independent training choices, not a released training recipe.
+    ``factor_mapping="exp"`` preserves the original exponential/tanh mapping
+    and scale floor. ``"sigmoid"`` uses the released CAT-Q bounded mappings and
+    adds 1e-6 to the centered mean absolute scale. FP32 sigmoid can saturate at
+    its endpoints; export rejects a zero mapped scale or threshold.
     """
 
     def __init__(
         self, linear: nn.Linear, group_size: int = 128, *, soft_fraction: float = 0.8,
         max_sharpness: float = 30.0, hard_phase: str = "frozen_jacobian",
-        lora_rank: int = 64,
+        lora_rank: int = 64, factor_mapping: str = "exp",
     ) -> None:
         super().__init__()
         if not isinstance(linear, nn.Linear):
@@ -71,6 +75,8 @@ class TernaryLinear(nn.Module):
             raise ValueError("soft_fraction must be in (0,1) and max_sharpness positive")
         if hard_phase not in ("frozen_jacobian", "soft_surrogate"):
             raise ValueError("hard_phase must be frozen_jacobian or soft_surrogate")
+        if factor_mapping not in ("exp", "sigmoid"):
+            raise ValueError("factor_mapping must be exp or sigmoid")
         if not linear.weight.is_floating_point() or not bool(torch.isfinite(linear.weight).all()):
             raise ValueError("source weights must be finite floating point values")
         if linear.bias is not None and not bool(torch.isfinite(linear.bias).all()):
@@ -78,6 +84,7 @@ class TernaryLinear(nn.Module):
         self.in_features, self.out_features = linear.in_features, linear.out_features
         self.group_size = group_size
         self.lora_rank = lora_rank
+        self.factor_mapping = factor_mapping
         self.numel = linear.weight.numel()
         self.num_groups = math.ceil(self.numel / group_size)
         self.padded_numel = self.num_groups * group_size
@@ -154,7 +161,7 @@ class TernaryLinear(nn.Module):
         alpha = absolute.mean(dim=1, keepdim=True)
         if last_count != self.group_size:
             alpha = torch.cat((alpha[:-1], absolute[-1, :last_count].mean().reshape(1, 1)))
-        return mean, alpha.clamp_min(1e-8)
+        return mean, alpha + 1e-6 if self.factor_mapping == "sigmoid" else alpha.clamp_min(1e-8)
 
     def factor_parameters(self) -> tuple[nn.Parameter, ...]:
         return (self.raw_mu, self.raw_scale, self.raw_threshold)
@@ -188,9 +195,14 @@ class TernaryLinear(nn.Module):
         *, statistics: tuple[Tensor, Tensor] | None = None,
     ) -> tuple[Tensor, Tensor, Tensor]:
         mu0, alpha0 = (self.mu0, self.alpha0) if statistics is None else statistics
-        mu = mu0 + torch.tanh(raw_mu) * alpha0
-        alpha = torch.exp(raw_scale) * alpha0
-        threshold = 0.5 * torch.exp(raw_threshold)
+        if self.factor_mapping == "sigmoid":
+            mu = mu0 + (2 * torch.sigmoid(raw_mu) - 1) * alpha0
+            alpha = (2 * torch.sigmoid(raw_scale)) * alpha0
+            threshold = 0.5 * (2 * torch.sigmoid(raw_threshold))
+        else:
+            mu = mu0 + torch.tanh(raw_mu) * alpha0
+            alpha = torch.exp(raw_scale) * alpha0
+            threshold = 0.5 * torch.exp(raw_threshold)
         return mu, alpha, threshold
 
     def _soft_grouped(self, sharpness: float) -> Tensor:

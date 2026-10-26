@@ -81,6 +81,7 @@ def generate_record(
     prompt_ids = tokenizer.apply_chat_template(
         messages,
         tokenize=True,
+        return_dict=False,
         add_generation_prompt=True,
         enable_thinking=enable_thinking,
     )

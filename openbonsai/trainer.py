@@ -14,6 +14,7 @@ import tempfile
 from typing import Any
 
 import torch
+from torch.nn import functional as F
 from torch.utils.checkpoint import checkpoint
 
 from .adapter import get_text_layers, iter_ternary_modules, set_quant_enabled
@@ -31,6 +32,8 @@ class TrainingConfig:
     grad_clip: float = 1.0
     seed: int = 2
     gradient_checkpointing: bool = False
+    reconstruction_loss: str = "mse"
+    huber_delta: float = 1.0
 
     def validate(self):
         for name in ("epochs", "batch_size", "window_size", "stride"):
@@ -43,6 +46,15 @@ class TrainingConfig:
                 or self.learning_rate <= 0 or self.lora_learning_rate <= 0
                 or self.weight_decay < 0 or self.grad_clip <= 0):
             raise ValueError("learning rates/grad_clip must be finite and positive; weight_decay finite and nonnegative")
+        _validate_reconstruction_loss(self.reconstruction_loss, self.huber_delta)
+
+
+def _validate_reconstruction_loss(reconstruction_loss, huber_delta):
+    if reconstruction_loss not in ("mse", "huber"):
+        raise ValueError("reconstruction_loss must be mse or huber")
+    if (isinstance(huber_delta, bool) or not isinstance(huber_delta, (int, float))
+            or not isfinite(huber_delta) or huber_delta <= 0):
+        raise ValueError("huber_delta must be finite and positive")
 
 
 class _Captured(Exception):
@@ -190,12 +202,18 @@ def replay_window(layers, record, start, end, device, gradient_checkpointing=Fal
     return hidden
 
 
-def _loss_numerator(output, record):
+def _loss_numerator(output, record, *, reconstruction_loss="mse", huber_delta=1.0):
+    """Sum FP32 element losses over valid tokens; the caller supplies the denominator."""
+    _validate_reconstruction_loss(reconstruction_loss, huber_delta)
     target = record["target"].to(output.device)
     if output.shape != target.shape:
         raise ValueError("Replayed output and teacher target shapes differ")
     mask = record["mask"].to(output.device).unsqueeze(-1)
-    return ((output.float() - target.float()).square() * mask).sum()
+    if reconstruction_loss == "huber":
+        element_loss = F.huber_loss(output.float(), target.float(), reduction="none", delta=huber_delta)
+    else:
+        element_loss = (output.float() - target.float()).square()
+    return (element_loss * mask).sum()
 
 
 def _elements(record):
@@ -204,6 +222,7 @@ def _elements(record):
 
 @torch.no_grad()
 def window_mse(layers, records, start, end, device):
+    """Measure actual MSE regardless of the objective selected for training."""
     denominator = sum(_elements(record) for record in records)
     if denominator == 0:
         raise ValueError("Calibration batch has no nonpadding tokens")
@@ -238,10 +257,17 @@ def train(model, samples, config: TrainingConfig, progress_callback=None, cache_
         module.clear_soft_snapshot()
         module.set_progress(1.0)
     set_quant_enabled(model, True)
+    loss_metadata = {"reconstruction_loss": config.reconstruction_loss,
+                     "huber_delta": config.huber_delta if config.reconstruction_loss == "huber" else None}
     report = {"training_config": asdict(config), "windows": [], "samples": len(samples),
+              "reconstruction_objective": {
+                  "name": config.reconstruction_loss, "huber_delta": loss_metadata["huber_delta"],
+                  "reduction": "mean over nonpadding hidden-state elements",
+              },
               "nonpadding_tokens": sum(int(x["attention_mask"].sum()) for x in samples),
               "quantization": {
                   "lora_ranks": sorted({module.lora_rank for module in all_modules}),
+                  "factor_mappings": sorted({module.factor_mapping for module in all_modules}),
                   "lora_scaling": "1/rank; correction merged before ternarization",
                   "hard_phases": sorted({module.hard_phase for module in all_modules}),
                   "frozen_jacobian_reference": "last actual soft forward, before its optimizer update",
@@ -297,7 +323,8 @@ def train(model, samples, config: TrainingConfig, progress_callback=None, cache_
                 value = 0.0
                 for record in batch:
                     output = replay_window(layers, record, start, end, device, config.gradient_checkpointing)
-                    loss = _loss_numerator(output, record) / denominator
+                    loss = _loss_numerator(output, record, reconstruction_loss=config.reconstruction_loss,
+                                           huber_delta=config.huber_delta) / denominator
                     if not torch.isfinite(loss):
                         raise FloatingPointError(f"Nonfinite reconstruction loss in window {start}:{end}")
                     loss.backward()
@@ -309,7 +336,7 @@ def train(model, samples, config: TrainingConfig, progress_callback=None, cache_
                 if progress_callback:
                     progress_callback({"window": window_id, "layers": [start, end], "epoch": epoch + 1,
                                        "step": step, "total_steps": total_steps, "loss": value,
-                                       "grad_norm": float(norm)})
+                                       "grad_norm": float(norm), **loss_metadata})
         for module in active:
             for parameter in module.trainable_parameters():
                 parameter.requires_grad_(False)
@@ -318,7 +345,7 @@ def train(model, samples, config: TrainingConfig, progress_callback=None, cache_
             module.set_progress(1.0)
         after = window_mse(layers, records, start, end, device)
         report["windows"].append({"start": start, "end": end, "hard_mse_before": before,
-                                  "hard_mse_after": after, "steps": step, "losses": losses})
+                                  "hard_mse_after": after, "steps": step, "losses": losses, **loss_metadata})
         del records, optimizer
         if cache_owner is not None:
             cache_owner.cleanup()

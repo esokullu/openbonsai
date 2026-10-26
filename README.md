@@ -28,6 +28,7 @@ The compact model retains its parameter count; the storage reduction comes from 
 - Original-model generation preserves the exact question, reasoning, and answer token IDs; model ID and resolved revision are recorded.
 - Frozen original weights provide the teacher; three learned factors per group and a rank-64 low-rank refinement adapt the student. `--lora-rank 0` disables the refinement for an ablation.
 - Differentiable soft ternarization, followed by exact hard ternary forward values; no mean is added back to the reconstructed weights.
+- Selectable CAT-Q sigmoid factor mappings and masked Huber reconstruction, alongside the original exponential mapping and MSE defaults.
 - The hard-stage surrogate uses the parameters and sharpness from the actual last soft forward, with the current loss gradient. This is an explicit interpretation of the paper's backward rule.
 - Sliding windows reconstruct original-weight window outputs from the **same input** as the quantized window. The input comes from the previously quantized prefix. Padding is excluded from the loss.
 - Native Qwen3.5 blocks retain their individual masks, rotary inputs, gates, and recurrent behavior. Gradient checkpointing is supported in the tested CPU reference path.
@@ -56,6 +57,8 @@ The original `validation.json` records the initial **80 passing tests** and an e
 
 The low-rank refinement and hard-gradient update is recorded in [validation-refinement.json](validation-refinement.json): **248 passing tests**, corrective optimization on a controlled tiny native model, and an offline rank-64 training/export smoke run with exact packed reload logits. These checks do not establish recovered pretrained-model quality or CUDA memory requirements.
 
+The sigmoid/Huber options and tokenizer compatibility fix are recorded in [validation-catq-options.json](validation-catq-options.json): **291 passing tests**, independent formula/gradient checks, a real offline tokenizer regression, and exact packed reload logits for a sigmoid-plus-Huber smoke run. The default exponential mapping and MSE objective are preserved; 9B quality remains unvalidated for these options.
+
 ## Run a small real-model pilot
 
 These commands **load/download the original 9B weights** and require substantial memory. They are examples; they were not run as part of this delivery. Start with a small pilot before the paper-sized recipe.
@@ -83,6 +86,8 @@ python -m openbonsai train \
 ```
 
 This deliberately reduced pilot is an execution check, not a quality recipe. Both commands accept `--local-files-only` to require cached/local assets. Quantized source checkpoints are inappropriate: calibration must come from the original model. The loader rejects declared quantization metadata.
+
+For a controlled comparison with the released CAT-Q configuration, add `--factor-mapping sigmoid --reconstruction-loss huber --huber-delta 1.0` to `train`. These are independent options; defaults remain `exp` and `mse`. Sigmoid mode also uses CAT-Q's `+1e-6` scale epsilon. Huber delta `1.0` is an explicit choice because the authors' training threshold is unavailable. Hard reconstruction diagnostics remain MSE in either mode. The flags also work with the offline `smoke` command. See [the equations and reduction details](docs/method.md#factor-mappings-and-reconstruction-loss).
 
 The default rank-64 refinement adds `B @ A / 64` to each selected projection **before** ternarization; export contains no separate inference adapter. `--learning-rate` controls the group factors, while `--lora-learning-rate` controls the low-rank parameters; both default to `0.001`. Use `--lora-rank 0` to compare against factor-only calibration. A run needs at least one soft update before the hard stage; a one-update window is rejected.
 
@@ -141,11 +146,11 @@ Some details are not sufficiently specified to claim an exact reproduction. Thes
 |---|---|
 | Initialization | Low-rank `A` uses Kaiming uniform and `B` starts at zero; group statistics exclude partial-group padding |
 | Low-rank refinement | Default rank 64, fixed scaling `1/r`; group statistics recomputed from `W + B @ A / r`; rank 0 retains factor-only statistics |
-| Factor constraints | `tanh(raw_mu)` and exponential positive scale/threshold factors |
+| Factor mappings | Default `exp`: `tanh` mean and exponential scale/threshold; optional `sigmoid`: released CAT-Q bounded mappings and scale epsilon |
 | Schedule | First 80% soft, sharpness rising to 30; final 20% hard |
 | Hard-stage backward | Full soft-map Jacobian at the actual last soft forward's pre-update factors, low-rank parameters, and sharpness; applied to the current upstream loss gradient |
 | Progress zero | Exact original-weight bypass; training starts at positive progress |
-| Reconstruction | Mean squared output error over nonpadding elements; shared quantized-prefix input |
+| Reconstruction | MSE by default or configurable Huber over nonpadding elements; shared quantized-prefix input; hard diagnostics always MSE |
 | Optimizer | AdamW; separate factor and low-rank learning rates, both 0.001 by default; linear decay, weight decay 0, gradient clipping 1 |
 | Windows | Default width 4, stride 2, shrinking tail; overlapping factors and low-rank parameters warm-start and restart annealing |
 | Architecture | Native dense Qwen3.5; conservative projection policy described above |

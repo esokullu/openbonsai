@@ -11,7 +11,7 @@ The [BitTern CAT-Q release](https://github.com/IntelChina-AI/BitTern/tree/5a8fcd
 - The released [Qwen3-8B configuration](https://github.com/IntelChina-AI/BitTern/blob/5a8fcd4f7e0366554b732d300a37e6ea467c3c35/projects/cat-q/configs/qwen3-8b/config.yaml) records rank 64, low-rank learning rate `0.001`, and factor learning rate `0.005`. The [Qwen3-4B configuration](https://github.com/IntelChina-AI/BitTern/blob/5a8fcd4f7e0366554b732d300a37e6ea467c3c35/projects/cat-q/configs/qwen3-4b/config.yaml) instead records `0.0006` and `0.003`. There is no single model-independent release learning rate.
 - The [CAT-Q paper](https://arxiv.org/html/2606.26650v1#S2.SS3) describes using gradients from the final soft iteration for subsequent hard-stage updates. The released inference code contains no training backward implementation, so it cannot resolve how that rule was implemented.
 
-The paper's Appendix B lists factor learning rate `0.001`, and its reconstruction objective is an L2 error. The release configurations instead record model-specific factor rates and Huber loss. OpenBonsai retains the paper-based MSE objective and factor rate `0.001`. It also retains `tanh` mean modulation and exponential scale/threshold factors, while the cited release configurations use sigmoid factors. These parameterizations have different ranges and optimization behavior. Adding the released low-rank structure does not make OpenBonsai an exact reproduction of either source.
+The paper's Appendix B lists factor learning rate `0.001`, and its reconstruction objective is an L2 error. The release configurations instead record model-specific factor rates and Huber loss. OpenBonsai defaults to MSE, factor rate `0.001`, and its original exponential factor mapping. Selectable sigmoid mappings and Huber loss support controlled comparisons with the release. The Huber threshold and full training implementation are not published in that release, so selecting these options does not establish an exact training reproduction.
 
 ## Original teacher and refined student
 
@@ -39,6 +39,40 @@ python -m openbonsai train ... \
 `--learning-rate` controls the three group factors; `--lora-learning-rate` controls `A` and `B`. The optimizer applies the same linear decay schedule to both groups. Original model weights do not receive optimizer updates.
 
 `--lora-rank 0` disables refinement and uses the original factor-only group statistics. This is an ablation of refinement; it still uses the corrected hard-stage derivative behavior. Rank is the number of low-rank channels and does not change the model's deployed architecture.
+
+## Factor mappings and reconstruction loss
+
+Both `train` and the offline `smoke` command accept these independent options:
+
+```text
+--factor-mapping exp|sigmoid       default: exp
+--reconstruction-loss mse|huber   default: mse
+--huber-delta POSITIVE_NUMBER     default: 1.0
+```
+
+For group mean `mu0`, initial scale `alpha0`, and learned raw parameters `u`, `v`, `w`:
+
+| Quantity | `exp` (original behavior) | `sigmoid` (released CAT-Q mapping) |
+|---|---|---|
+| Initial scale | `max(mean(abs(W_effective - mu0)), 1e-8)` | `mean(abs(W_effective - mu0)) + 1e-6` |
+| Adjusted mean | `mu0 + tanh(u) * alpha0` | `mu0 + (2 * sigmoid(u) - 1) * alpha0` |
+| Reconstruction scale | `exp(v) * alpha0` | `2 * sigmoid(v) * alpha0` |
+| Ternary threshold | `0.5 * exp(w)` | `0.5 * 2 * sigmoid(w)` |
+
+The sigmoid option therefore changes both the factor mappings and the scale epsilon. Padding is excluded from statistics in both modes. Rank zero uses the selected mode's cached source-weight statistics; positive rank recomputes them from the corrected weight. The existing last-soft Jacobian mechanism differentiates the selected mapping, including the low-rank update. Export still stores only the resulting codes and scales, so both modes use the existing packed formats.
+
+Huber uses `0.5 * error**2` when `abs(error) <= delta`, otherwise `delta * (abs(error) - 0.5 * delta)`. Errors are computed in FP32, padding is masked out, and the summed loss is divided by the number of nonpadding hidden-state elements across the accumulated batch. Delta must be finite and positive. The default `1.0` is an explicit OpenBonsai choice, **not** a recovered CAT-Q training setting; it is not automatically scheduled.
+
+The existing MSE objective and reduction remain unchanged. Training losses, callbacks, and window records identify the selected objective and active Huber delta. `hard_mse_before` and `hard_mse_after` always report MSE, even during Huber training. Compare those diagnostic values across objectives rather than comparing raw Huber and MSE loss values as if they were the same metric. The mapping selection, which determines the scale guard, is recorded in training metadata.
+
+To exercise the new path without model downloads:
+
+```bash
+python -m openbonsai smoke --output runs/tiny-sigmoid-huber \
+  --factor-mapping sigmoid --reconstruction-loss huber --huber-delta 1.0
+```
+
+The same flags can be added to a fresh real-model `train` invocation. They do not change the learning rates, calibration budget, or projection policy automatically, and they cannot be applied to an already-packed artifact by repacking.
 
 ## Hard-stage derivative
 

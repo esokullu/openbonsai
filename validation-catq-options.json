@@ -1,0 +1,117 @@
+{
+  "project": "OpenBonsai",
+  "date": "2026-10-26",
+  "change": "Selectable CAT-Q sigmoid mappings, Huber reconstruction, and tokenizer return-type fix",
+  "base_commit": "3c4e4ac814ddeaa8276238c4e0dc104431979dd5",
+  "reference_commit": "IntelChina-AI/BitTern@5a8fcd4f7e0366554b732d300a37e6ea467c3c35",
+  "environment": {
+    "python": "3.12.9",
+    "torch": "2.14.1",
+    "transformers": "5.20.2",
+    "device": "cpu"
+  },
+  "tests": {
+    "command": "python -m pytest -q",
+    "passed": 291
+  },
+  "defaults": {
+    "factor_mapping": "exp",
+    "reconstruction_loss": "mse",
+    "huber_delta": 1.0
+  },
+  "verified": [
+    "Sigmoid mode matches an independent released-forward formula including the scale epsilon",
+    "Soft and frozen-last-soft derivatives verified independently for both factor mappings",
+    "Default exponential mapping remains unchanged",
+    "Huber values and gradients match independent piecewise calculations, with padding excluded",
+    "Native checkpointed sigmoid and Huber calibration uses the selected loss",
+    "Hard reconstruction diagnostics remain actual MSE regardless of training objective",
+    "CLI selections and Huber delta reach the training report and artifact metadata",
+    "Real offline PreTrainedTokenizerFast exercises the BatchEncoding regression through preparation",
+    "Tokenizer fix preserves prompt, reasoning, answer tokens, masks, and revision provenance",
+    "Offline rank-64 sigmoid and Huber smoke has exact packed reload logits"
+  ],
+  "smoke": {
+    "project": "OpenBonsai",
+    "test": "offline native hybrid training and packed round trip",
+    "seed": 2,
+    "real_9b_weights_loaded": false,
+    "real_model_quality_evaluated": false,
+    "original_parameters": 728376,
+    "original_parameter_bytes": 2913504,
+    "converted_projections": 25,
+    "packed_roundtrip_max_logit_error": 0.0,
+    "fp16_scale_rounding_max_logit_error": 0.0001300424337387085,
+    "packing": "auto",
+    "storage": {
+      "packed_tensor_bytes": 148777,
+      "retained_tensor_bytes": 292096,
+      "manifest_bytes": 43351,
+      "artifact_bytes": 494125
+    },
+    "training": {
+      "training_config": {
+        "epochs": 3,
+        "batch_size": 1,
+        "window_size": 4,
+        "stride": 4,
+        "learning_rate": 0.001,
+        "lora_learning_rate": 0.001,
+        "weight_decay": 0.0,
+        "grad_clip": 1.0,
+        "seed": 2,
+        "gradient_checkpointing": true,
+        "reconstruction_loss": "huber",
+        "huber_delta": 1.0
+      },
+      "windows": [
+        {
+          "start": 0,
+          "end": 4,
+          "hard_mse_before": 0.00039907069211559635,
+          "hard_mse_after": 0.000388602027669549,
+          "steps": 6,
+          "losses": [
+            0.0002063814754365012,
+            0.00018695708422455937,
+            0.00020632660016417503,
+            0.0001868130057118833,
+            0.0002066861925413832,
+            0.00018667061522137374
+          ],
+          "reconstruction_loss": "huber",
+          "huber_delta": 1.0
+        }
+      ],
+      "samples": 2,
+      "reconstruction_objective": {
+        "name": "huber",
+        "huber_delta": 1.0,
+        "reduction": "mean over nonpadding hidden-state elements"
+      },
+      "nonpadding_tokens": 21,
+      "quantization": {
+        "lora_ranks": [
+          64
+        ],
+        "factor_mappings": [
+          "sigmoid"
+        ],
+        "lora_scaling": "1/rank; correction merged before ternarization",
+        "hard_phases": [
+          "frozen_jacobian"
+        ],
+        "frozen_jacobian_reference": "last actual soft forward, before its optimizer update",
+        "factor_parameters": 15360,
+        "lora_parameters": 532480
+      },
+      "quality_claim": "software execution only; no full-model benchmark reproduction"
+    }
+  },
+  "limits": [
+    "No real 9B weights used in this validation",
+    "No CUDA memory or performance measurement for these options",
+    "No pretrained-model quality recovery established",
+    "Huber delta 1.0 is an explicit choice; authors training threshold is unavailable"
+  ]
+}

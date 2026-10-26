@@ -136,7 +136,8 @@ class FakeTokenizer:
 
     def apply_chat_template(self, messages, **kwargs):
         assert messages == [{"role": "user", "content": "question"}]
-        assert kwargs == {"tokenize": True, "add_generation_prompt": True, "enable_thinking": True}
+        assert kwargs == {"tokenize": True, "return_dict": False,
+                          "add_generation_prompt": True, "enable_thinking": True}
         return [1, 2, 3]
 
     def decode(self, ids, *, skip_special_tokens):
@@ -172,6 +173,93 @@ def test_generated_trace_preserves_prompt_reasoning_answer_and_eos(tmp_path):
     assert model.kwargs["do_sample"] is False
     samples, _ = load_calibration(write_jsonl(tmp_path, [record]), "target", 6)
     assert samples[0]["input_ids"].tolist() == [[1, 2, 3, 4, 5, 9]]
+
+
+def test_prepare_with_real_fast_tokenizer_preserves_tokens_and_provenance(tmp_path, monkeypatch):
+    """Exercise Transformers' real BatchEncoding default without any downloads."""
+    import transformers
+    from tokenizers import Tokenizer, models, pre_tokenizers
+    from transformers import BatchEncoding, PreTrainedTokenizerFast
+
+    vocab = {token: index for index, token in enumerate([
+        "[UNK]", "<user>", "question", "<assistant>", "<think>",
+        "reasoning", "</think>", "answer", "<eos>", "<pad>",
+    ])}
+    backend = Tokenizer(models.WordLevel(vocab, unk_token="[UNK]"))
+    backend.pre_tokenizer = pre_tokenizers.WhitespaceSplit()
+    tokenizer = PreTrainedTokenizerFast(
+        tokenizer_object=backend, unk_token="[UNK]", pad_token="<pad>", eos_token="<eos>",
+        additional_special_tokens=["<user>", "<assistant>", "<think>", "</think>"],
+    )
+    tokenizer.chat_template = (
+        "{% for message in messages %}{{ '<user> ' + message['content'] + ' ' }}{% endfor %}"
+        "{% if add_generation_prompt %}{{ '<assistant> ' }}"
+        "{% if enable_thinking %}{{ '<think>' }}{% endif %}{% endif %}"
+    )
+    default_output = tokenizer.apply_chat_template(
+        [{"role": "user", "content": "question"}],
+        tokenize=True, add_generation_prompt=True, enable_thinking=True,
+    )
+    assert isinstance(default_output, BatchEncoding)
+    assert default_output["input_ids"] == [1, 2, 3, 4]
+
+    class OfflineModel:
+        dtype = torch.float32
+        generation_config = SimpleNamespace(eos_token_id=8)
+
+        def to(self, device):
+            assert device == "cpu"
+            return self
+
+        def eval(self):
+            return self
+
+        def generate(self, input_ids, attention_mask, **kwargs):
+            assert input_ids.tolist() == [[1, 2, 3, 4]]
+            assert attention_mask.tolist() == [[1, 1, 1, 1]]
+            assert not torch.is_grad_enabled()
+            assert kwargs["max_new_tokens"] == 4
+            return torch.cat((input_ids, torch.tensor([[5, 6, 7, 8]])), dim=1)
+
+    calls = []
+
+    def loader(kind, result):
+        def from_pretrained(model_id, **kwargs):
+            calls.append((kind, model_id, kwargs))
+            return result
+        return SimpleNamespace(__name__=f"Offline{kind}Loader", from_pretrained=from_pretrained)
+
+    config = SimpleNamespace(model_type="qwen3_5", _commit_hash="offline-pinned-sha",
+                             quantization_config=None)
+    monkeypatch.setattr(transformers, "AutoConfig", loader("config", config))
+    monkeypatch.setattr(transformers, "AutoTokenizer", loader("tokenizer", tokenizer))
+    monkeypatch.setattr(transformers, "AutoModelForImageTextToText", loader("model", OfflineModel()))
+    prompt_path = write_jsonl(tmp_path, [{"question": "question"}])
+    output_path = tmp_path / "prepared.jsonl"
+    args = add_arguments(argparse.ArgumentParser()).parse_args([
+        "--model", "offline-target", "--revision", "requested-revision",
+        "--prompts", str(prompt_path), "--output", str(output_path),
+        "--device", "cpu", "--local-files-only", "--max-new-tokens", "4",
+    ])
+    manifest = run(args)
+    record = json.loads(output_path.read_text())
+    assert record["model_id"] == "offline-target"
+    assert record["resolved_revision"] == manifest["resolved_revision"] == "offline-pinned-sha"
+    assert record["input_ids"] == [1, 2, 3, 4, 5, 6, 7, 8]
+    assert record["attention_mask"] == [1] * 8
+    assert record["prompt_token_count"] == record["generated_token_count"] == 4
+    assert record["formatted_prompt"] == tokenizer.decode([1, 2, 3, 4], skip_special_tokens=False)
+    assert record["generated_text"] == tokenizer.decode([5, 6, 7, 8], skip_special_tokens=False)
+    assert not record["hit_generation_limit"]
+    assert manifest["total_tokens"] == 8
+    assert manifest["generated_tokens"] == 4
+    assert [kind for kind, _, _ in calls] == ["config", "tokenizer", "model"]
+    for kind, model_id, kwargs in calls:
+        assert model_id == "offline-target"
+        assert kwargs["revision"] == ("requested-revision" if kind == "config" else "offline-pinned-sha")
+        assert kwargs["local_files_only"] is True
+    samples, _ = load_calibration(output_path, "offline-target", 8, expected_revision="offline-pinned-sha")
+    assert samples[0]["input_ids"].tolist() == [[1, 2, 3, 4, 5, 6, 7, 8]]
 
 
 def test_generation_limit_and_explicit_sampling():

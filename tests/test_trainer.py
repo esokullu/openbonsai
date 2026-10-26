@@ -5,7 +5,10 @@ import pytest
 import torch
 
 from openbonsai.adapter import tiny_model, replace_projections, get_text_layers, iter_ternary_modules, set_progress
-from openbonsai.trainer import TrainingConfig, build_windows, cache_window, replay_window, train, window_mse
+from openbonsai.trainer import (
+    TrainingConfig, _elements, _loss_numerator, build_windows, cache_window,
+    replay_window, train, window_mse,
+)
 
 
 @pytest.fixture
@@ -20,6 +23,41 @@ def model():
 def samples():
     return [{"input_ids": torch.tensor([[4, 5, 6, 7, 8, 9, 0, 0]]),
              "attention_mask": torch.tensor([[1, 1, 1, 1, 1, 1, 0, 0]])}]
+
+
+@pytest.mark.parametrize("dtype", [torch.float32, torch.bfloat16])
+@pytest.mark.parametrize("delta,expected,gradient", [
+    (0.5, 2.53125, [0.25, -0.5, 0.5, -0.5]),
+    (1.5, 5.5625, [0.25, -0.75, 1.5, -1.5]),
+])
+def test_masked_huber_value_gradient_and_valid_element_denominator(dtype, delta, expected, gradient):
+    # Hand-calculated values exercise the quadratic and linear branches.
+    # Large padded errors contribute neither loss nor gradient.
+    output = torch.tensor([[[0.25, -0.75], [2.0, -3.0], [300.0, -300.0]]],
+                          dtype=dtype, requires_grad=True)
+    record = {"target": torch.zeros_like(output), "mask": torch.tensor([[1, 1, 0]])}
+    numerator = _loss_numerator(output, record, reconstruction_loss="huber", huber_delta=delta)
+    assert numerator.dtype == torch.float32
+    assert numerator.item() == expected
+    denominator = _elements(record)
+    assert denominator == 4
+    loss = numerator / denominator
+    assert loss.item() == expected / 4
+    loss.backward()
+    expected_gradient = torch.tensor([[gradient[:2], gradient[2:], [0.0, 0.0]]], dtype=dtype) / 4
+    torch.testing.assert_close(output.grad, expected_gradient, rtol=0, atol=0)
+
+
+def test_default_reconstruction_loss_remains_masked_fp32_mse():
+    output = torch.tensor([[[0.25, -0.75], [2.0, -3.0], [300.0, -300.0]]],
+                          dtype=torch.float16, requires_grad=True)
+    record = {"target": torch.zeros_like(output), "mask": torch.tensor([[1, 1, 0]])}
+    loss = _loss_numerator(output, record) / _elements(record)
+    assert loss.dtype == torch.float32
+    assert loss.item() == 13.625 / 4
+    loss.backward()
+    torch.testing.assert_close(output.grad, torch.tensor(
+        [[[0.125, -0.375], [1.0, -1.5], [0.0, 0.0]]], dtype=torch.float16), rtol=0, atol=0)
 
 
 def test_hybrid_masks_and_shared_window_input(model):
@@ -128,6 +166,54 @@ def test_native_reconstruction_materially_reduces_hard_error():
     assert results[4] < results[0] * 0.25
 
 
+def test_checkpointed_sigmoid_huber_training_keeps_hard_metrics_as_mse():
+    torch.set_num_threads(2)
+    model = tiny_model(seed=73)
+    torch.manual_seed(74)
+    replace_projections(model, lora_rank=4, factor_mapping="sigmoid")
+    layers = get_text_layers(model)
+    set_progress(model, 1)
+    record = cache_window(model, samples(), 0, 4)[0]
+    mask = record["mask"].unsqueeze(-1)
+    denominator = int(mask.sum()) * record["target"].shape[-1]
+    with torch.no_grad():
+        initial_error = replay_window(layers, record, 0, 4, "cpu").float() - record["target"].float()
+        expected_before = float((initial_error.square() * mask).sum()) / denominator
+        set_progress(model, 0.25)
+        first_error = replay_window(layers, record, 0, 4, "cpu").float() - record["target"].float()
+        # Independent Huber oracle: a clipped quadratic plus a linear tail.
+        delta = 0.001
+        absolute = first_error.abs()
+        clipped = absolute.clamp(max=delta)
+        first_huber = float(((0.5 * clipped.square() + delta * (absolute - clipped)) * mask).sum()) / denominator
+        first_mse = float((first_error.square() * mask).sum()) / denominator
+    events = []
+    report = train(model, samples(), TrainingConfig(
+        epochs=4, batch_size=1, window_size=4, stride=4,
+        gradient_checkpointing=True, reconstruction_loss="huber", huber_delta=delta,
+    ), progress_callback=events.append)
+    window = report["windows"][0]
+    assert window["losses"][0] == pytest.approx(first_huber, rel=1e-5, abs=1e-12)
+    assert first_huber < first_mse * 0.25
+    assert len(events) == 4
+    assert window["losses"] == [event["loss"] for event in events]
+    assert all(math.isfinite(event["loss"]) for event in events)
+    for item in [window, *events]:
+        assert item["reconstruction_loss"] == "huber" and item["huber_delta"] == delta
+    assert report["reconstruction_objective"] == {
+        "name": "huber", "huber_delta": delta,
+        "reduction": "mean over nonpadding hidden-state elements",
+    }
+    assert report["quantization"]["factor_mappings"] == ["sigmoid"]
+    with torch.no_grad():
+        final_error = replay_window(layers, record, 0, 4, "cpu").float() - record["target"].float()
+        expected_after = float((final_error.square() * mask).sum()) / denominator
+    assert window["hard_mse_before"] == pytest.approx(expected_before)
+    assert window["hard_mse_after"] == pytest.approx(expected_after)
+    assert window_mse(layers, [record], 0, 4, "cpu") == pytest.approx(expected_after)
+    assert any(torch.count_nonzero(module.lora_B) for _, module in iter_ternary_modules(model))
+
+
 @pytest.mark.parametrize("rank", [0, 4])
 def test_optimizer_preserves_distinct_factor_and_lora_learning_rates(monkeypatch, rank):
     model = tiny_model(seed=6)
@@ -171,6 +257,26 @@ def test_one_step_schedule_rejected_before_model_mutation(model, tmp_path):
     assert not (tmp_path / "cache").exists()
     for name, value in model.state_dict().items():
         torch.testing.assert_close(value, state[name], rtol=0, atol=0)
+
+
+@pytest.mark.parametrize("settings", [
+    {"reconstruction_loss": "smooth_l1"}, {"reconstruction_loss": None},
+    {"huber_delta": 0}, {"huber_delta": -1}, {"huber_delta": True},
+    {"huber_delta": float("nan")}, {"huber_delta": float("inf")},
+])
+def test_invalid_reconstruction_objective_rejected_before_mutation(model, tmp_path, settings):
+    model.train()
+    set_progress(model, 0.3)
+    before = {name: value.clone() for name, value in model.state_dict().items()}
+    flags = {name: p.requires_grad for name, p in model.named_parameters()}
+    with pytest.raises(ValueError, match="reconstruction_loss|huber_delta"):
+        train(model, samples(), TrainingConfig(**settings), cache_directory=tmp_path / "cache")
+    assert model.training
+    assert all(module.progress == 0.3 for _, module in iter_ternary_modules(model))
+    assert flags == {name: p.requires_grad for name, p in model.named_parameters()}
+    assert not (tmp_path / "cache").exists()
+    for name, value in model.state_dict().items():
+        torch.testing.assert_close(value, before[name], rtol=0, atol=0)
 
 
 def test_window_validation():
