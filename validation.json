@@ -1,0 +1,117 @@
+{
+  "validated_at_utc": "2026-10-26T01:27:23.565577+00:00",
+  "scope": "independent experimental ScaleQ-style Qwen3.5 implementation",
+  "environment": {
+    "python": "3.12.9",
+    "platform": "Darwin",
+    "architecture": "arm64",
+    "primary_test_device": "cpu",
+    "packages": {
+      "torch": "2.14.1",
+      "transformers": "5.20.2",
+      "accelerate": "1.15.0",
+      "safetensors": "0.8.0",
+      "pytest": "9.1.1"
+    }
+  },
+  "pytest": {
+    "tests": 80,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "smoke": {
+    "test": "offline native hybrid training and packed round trip",
+    "seed": 2,
+    "real_9b_weights_loaded": false,
+    "real_model_quality_evaluated": false,
+    "original_parameters": 728376,
+    "original_parameter_bytes": 2913504,
+    "converted_projections": 25,
+    "packed_roundtrip_max_logit_error": 0.0,
+    "fp16_scale_rounding_max_logit_error": 0.00013633258640766144,
+    "storage": {
+      "packed_tensor_bytes": 174080,
+      "retained_tensor_bytes": 292096,
+      "manifest_bytes": 37122,
+      "artifact_bytes": 511399
+    },
+    "training": {
+      "training_config": {
+        "epochs": 3,
+        "batch_size": 1,
+        "window_size": 4,
+        "stride": 4,
+        "learning_rate": 0.001,
+        "weight_decay": 0.0,
+        "grad_clip": 1.0,
+        "seed": 2,
+        "gradient_checkpointing": true
+      },
+      "windows": [
+        {
+          "start": 0,
+          "end": 4,
+          "hard_mse_before": 0.00039912933217627663,
+          "hard_mse_after": 0.0003911870576086498,
+          "steps": 6,
+          "losses": [
+            0.0004127861466258764,
+            0.00037389135104604065,
+            0.00041378362220712006,
+            0.0003741556138265878,
+            0.00041489946306683123,
+            0.0003757094091270119
+          ]
+        }
+      ],
+      "samples": 2,
+      "nonpadding_tokens": 21,
+      "quality_claim": "software execution only; no full-model benchmark reproduction"
+    }
+  },
+  "coverage": [
+    "quantizer math and gradients",
+    "frozen original weights",
+    "packed storage boundaries and round trip",
+    "AYOT generation with mocked loaders",
+    "model and revision provenance",
+    "native hybrid window masks and shared teacher input",
+    "overlapping-window training and gradient checkpointing",
+    "disk cache",
+    "native multimodal wrapper and retained vision tensors",
+    "complete CLI train with tiny fixture",
+    "checksum corruption detection and nonempty output protection"
+  ],
+  "not_validated": [
+    "real Qwen3.5-9B compression or quality",
+    "CUDA execution",
+    "full-model BF16/FP16 training",
+    "optimized low-bit inference",
+    "MoE support",
+    "published benchmark reproduction",
+    "lossless compression"
+  ],
+  "source_sha256": {
+    "scaleq_repro/__init__.py": "0c64df1f99cd59275c79fb37fecc4ee6bd785ab1a4a4e02f15a789bb162a1cad",
+    "scaleq_repro/__main__.py": "3129adff95e0f38b87ab34cddfc27082c7892bcaec267ff5d40f160fdf55b44a",
+    "scaleq_repro/adapter.py": "7dff9788f3d38cf7226cf03731a4fda2f5697fd986f8d510b685215d67b0a5c8",
+    "scaleq_repro/calibration.py": "f26bcd478562bdd49dbd36fcd7d271becb57725ebd8775530116a7b861978fef",
+    "scaleq_repro/cli.py": "bcfcb854409010082417a4a0db8da2822a0dcf3a536cca3bbf40c8a07976e854",
+    "scaleq_repro/export.py": "d8a228157ba4bc3e0e2553d543e23cb6d898ee17df3db60184ce804e0b4e5f36",
+    "scaleq_repro/packing.py": "ed7b2f343d55ee9f4aeddcd485a80cce8e27a5803f9232eda2f7a8c33816ca50",
+    "scaleq_repro/prepare.py": "ca31034d96d0b2789fc0e06cc0f30bf24768dbe6d4bee6f5bab368f0ab2d42ca",
+    "scaleq_repro/quantizer.py": "190e36608d114cd4d4b94d74f6be32ffbb390a42fd114bae7ce1515ac9f5296d",
+    "scaleq_repro/trainer.py": "ebcfa8ddd8d5c1ea5e0b901f4bec23317cbcf08b6e54312fbed1ee16f95428a3",
+    "tests/test_adapter_export.py": "a463f7323c483fbfcd08f5415137820f0f8c0f95f8ba6a438d83a43544ebdc84",
+    "tests/test_calibration.py": "e1364e10c7351da417bc1be8e003252f7065deb0c44788d2f867044ed435e3d4",
+    "tests/test_cli.py": "bb15a4063f053e4aded36725e3a9e292e899ea88c8cdf2581b130d1fef09f302",
+    "tests/test_packing.py": "2b3580b4725c47d5b99f870c4377bb1cc068fad37df6431f4aee67feedbdf748",
+    "tests/test_quantizer.py": "3d55bede91a1875a40409a75596e0c12a98f0e4d0e99340fe6c0f7c59bd803e1",
+    "tests/test_trainer.py": "bea456446c51ff86d4f48795c0d79f01b7d96a58580d704067853e5032e90783"
+  },
+  "additional_execution_checks": [
+    "Reviewer executed tiny native hybrid MPS training with finite completion",
+    "Reviewer executed tiny multimodal-wrapper training with 129 tokens, overlapping windows, and checkpointing"
+  ]
+}
