@@ -29,10 +29,15 @@ The preserved results and imported runtime changes are recorded in
 UltraChat pair also failed useful generation with matched updates and nearly
 equal valid-token exposure. A completed [activation diagnostic](activation-diagnostic.md)
 then found a material original-versus-conditional teacher discrepancy at fixed
-window 16 on all 16 search records. The next selected control changes teacher
-target provenance alone in that window, starting both arms from the identical
-saved final128 state. Its results remain pending; no full-model, endpoint or RCO
-sweep follows automatically. The stages below retain their original gates;
+window 16 on all 16 search records. The completed
+[single-window control](teacher-target-control.md#completed-pretrained-single-window-control)
+then changed teacher provenance alone from the same saved final128 state.
+Original-prefix targets reduced boundary MSE by 32.7% and development NLL from
+9.12 to 8.28, but ARC and actual generations remained degenerate. This supports
+one fresh sequential original-prefix-target experiment at the existing 128×1
+budget, with a window0 historical-control gate and measured resource admission.
+It does not support a sample/epoch sweep or a quality-recovery claim. The stages
+below retain their original gates;
 software correctness and this diagnostic do not establish quality recovery.
 
 The following sequence preserves the original stage plan and its decision

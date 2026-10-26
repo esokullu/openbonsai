@@ -172,15 +172,26 @@ final128 FP32 research state and measured fixed windows 0 and 16 on 16 additiona
 disjoint search records. All later-window records showed material disagreement
 between original-prefix and conditional teacher outputs, while original/bypass/
 hard restoration, state preservation and the window-0 negative control passed.
-It supports one matched, warm-start window-16 target-provenance control; no
-quality result from that control is available yet.
+It supported a matched, warm-start window-16 target-provenance control, now
+[completed and reviewed](teacher-target-control.md#completed-pretrained-single-window-control).
+Original-prefix targets reduced common-original-target MSE by 32.73% versus
+the initial state and improved all 16 search records. Development NLL fell
+from 9.12169 for the conditional repair to 8.27919. Both remained unusable:
+all-A ARC predictions and either EOS-only or `#`/EOS generations. Both passed
+fresh state and payload verification; the small dependent window deltas are
+not complete deployable models.
 
 A separate initializer audit reproduces the neutral CAT-Q hard mapping. For
 Gaussian weights, expected hard/source RMS is about .66274; shrinkage alone
 does not establish a missing-normalization bug. The 128-update schedule has
 102 soft and 26 hard updates, with only 4.25% of the cumulative decayed learning
 rate in the hard phase. Neither observation proves a quality remedy. The next
-control keeps the schedule and optimizer fixed while changing only its target.
+control kept the schedule and optimizer fixed while changing only its target.
+At identical saved last-soft parameters it showed no large common-target
+hardening error jump. This does not establish full-model soft-phase quality or
+optimal Adam conditioning. A fresh sequential original-prefix pass at the
+existing 128×1 budget is the next controlled hypothesis, subject to exact
+historical-control and resource gates; no result is claimed for it yet.
 
 Embedding/head calibration and a matched Prism inference evaluation remain
 separate prerequisites. RCO is preserved for limited exceptions and has no

@@ -115,7 +115,7 @@ validation ran alongside the test suite and is not a throughput comparison.
 See [the validation record](../validation-teacher-target.json)
 for the tested source hashes and results.
 
-## Selected pretrained control after the completed diagnostic
+## Completed pretrained single-window control
 
 Both calibration-diversity arms completed without useful generation. The
 [read-only diagnostic](activation-diagnostic.md) restored the final128 FP32
@@ -123,22 +123,77 @@ research state exactly and found a material target discrepancy on all 16 later-
 window search records. Its negative-control window had identical teacher
 outputs. This supports a target-provenance experiment, not a quality remedy.
 
-The selected control gives both arms 128 additional updates at window `[16,17)`
+The completed control gave both arms 128 additional updates at window `[16,17)`
 from the same saved final128 window state, with fresh optimizers and identical
 restarted schedules. The hard prefix/suffix, source, rotations, fitting records,
 order, precision, loss and learning rates remain fixed. Only the target changes;
 the student's quantized-prefix input and native kwargs are common. This is a
 warm-start repair test, not resumed original optimization or a full-model rerun.
 
-Both final hard arms must be compared against the **common original target**
-on the same 16 disjoint search records, then with identical assembled NLL, ARC
-and generation settings. The target gap itself stays fixed; its ratio to total
-error is not a promotion criterion. A compact save/fresh-process reload and
-selected-window packing check do not establish a standalone deployable artifact.
-The execution plan allows 256 scientific updates plus four discarded resource
-preflight updates, within one aggregate 60-minute model-process cap. No results
-are claimed yet. Endpoint coverage and the approximately 2 GB language-model
-size target remain separate requirements.
+Both final hard arms were compared against the **common original target** on
+the same 16 disjoint search records (7,203 active positions), then with identical
+assembled development NLL, ARC and generation settings. Results below describe
+the hard research model with FP32 factors/A/B, not a newly evaluated complete
+packed artifact. The original and initial quality scores were reused with
+authenticated source/probe/protocol bindings.
+
+| State | Common-T0 boundary MSE | Development NLL | ARC | Useful generations |
+|---|---:|---:|---:|---:|
+| Original BF16 | — | 2.4237768106 | 19/20 | 2/4 complete, 2 relevant but capped |
+| Initial final128 state | 0.196574566897 | 9.1216306852 | 8/20 | 0/4 |
+| Conditional-target repair | 0.196725874517 | 9.1216917017 | 8/20 | 0/4 |
+| Original-prefix-target repair | 0.132229789576 | 8.2791870161 | 8/20 | 0/4 |
+
+Original-prefix targeting reduced common-T0 MSE by **32.73% versus initial**
+and **32.78% versus conditional**, with all 16 records improving and no
+regressions. It passed the predeclared local gate. NLL fell by 0.84250
+nats/token against the conditional repair. However, every compressed ARC
+prediction was A; eight reference answers happen to be A. Conditional outputs
+were immediate EOS, while all four original-prefix outputs were exactly `#`
+followed by EOS. **Useful model quality did not recover.** These are the repeated
+2,048-token / 20-question / 4-generation development subsets, not full-pilot or
+unused final-confirmation results.
+
+At identical saved pre-update102 parameters, original-prefix common-T0 MSE was
+0.133738962795 soft and 0.133728812382 hard. Conditional common-T0 MSE was
+0.196779880091 soft and 0.196918048817 hard. This local measurement shows no
+large hardening error jump. Final-versus-saved-hard improvement also includes
+update102, so it cannot isolate the 26 hard updates. It is not a full-model
+last-soft quality comparison or proof of optimal optimizer conditioning.
+
+Both arms completed 102 soft and 26 hard scientific updates; four resource
+preflight updates were discarded. Both fresh processes verified selected FP32
+state and stored-code/scale/sign payload parity against the authenticated common
+base. Six packed candidates cost 49,875,679 bytes (conditional) and 49,884,220
+bytes (original-prefix). With their 23,012-byte manifest each, the totals are
+49,898,691 and 49,907,232 bytes. These are **dependent window deltas**, not
+standalone model sizes. Their complete research delta directories, including
+selected state and probe references, occupy 93,260,793 and 93,269,334 bytes.
+Codec and FP16-scale policies were unchanged; casting drift remains distinct
+from lossless serialization.
+
+The three v2 model processes took 761.140 seconds. Including a prior metadata-
+guard failure with no updates, the cumulative time was 786.046 seconds, within
+the 3,600-second cap. Across 424 measured phases, peak allocation was
+21,706,935,296 bytes (20.216 GiB), peak reservation 22,036,873,216 bytes, and
+minimum headroom 10,316,939,264 bytes. Short failed answers are not speed evidence.
+
+The completed run is `D:/openbonsai/runs/2026-10-26-5090-teacher-target-repair-v2`.
+Its reviewed report SHA256 is
+`6a7e63a133756c45aec3ac25f9fc67d76a09df138b76ab4f91a70dcdf1a2edec`;
+the final seal is
+`8e9e9aed562eb9fe25508453dedc7dca782707447e3aa962e19898a0eff1f5e7`
+(739 files / 1,264,382,456 research bytes). Prior artifacts and local fixes
+passed preservation checks. These are reviewed remote measurements, not a
+rerun of this documentation branch.
+
+The result supports testing original-prefix targets sequentially from the
+original BF16 initialization, rather than assuming a repair of one middle
+window can recover the whole model. A controlled next pass must keep the same
+128×1 data/update budget, wrapper names, rotations, endpoints and codec, and
+validate the historical control at window0 where targets coincide. No quality
+gain from that next experiment is established here. Endpoint coverage and the
+approximately 2 GB language-model size target remain separate requirements.
 
 The optimizer audit found no extra group-count division in the masked loss.
 Default-scale synthetic factor gradients were well above Adam's epsilon;
