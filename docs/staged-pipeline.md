@@ -64,7 +64,9 @@ A downstream command references a completed upstream operation using:
 
 The outer successful `result.json` is the handoff. Consumers check its payload
 hash, successful process status and cleanup. An inner `stage.json`, candidate
-file, or producer receipt alone does not satisfy the command-line contract.
+file, or producer receipt alone does not satisfy the command-line stage contract.
+The explicit historical-token input described below is an attributed data
+import, not a claim that a preparation stage completed.
 This distinction matters when a function publishes its files and a subsequent
 deadline or memory check fails. Such files remain diagnostic evidence; the
 failed operation is not an admitted input to the next command.
@@ -79,7 +81,7 @@ package directories cannot be stage output locations.
 | Stage | Purpose and handoff |
 |---|---|
 | `prepare` | Load one original local native model and generate self-produced calibration traces from explicit prompts. Preserve prompt IDs and generated IDs without decoding and re-tokenizing them. Publish a producer receipt bound to the exact model, tokenizer, prompt file, generation configuration and output JSONL. |
-| `seal` | Consume successful preparation results, package tokenizer assets, validate the declared roles and freeze all stage recipes. Publish `job.json`; original model weights remain at their existing path. |
+| `seal` | Consume successful preparation results or explicitly attributed historical token records, package tokenizer assets, validate the declared roles and freeze all stage recipes. Publish `job.json`; original model weights remain at their existing path. |
 | `decoder` | Fit the declared rotated native text projections using the existing window trainer. Preserve original module names, source hashes and actual rotation signs in each candidate. |
 | `cache-head` | Capture original final-normalized hidden states before the large vocabulary projection. Run separately for each declared role, using the same original checkpoint and common source provenance. |
 | `head` | Fit the bounded head with the existing full-vocabulary KL objective on the calibration cache. An optional search-validation cache is scored; an optional evaluation cache is bound and checked for separation, but is not scored by this fitting stage. |
@@ -106,13 +108,14 @@ hashes use `eval_backends.local_directory_identity`; they are different scopes
 even when the files originally share one directory. Prompt and result references
 use the SHA256 of the exact file bytes.
 
-The preparation and seal operations are separate. Seal's role map has the form
+The preparation and seal operations are separate. Seal's usual role map has the form
 `traces_by_role[role] = {prepared, sequence_length, max_samples}`, where
 `prepared` is a successful preparation-result reference. The roles are
 `calibration`, optional `search_validation`, and optional `evaluation`.
 Head-cache inputs and assembly candidate-stage inputs also use successful
 outer-result references. These checks prevent a pipeline command from silently
 treating arbitrary token files or incomplete caches as completed preparation.
+Historical token records have a separate, explicit input form below.
 
 Stage recipe fields are explicit, with the backward-compatible head rotation
 option described below. Decoder settings include both the
@@ -124,6 +127,52 @@ position/shard limits, packing choice, assembly coverage, output scope, byte
 budget and runtime row chunk/cache policy are also part of the sealed job.
 Changing any of them creates a different job; the workflow does not choose or
 recommend a new 9B recipe automatically.
+
+## Reusing historical token records
+
+When the original IDs and masks already exist, `seal` can import them without
+generating new traces. For each such role use exactly
+`{historical, sequence_length, max_samples}` instead of the `prepared` form.
+`historical` contains:
+
+- `traces`: the absolute path and SHA256 of the original JSONL file.
+- `producer`: the absolute path and SHA256 of a JSON attribution receipt.
+- `expected_selection`: the predeclared `num_records`,
+  `consumed_jsonl_sha256`, ordered `record_sha256s`, and ordered
+  `raw_token_record_sha256s` for the specified selection.
+
+The two forms cannot be combined. The importer verifies the pinned files and
+requires the selected count, consumed prefix, raw token order and effective
+padded/truncated token order to match. It copies the complete original JSONL
+and producer receipt byte-for-byte into the sealed job; it does not decode,
+retokenize, regenerate, reorder or overwrite the source records. The successful
+supervised seal result remains the handoff for later stages. A failed selection
+check does not produce an admissible completed seal.
+
+The producer receipt uses the same content bindings as direct Python
+`seal_job`: a nonempty `kind` and `description`, `source_content_sha256`,
+`tokenizer_content_sha256`, and `source_jsonl_sha256`, with a matching `role`
+when supplied. An attribution receipt should state that the records are
+historical and retain the original producer identity, source revision,
+generation settings, execution precision policy and supporting receipt hashes.
+Do not describe imported records as newly generated by `prepare`.
+
+These are caller-attributed provenance claims. Hashes authenticate the supplied
+bytes; they do not independently prove the historical generation or verify
+every supporting claim in arbitrary producer metadata. In particular, a
+checkpoint directory hash does not establish whether its old producer cast
+small FP32 tensors to BF16. Preserve that historical policy even when the new
+cache and evaluation use `preserve-checkpoint`. New head caches must come from
+the declared original computation, not from historical decoder-window caches.
+Exact role-overlap checks still apply, and benchmark answers remain excluded
+from fitting and search.
+
+[CPU validation](../validation-historical-trace-import.json) includes 46 focused
+checks and a real supervised seal followed by two original-head-cache stages.
+Wrong record order fails the supervised handoff; a wrong input hash is rejected
+before creating an output directory. The 1,795-test suite passed with one
+Windows-only test skipped on macOS. These checks establish data handling and
+command behavior on a tiny native fixture, not pretrained endpoint quality.
 
 ## Rotated and unrotated head controls
 
@@ -266,8 +315,9 @@ authenticate its bytes and link the stages; they cannot prove that an arbitrary
 third-party producer is honest. Direct Python `seal_job` also accepts a producer
 receipt for caller-declared token records. That is a lower-level trust boundary,
 not independent evidence that those tokens were generated by the claimed
-checkpoint. The command-line workflow requires its completed preparation
-handoff instead.
+checkpoint. The command-line workflow distinguishes its completed preparation
+handoff from the explicit historical import above; neither makes arbitrary
+external producer claims independently trustworthy.
 
 Exact token-record overlap between declared roles is rejected. This is not a
 semantic contamination detector: callers must keep benchmarks and final

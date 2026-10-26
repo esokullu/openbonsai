@@ -1,0 +1,64 @@
+{
+  "scope": "Explicit historical-token CLI sealing and original-head-cache handoff; tiny random native CPU software validation only",
+  "date": "2026-10-27",
+  "status": "passed",
+  "implementation_python_sha256": "2f3a52945b8315e1ec4f69f58aa875ab31a6f556fe6311bd8a712767cbb5c9bc",
+  "implementation_files_sha256": {
+    "openbonsai/pipeline.py": "00dd8fc9eb516d873adf1b71128db2abf1c254ee657d58eaf2168e778b91234e",
+    "tests/test_pipeline_historical.py": "161b4422ac4ac93fb6aab4fd85da21dd5ff4077ca609ff66397d65c1e3112b55",
+    "tests/test_pipeline_historical_command.py": "668b123181455e6f9ad12799f4781ec20ee56f4cf0c9fea05617c8c44ccc0a91"
+  },
+  "full_suite": {
+    "passed": 1795,
+    "skipped": 1,
+    "seconds": 126.41,
+    "wall_seconds": 126.85423908289522,
+    "log_sha256": "1a4580eccc605f6e26ae1504cf6c44a9cfdee25c03094249201986f2fe77d056",
+    "skip": "Actual Windows kill-on-close Job Object test requires Windows; current host is macOS"
+  },
+  "focused_cases_passed": 46,
+  "command_proof": {
+    "tests_passed": 3,
+    "seconds": 12.85,
+    "index_sha256": "0cec5a5459e3c548d72ccbd416c802eaa530fe3623b3d9b6b702dca416534725",
+    "log_sha256": "32eae3cb0d73f6edd1c4ae5d32dcc322a0b4b283c6434b2d5de2589661f48d38",
+    "successful_stages": 3,
+    "failed_selection_stage": 1,
+    "wrong_hash_rejected_before_output": true,
+    "new_preparation_or_generation": false,
+    "selection_per_role": {
+      "records": 2,
+      "active_tokens": 9,
+      "valid_next_token_positions": 7
+    },
+    "exact_native_cache_hidden_labels_coordinates": true,
+    "saved_source_tensor_dtypes_and_values_exact": true,
+    "source_tokenizer_historical_files_unchanged": true,
+    "producer_claims_copied_byte_for_byte": true
+  },
+  "reference_fixture_correction": {
+    "initial_failed_log_sha256": "89cb296b4f997662e3366feef3b7e38b34079d7e096993d256d18a6a1d537621",
+    "diagnosis_sha256": "21b9e9ea5f80595f4c08aebde2bd462d64a19a2714c16ae4d19a2c52b2a32d57",
+    "description": "Fresh declared checkpoint loader instead of blanket-BF16 constructor transient buffers. Every saved persistent tensor retains exact dtype/value. Native hidden/cache equality unchanged at rtol=atol=0. Only temporary buffer substitution was used in separate tiny diagnosis, never production.",
+    "production_changed_to_fix_reference": false
+  },
+  "contract": {
+    "legacy_prepared_input_unchanged": true,
+    "historical_requires_pinned_raw_jsonl_and_producer": true,
+    "exact_ordered_expected_selection_required": true,
+    "original_and_copied_files_rechecked": true,
+    "failed_outer_handoff_rejected": true,
+    "historical_producer_claims_independently_proven": false,
+    "source_loading_quantizers_optimizers_unchanged": true,
+    "old_code_bound_jobs_migrated": false
+  },
+  "validation_reproduction": "python -m pytest -q; focused tests/test_pipeline_historical.py and tests/test_pipeline_historical_command.py",
+  "independent_review": "Source/schema/failure-boundary review and separate recorded supervised-command evidence review passed",
+  "active_5090_source_changed": false,
+  "pretrained_quality_claim": false,
+  "limitations": [
+    "Caller-attributed historical generation and precision claims are not independently authenticated by matching content hashes.",
+    "Exact token-record role separation does not detect semantic benchmark contamination.",
+    "Tiny CPU execution does not establish pretrained head quality, CUDA capacity, Windows process behavior or useful 2GB model delivery."
+  ]
+}

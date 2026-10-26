@@ -17,12 +17,14 @@ import time
 import traceback
 
 from .eval_backends import _identity
-from .pipeline_sources import _read_json, code_identity
+from .pipeline_sources import _digest, _read_json, code_identity
 from .stage_runtime import check_deadline, write_json
 
 REQUEST_FORMAT = "openbonsai.pipeline-request.v1"
 RESULT_FORMAT = "openbonsai.pipeline-result.v1"
 STAGES = {"prepare", "seal", "decoder", "cache-head", "head", "embedding", "assemble"}
+_SELECTION_FIELDS = {"num_records", "consumed_jsonl_sha256", "record_sha256s",
+                     "raw_token_record_sha256s"}
 
 
 def _exact(value, keys, label):
@@ -44,6 +46,47 @@ def _pinned(reference):
     if _identity(path) != identity:
         raise RuntimeError("Pinned JSON changed while reading")
     return value
+
+
+def _validate_trace_spec(spec):
+    if not isinstance(spec, dict):
+        raise ValueError("Trace specification must be an object")
+    if "historical" not in spec:
+        _exact(spec, {"prepared", "sequence_length", "max_samples"}, "prepared trace")
+        return
+    _exact(spec, {"historical", "sequence_length", "max_samples"}, "historical trace")
+    historical = spec["historical"]
+    _exact(historical, {"traces", "producer", "expected_selection"}, "historical references")
+    for key in ("traces", "producer"):
+        reference = historical[key]
+        _exact(reference, {"path", "sha256"}, "historical " + key)
+        _absolute(reference["path"])
+        _digest(reference["sha256"], "historical " + key)
+    expected = historical["expected_selection"]
+    _exact(expected, _SELECTION_FIELDS, "expected selection")
+    count = expected["num_records"]
+    if type(count) is not int or count < 1:
+        raise ValueError("Expected selection num_records must be a positive integer")
+    if type(spec["sequence_length"]) is not int or spec["sequence_length"] < 1:
+        raise ValueError("Historical sequence_length must be a positive integer")
+    maximum = spec["max_samples"]
+    if maximum is not None and (type(maximum) is not int or maximum < count):
+        raise ValueError("Historical max_samples must be null or at least expected num_records")
+    _digest(expected["consumed_jsonl_sha256"], "consumed_jsonl_sha256")
+    for key in ("record_sha256s", "raw_token_record_sha256s"):
+        if not isinstance(expected[key], list) or len(expected[key]) != count:
+            raise ValueError(f"Expected {key} must contain exactly num_records hashes")
+        for digest in expected[key]:
+            _digest(digest, key)
+
+
+def _historical_pins(spec):
+    """Pin raw JSONL as bytes; only the producer is a single JSON document."""
+    historical = spec["historical"]
+    traces = _identity(historical["traces"]["path"], historical["traces"]["sha256"])
+    producer = _identity(historical["producer"]["path"], historical["producer"]["sha256"])
+    _pinned(historical["producer"])
+    return traces, producer
 
 
 def completed_stage(reference, expected_stage):
@@ -95,7 +138,7 @@ def validate_request(request):
         if not isinstance(p["traces_by_role"], dict) or "calibration" not in p["traces_by_role"]:
             raise ValueError("Seal requires calibration traces")
         for spec in p["traces_by_role"].values():
-            _exact(spec, {"prepared", "sequence_length", "max_samples"}, "prepared trace")
+            _validate_trace_spec(spec)
     if stage == "assemble" and (not isinstance(p["candidate_stages"], list) or not p["candidate_stages"]):
         raise ValueError("Assembly requires candidate stage references")
     return request
@@ -115,7 +158,13 @@ def protected_paths(request):
                   Path(job["source"]["tokenizer_directory"]["path"])]
     refs = []
     if stage == "seal":
-        refs += [(spec["prepared"], "prepare") for spec in p["traces_by_role"].values()]
+        for spec in p["traces_by_role"].values():
+            if "historical" in spec:
+                # Protect the owning input directories before creating output.
+                # Historical evidence is attributed, never a prepare result.
+                roots += [Path(info["path"]).parent for info in _historical_pins(spec)]
+            else:
+                refs.append((spec["prepared"], "prepare"))
     if stage == "head":
         refs += [(p[key], "cache-head") for key in ("calibration_cache", "search_cache", "evaluation_cache") if p[key] is not None]
     if stage == "assemble":
@@ -145,14 +194,30 @@ def execute_stage(request, output, device, meter, progress):
         prepare_bound(**p, output=output, device=device, operation=meter, progress_callback=progress)
         return output / "producer.json"
     if stage == "seal":
+        historical_inputs = {}
         for role, spec in list(p["traces_by_role"].items()):
-            path, producer = completed_stage(spec["prepared"], "prepare")
-            if producer["role"] != role:
-                raise ValueError("Prepared trace role differs from sealed role")
-            p["traces_by_role"][role] = {"path": str(path.parent / "traces.jsonl"),
-                "producer": {"path": str(path), "sha256": _identity(path)["sha256"]},
+            if "historical" in spec:
+                traces, producer = _historical_pins(spec)
+                historical_inputs[role] = (traces, producer, spec["historical"]["expected_selection"])
+                trace_path, producer_ref = traces["path"], spec["historical"]["producer"]
+            else:
+                path, producer = completed_stage(spec["prepared"], "prepare")
+                if producer["role"] != role:
+                    raise ValueError("Prepared trace role differs from sealed role")
+                trace_path = str(path.parent / "traces.jsonl")
+                producer_ref = {"path": str(path), "sha256": _identity(path)["sha256"]}
+            p["traces_by_role"][role] = {"path": trace_path, "producer": producer_ref,
                 "sequence_length": spec["sequence_length"], "max_samples": spec["max_samples"]}
-        meter("seal-job", lambda: sources.seal_job(**p, output=output))
+        context = meter("seal-job", lambda: sources.seal_job(**p, output=output))
+        for role, (traces, producer, expected) in historical_inputs.items():
+            receipt = context.record_receipts_by_role[role]
+            if any(receipt[key] != expected[key] for key in _SELECTION_FIELDS):
+                raise ValueError(f"Historical selection differs from expected records: {role}")
+            for original, copied in ((traces, receipt["file"]), (producer, receipt["producer_file"])):
+                if (_identity(original["path"]) != original
+                        or any(copied[key] != original[key] for key in ("sha256", "bytes"))
+                        or _identity(copied["path"]) != copied):
+                    raise RuntimeError(f"Historical input changed while sealing: {role}")
         return output / "job.json"
     job_path, _ = completed_stage(p.pop("job"), "seal")
     context = meter("load-sealed-context", lambda: sources.load_context(job_path))
