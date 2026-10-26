@@ -78,7 +78,13 @@ def validate_request(request):
         "head": {"job", "calibration_cache", "search_cache", "evaluation_cache"},
         "assemble": {"job", "candidate_stages"},
     }
-    _exact(p, keys[stage], stage + " parameters")
+    expected = keys[stage]
+    if stage == "assemble" and isinstance(p, dict) and "assembly_control" in p:
+        expected = expected | {"assembly_control"}
+    _exact(p, expected, stage + " parameters")
+    if stage == "assemble" and "assembly_control" in p:
+        from .pipeline_decoder import validate_assembly_control
+        validate_assembly_control(p["assembly_control"])
     for key in ("model_directory", "tokenizer_directory", "prompts"):
         if key in p:
             _absolute(p[key])
@@ -102,6 +108,9 @@ def protected_paths(request):
     roots += [_absolute(p[key]) for key in ("model_directory", "tokenizer_directory", "prompts") if key in p]
     if "job" in p:
         job_path, job = completed_stage(p["job"], "seal")
+        if stage == "assemble" and "assembly_control" in p:
+            from .pipeline_decoder import validate_assembly_control
+            validate_assembly_control(p["assembly_control"], sealed_assembly=job["assembly"])
         roots += [job_path.parent.parent, Path(job["source"]["model_directory"]["path"]),
                   Path(job["source"]["tokenizer_directory"]["path"])]
     refs = []
@@ -167,7 +176,8 @@ def execute_stage(request, output, device, meter, progress):
             if kind not in {"decoder", "head", "embedding"}:
                 raise ValueError("Invalid candidate stage")
             directories.append(completed_stage(ref, kind)[0].parent)
-        report = assemble_stage(context, directories, output, operation=meter)
+        report = assemble_stage(context, directories, output, operation=meter,
+                                assembly_control=p.get("assembly_control"))
         write_json(output / "stage.json", {"format": sources.STAGE_FORMAT, "status": "complete", **report})
     meter("final-context-preservation", lambda: sources.verify_context(context))
     return output / "stage.json"

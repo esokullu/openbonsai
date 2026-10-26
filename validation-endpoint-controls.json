@@ -1,0 +1,114 @@
+{
+  "scope": "Explicit same-job endpoint coverage controls; random native CPU correctness, not pretrained quality",
+  "date": "2026-10-26",
+  "status": "passed",
+  "implementation_python_sha256": "c9dbf5b88335ce676eebf437ea95c14bd71894a35f549fb3f93b98602df16b39",
+  "implementation_files_sha256": {
+    "openbonsai/pipeline.py": "8466f4557b51846496981e82ecba71e42d790d11574d461df8964efb4c1cf05e",
+    "openbonsai/pipeline_decoder.py": "c978836a69910f2c1bbb750866e1bab4ee8e376ea38b6a3d45933af8879b5862",
+    "tests/test_pipeline_controls.py": "3a0dfe3b873d5c35f2c0ba29d4bf3a6d7b3ebd3affd5d5fea50983f3207c4ab8",
+    "tests/test_pipeline_command.py": "db41e5c34ae322bb712b49d4fae35a0cb2b5cde435fa166b5badb06a3419df7b"
+  },
+  "full_suite": {
+    "passed": 1685,
+    "skipped": 1,
+    "seconds": 94.93
+  },
+  "environment": {
+    "device": "cpu",
+    "packages": {
+      "psutil": "7.2.2",
+      "safetensors": "0.8.0",
+      "torch": "2.14.1",
+      "transformers": "5.20.2"
+    },
+    "platform": "macOS-26.0.1-arm64-arm-64bit",
+    "python": "3.12.9",
+    "threads": 2,
+    "torch_cuda": null
+  },
+  "fixture": {
+    "native_source": "Tiny random Qwen3.5ForConditionalGeneration saved BF16 plus non-BF16-representable FP32 A_log",
+    "all_and_controls": {
+      "all": {
+        "artifact_bytes": 277095,
+        "module_count": 27,
+        "vision_file_bytes": 0,
+        "manifest_sha256": "da4f5e77259e2ee99029102b59b8e84a876213f5b67d7972bef1415a7c751484"
+      },
+      "E-only": {
+        "artifact_bytes": 1468326,
+        "module_count": 1,
+        "vision_file_bytes": 0,
+        "manifest_sha256": "0aa31a53b86f363ce5035d7d70ea0656a08621e483501d591ea17bed332054dc"
+      },
+      "H-only": {
+        "artifact_bytes": 1466548,
+        "module_count": 1,
+        "vision_file_bytes": 0,
+        "manifest_sha256": "d8bf1b9b2e92e3e1f74b44f614391043669405cc55ee3adcc93ff7b7d87ed7ec"
+      },
+      "D-only": {
+        "artifact_bytes": 392729,
+        "module_count": 25,
+        "vision_file_bytes": 0,
+        "manifest_sha256": "d27aa2eb31aa86cbb2a26c4dd39fe703056e0af51307bdf0133f37927f9ef2a2"
+      },
+      "D+E": {
+        "artifact_bytes": 337115,
+        "module_count": 26,
+        "vision_file_bytes": 0,
+        "manifest_sha256": "6bb44e547800788a5dab4a82325dd7da60cc89c8f9307b91c792f244b033c0bf"
+      },
+      "D+H": {
+        "artifact_bytes": 335337,
+        "module_count": 26,
+        "vision_file_bytes": 0,
+        "manifest_sha256": "ed7c903e4c89e181bd8cfcc6ac81d202efa46651c213322b0fe5e8527b4dd3f8"
+      }
+    },
+    "e_only_actual_supervised_command": true,
+    "e_only_fresh_process_logits_and_retained_fp32_exact": true,
+    "other_four_controls_use_real_sealed_context": true,
+    "api_controls_compare_independent_native_composition": true,
+    "candidate_payloads_unchanged": true,
+    "source_tokenizer_and_sealed_job_unchanged": true,
+    "supervised_child_cleanup_complete": true,
+    "native_causal_and_conditional_control_tests": true,
+    "language_only_and_retained_vision_control_tests": true
+  },
+  "local_evidence": {
+    "inventory_files": 705,
+    "inventory_bytes": 6628209,
+    "inventory_sha256": "8b6479539ceb80d306ed3123c79c256ed05f9700cb60b3e79740b64c41c746c0",
+    "suite_log_sha256": "60ddd8cc9403bca30d4b65ba2ad701fd28904b4e4a657555907b1111955dbc1a",
+    "e_only_result_sha256": "f9315153ed2499aed59bc7a6857a96cc743fbe180df3900e819dbe22a33cf160",
+    "e_only_stage_sha256": "4d33b84af17cfd3a8b0a106fa6c896db9412f6092108919926c6c4da29181c45",
+    "fresh_process_output_sha256": "56386e56650c5098a1a4db2eb3f604bc42deee8a338ca3a2f9d71a10605e390d"
+  },
+  "contract": {
+    "supported_controls": [
+      "D-only",
+      "E-only",
+      "H-only",
+      "D+E",
+      "D+H"
+    ],
+    "default_full_assembly_unchanged": true,
+    "control_has_separate_complete_directory_budget": true,
+    "control_delivery_target_complete": false,
+    "original_sealed_budget_recorded": true,
+    "requires_same_job_candidate_receipts": true,
+    "no_training_or_evaluation_started_by_assembly": true
+  },
+  "independent_review": "Source preservation, candidate identity, scope/budget enforcement, native composition, strengthened real saved-FP32 fresh-process checks",
+  "validation_reproduction": "python -m pytest -q; tests/test_pipeline_controls.py and tests/test_pipeline_command.py contain the focused coverage and supervised chain",
+  "limitations": [
+    "No pretrained9B endpoint quality measurement, actualCUDA memory validation or 2GB artifact claim.",
+    "These tiny artifact sizes demonstrate complete-directory accounting only; endpoint controls intentionally retain large BF16 matrices.",
+    "Native Windows supervisor process test was skipped on this Mac; target-host validation remains required.",
+    "Execution reconstructs floating-point weights; smaller files do not establish inference acceleration.",
+    "Control assembly requires candidates from one sealed job; it cannot silently import historical decoder candidates."
+  ],
+  "current_5090_run_changed": false
+}

@@ -96,7 +96,7 @@ rejected:
 | `decoder`, `embedding` | `job` |
 | `cache-head` | `job`, `role` |
 | `head` | `job`, `calibration_cache`, `search_cache`, `evaluation_cache`; use JSON `null` for absent optional caches |
-| `assemble` | `job`, `candidate_stages` (a nonempty list of result references) |
+| `assemble` | `job`, `candidate_stages` (a nonempty list of result references); optional `assembly_control` for an explicitly named subset control below |
 
 `job` references a successful seal result. The preparation `generation` object
 requires `seed`, `max_new_tokens`, `max_prompt_tokens`, `max_samples`,
@@ -123,6 +123,68 @@ position/shard limits, packing choice, assembly coverage, output scope, byte
 budget and runtime row chunk/cache policy are also part of the sealed job.
 Changing any of them creates a different job; the workflow does not choose or
 recommend a new 9B recipe automatically.
+
+## Isolated endpoint controls from one job
+
+An all-coverage job can also produce explicitly requested control artifacts
+without changing its sealed recipes or refitting candidates. Add
+`assembly_control` to an assemble request's `parameters`, for example:
+
+```json
+{
+  "quantized_components": ["embedding"],
+  "retained_original_components": ["decoder", "head"],
+  "output_scope": "language-only",
+  "evaluation_label": "E-only",
+  "budget_bytes": 20000000000
+}
+```
+
+This is the `assembly_control` object, not a complete command request. The
+example budget is illustrative. `candidate_stages` must contain exactly the
+successful embedding-stage result for this E-only control. The remaining
+components come from the unchanged original checkpoint with its saved native
+precision, including small FP32 exceptions. They are not newly quantized or
+substituted with unrelated BF16 candidates.
+
+The supported labels and quantized components are `D-only` (`decoder`),
+`E-only` (`embedding`), `H-only` (`head`), `D+E` (`decoder`, `embedding`) and
+`D+H` (`decoder`, `head`). Lists use canonical order `decoder`, `embedding`,
+`head`; the retained list must be the exact complement. Each selected decoder
+component requires its entire declared projection set. Missing, extra or
+duplicate stages fail. Each endpoint candidate keeps the same source, job,
+recipe, calibration certificate where required, actual signs, scales and
+serialized bytes across controls.
+
+Controls must be proper nonempty subsets of the sealed coverage. Their
+`output_scope` must match the sealed job; row chunks and decoded-cache policy
+also remain fixed. A decoder-only job has no supported proper subset at this
+component granularity. Use the ordinary assemble request, without this object,
+for the all-matrix final artifact; its full coverage and sealed budget remain
+mandatory. O, the original baseline, uses the original evaluation path.
+
+A control needs its own explicit complete-artifact budget because retained
+original matrices can make it much larger than the final ternary target. The
+artifact and stage receipt record effective `pipeline_assembly.coverage` as
+`control`, preserve `sealed_pipeline_assembly`, and set
+`delivery_target_complete=false`. They include the request digest, evaluation
+label, selected and retained component names, retained dtype/byte accounting,
+modality scope and actual whole-artifact storage. Passing the control budget
+does not satisfy the sealed final budget. Outer run reports remain outside the
+deployable artifact's byte count.
+
+Per-component retained accounting covers the eligible candidate matrices in
+each omitted role, including their biases. Always-retained normalization,
+recurrence parameters/gates and other native tensors remain in the complete retained
+tensor inventory; configuration and containers remain in fixed storage. These
+component subtotals do not replace the complete artifact count.
+
+These controls use current same-job stage receipts. They do not import
+historical experiments, bypass a changed implementation seal, modify training
+objectives or automatically launch evaluation. Compare E/H separately before
+drawing conclusions about D+E/D+H or all coverage. Tiny native reconstruction
+and reload checks establish software behavior, not pretrained quality or CUDA
+feasibility.
 
 ## What the source and trace receipts prove
 

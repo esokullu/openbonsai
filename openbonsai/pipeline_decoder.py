@@ -42,6 +42,46 @@ def _keys(value, expected, name):
         raise ValueError(f"{name} requires exactly {sorted(expected)}")
 
 
+_COMPONENTS = ("decoder", "embedding", "head")
+_CONTROL_LABELS = {
+    ("decoder",): "D-only", ("embedding",): "E-only", ("head",): "H-only",
+    ("decoder", "embedding"): "D+E", ("decoder", "head"): "D+H",
+}
+
+
+def validate_assembly_control(control, *, sealed_assembly=None):
+    """Validate an explicit derivative without editing the sealed job.
+
+    Full coverage uses ordinary assembly and its sealed budget. Controls have
+    their own complete-artifact budget because omitted matrices stay original.
+    """
+    _keys(control, {"quantized_components", "retained_original_components", "output_scope",
+                    "evaluation_label", "budget_bytes"}, "assembly_control")
+    for key in ("quantized_components", "retained_original_components"):
+        roles = control[key]
+        if (not isinstance(roles, list) or not roles
+                or any(not isinstance(role, str) or role not in _COMPONENTS for role in roles)
+                or roles != [role for role in _COMPONENTS if role in roles]):
+            raise ValueError(f"{key} requires unique canonical component names")
+    selected = tuple(control["quantized_components"])
+    if selected not in _CONTROL_LABELS or control["evaluation_label"] != _CONTROL_LABELS[selected]:
+        raise ValueError("Unsupported control components or mismatched evaluation label")
+    if control["retained_original_components"] != [role for role in _COMPONENTS if role not in selected]:
+        raise ValueError("Control must declare the exact retained-original complement")
+    if (not isinstance(control["output_scope"], str)
+            or control["output_scope"] not in {"language-only", "retain-vision"}):
+        raise ValueError("Invalid control output scope")
+    if type(control["budget_bytes"]) is not int or control["budget_bytes"] <= 0:
+        raise ValueError("Control budget_bytes must be a positive integer")
+    if sealed_assembly is not None:
+        sealed = set(_COMPONENTS if sealed_assembly["coverage"] == "all" else ("decoder",))
+        if not set(selected) < sealed:
+            raise ValueError("Control must be a proper nonempty subset of sealed coverage")
+        if control["output_scope"] != sealed_assembly["output_scope"]:
+            raise ValueError("Control output scope must match the sealed assembly")
+    return copy.deepcopy(control)
+
+
 def _recipe(context):
     value = copy.deepcopy(context.job["decoder"])
     _keys(value, {"quantization", "training", "packing"}, "decoder")
@@ -241,8 +281,8 @@ class _AssemblyCandidates(Mapping):
         return candidate
 
 
-def assemble_stage(context, candidate_stages, output, *, operation=None):
-    """Assemble exact decoder/all coverage from completed candidate stages.
+def assemble_stage(context, candidate_stages, output, *, operation=None, assembly_control=None):
+    """Assemble exact sealed coverage, or an explicitly requested subset control.
 
     ``output/artifact`` is the accounted deployable package; the returned stage
     report belongs outside it. Input .obc files are decoded one at a time and
@@ -261,6 +301,17 @@ def assemble_stage(context, candidate_stages, output, *, operation=None):
             raise ValueError(f"{key} must be positive")
     if type(config["cache_decoded_weights"]) is not bool:
         raise ValueError("cache_decoded_weights must be a bool")
+    sealed_config = copy.deepcopy(config)
+    control = (None if assembly_control is None else
+               validate_assembly_control(assembly_control, sealed_assembly=sealed_config))
+    selected_roles = (list(_COMPONENTS if config["coverage"] == "all" else ("decoder",))
+                      if control is None else control["quantized_components"])
+    retained_roles = [role for role in _COMPONENTS if role not in selected_roles]
+    if control is not None:
+        config.update(coverage="control", budget_bytes=control["budget_bytes"],
+                      quantized_components=selected_roles,
+                      retained_original_components=retained_roles,
+                      evaluation_label=control["evaluation_label"])
     if not isinstance(candidate_stages, (list, tuple)) or not candidate_stages:
         raise ValueError("candidate_stages must be a nonempty list of completed directories")
     output = validate_stage_output(context, output)
@@ -268,8 +319,9 @@ def assemble_stage(context, candidate_stages, output, *, operation=None):
     model = _call(operation, "assemble.load_original", lambda: load_original(context, device="cpu"))
     decoder_names, _ = _target_sources(model, quant)
     prefix, _ = _text_module(model)
-    endpoints = {"head": {"lm_head"}, "embedding": {prefix + ".embed_tokens"}}
-    stage_names = {"decoder": set(decoder_names), **(endpoints if config["coverage"] == "all" else {})}
+    all_stage_names = {"decoder": set(decoder_names), "head": {"lm_head"},
+                       "embedding": {prefix + ".embed_tokens"}}
+    stage_names = {role: all_stage_names[role] for role in selected_roles}
     expected = set().union(*stage_names.values())
     by_original, descriptions, receipts = {}, {}, {}
     for path in candidate_stages:
@@ -292,6 +344,13 @@ def assemble_stage(context, candidate_stages, output, *, operation=None):
                 "native_source_receipt": copy.deepcopy(getattr(model, "_openbonsai_source_receipt", {})),
                 "pipeline_assembly": config, "decoder_recipe_sha256": _sha(recipe),
                 "candidate_stage_receipts_sha256": {stage: _sha(value) for stage, value in receipts.items()}}
+    if control is not None:
+        metadata.update(artifact_purpose="isolated-coverage-control", delivery_target_complete=False,
+                        sealed_pipeline_assembly=sealed_config, assembly_control=control,
+                        assembly_control_sha256=_sha(control),
+                        quantized_component_modules={role: sorted(stage_names[role]) for role in selected_roles},
+                        retained_original_component_modules={role: sorted(all_stage_names[role])
+                                                             for role in retained_roles})
     if config["output_scope"] == "retain-vision":
         if not multimodal:
             raise ValueError("retain-vision requires an original conditional model with a vision tower")
@@ -306,6 +365,25 @@ def assemble_stage(context, candidate_stages, output, *, operation=None):
     else:
         export_model, mapping = model, {name: name for name in expected}
         metadata["text_extraction"] = {"scope": "language-only", "source_already_causal": True}
+    if control is not None:
+        from .export import _all_tensors, _under_module
+        retained_names = {role: [text_module_name(name) if multimodal and config["output_scope"] == "language-only"
+                                 else name for name in sorted(all_stage_names[role])]
+                          for role in retained_roles}
+        accounting = {role: {"artifact_module_names": names, "tensor_count": 0,
+                             "tensor_bytes": 0, "bytes_by_dtype": {}}
+                      for role, names in retained_names.items()}
+        for name, tensor, _kind, _persistent in _all_tensors(export_model):
+            for role, names in retained_names.items():
+                if _under_module(name, names):
+                    row = accounting[role]
+                    size = tensor.numel() * tensor.element_size()
+                    dtype = str(tensor.dtype).removeprefix("torch.")
+                    row["tensor_count"] += 1
+                    row["tensor_bytes"] += size
+                    row["bytes_by_dtype"][dtype] = row["bytes_by_dtype"].get(dtype, 0) + size
+        metadata["retained_original_component_accounting"] = accounting
+        metadata["vision_scope"] = "retained-original" if config["output_scope"] == "retain-vision" else "excluded"
     # Freeze native source/export view before any candidate module replacement.
     # No replacement is needed during assembly at all.
     assignment = _AssemblyCandidates(by_original, mapping, model, context.source_provenance)
@@ -322,7 +400,7 @@ def assemble_stage(context, candidate_stages, output, *, operation=None):
         if saved["sha256"] != declared["sha256"] or int(saved["bytes"]) != declared["bytes"]:
             raise RuntimeError(f"Assembly changed stored candidate bytes: {original}")
     verify_context(context)
-    return {"stage": "assemble", "artifact": "artifact", "coverage": config["coverage"],
+    report = {"stage": "assemble", "artifact": "artifact", "coverage": config["coverage"],
             "output_scope": config["output_scope"], "module_count": len(mapping),
             "original_to_artifact_module_names": mapping,
             "source_provenance": copy.deepcopy(context.source_provenance),
@@ -331,3 +409,10 @@ def assemble_stage(context, candidate_stages, output, *, operation=None):
             "artifact_manifest_sha256": hashlib.sha256((output / "artifact" / "manifest.json").read_bytes()).hexdigest(),
             "quality_claim": False,
             "runtime": "reference floating-point reconstruction; decoded caches are not artifact bytes"}
+    if control is not None:
+        report.update({key: copy.deepcopy(metadata[key]) for key in (
+            "artifact_purpose", "delivery_target_complete", "sealed_pipeline_assembly", "pipeline_assembly",
+            "assembly_control", "assembly_control_sha256", "quantized_component_modules",
+            "retained_original_component_modules", "retained_original_component_accounting", "vision_scope",
+            "pipeline_job_sha256", "candidate_stage_receipts_sha256")})
+    return report

@@ -134,6 +134,11 @@ def full_chain(tmp_path_factory):
     for offset, key in enumerate(('image_token_id', 'video_token_id',
                                   'vision_start_token_id', 'vision_end_token_id')):
         setattr(native.config, key, len(tokenizer) + 10 + offset)
+    # Preserve a real saved native FP32 exception with non-BF16 values. The
+    # source loader and every control must preserve it, not merely its shape.
+    for name, parameter in native.named_parameters():
+        if name.endswith('A_log'):
+            parameter.data = parameter.data.float().fill_(.1234567)
     native.eval().requires_grad_(False).save_pretrained(root / 'source')
     tokenizer.save_pretrained(root / 'tokenizer')
     before = local_directory_identity(root / 'source')
@@ -338,3 +343,83 @@ def test_changed_inner_handoff_hash_is_rejected_before_child_launch(full_chain):
         expected_success=False)
     assert result is None and not out.exists()
     assert 'SHA256 mismatch' in process.stderr
+
+
+def test_supervised_endpoint_control_reuses_sealed_job_and_fresh_reload(full_chain):
+    c = full_chain
+    job_path, sealed_job = pipeline.completed_stage(c['job'], 'seal')
+    job_bytes = job_path.read_bytes()
+    producer_bytes = {ref['path']: Path(ref['path']).read_bytes() for ref in c['stages']}
+    control = {'quantized_components': ['embedding'],
+               'retained_original_components': ['decoder', 'head'],
+               'output_scope': 'language-only', 'evaluation_label': 'E-only',
+               'budget_bytes': 100_000_000}
+    assembled = invoke(c['root'], 'embedding-control', 'assemble',
+        {'job': c['job'], 'candidate_stages': [c['stages'][2]], 'assembly_control': control})
+    path, report = pipeline.completed_stage(assembled, 'assemble')
+    artifact = path.parent / 'artifact'
+    manifest = read_json(artifact / 'manifest.json')
+    assert report['coverage'] == 'control' and report['delivery_target_complete'] is False
+    assert report['pipeline_job_sha256'] == sealed_job['job_sha256']
+    assert report['sealed_pipeline_assembly'] == sealed_job['assembly']
+    assert report['assembly_control'] == control
+    assert set(manifest['modules']) == {'model.embed_tokens'}
+    context = sources.load_context(job_path)
+    expected = sources.load_original(context)
+    retained_fp32 = {text_module_name(name): parameter.detach().clone()
+                     for name, parameter in expected.named_parameters() if name.endswith('A_log')}
+    assert retained_fp32 and all(value.dtype == torch.float32 for value in retained_fp32.values())
+    assert all(not torch.equal(value, value.bfloat16().float()) for value in retained_fp32.values())
+    stage = Path(c['stages'][2]['path']).parent / 'stage'
+    candidates, receipt = sources.load_candidate_stage(context, stage)
+    name = next(iter(candidates))
+    source = expected.get_input_embeddings()
+    expected.set_submodule(name, MixedEmbedding(candidates[name], padding_idx=source.padding_idx,
+                                              row_chunk_size=sealed_job['assembly']['row_chunk_size']))
+    saved = manifest['modules']['model.embed_tokens']['file']
+    assert (artifact / saved).read_bytes() == (stage / receipt['candidates'][name]['file']).read_bytes()
+    sample = {'input_ids': torch.tensor([[4, 7, 4, 11, 0]]),
+              'attention_mask': torch.tensor([[1, 1, 1, 1, 0]])}
+    with torch.no_grad():
+        expected_logits = expected(**sample, use_cache=False).logits
+    sample_path = c['root'] / 'control-fresh-input.pt'
+    logits_path = c['root'] / 'control-fresh-logits.pt'
+    torch.save(sample, sample_path)
+    script = '''import sys, torch
+from openbonsai.mixed_export import load_mixed
+torch.set_num_threads(2)
+m = load_mixed(sys.argv[1], cache_decoded_weights=False)
+x = torch.load(sys.argv[2], weights_only=True)
+with torch.no_grad():
+    logits = m(**x, use_cache=False).logits
+torch.save({'logits': logits, 'eos': m.generation_config.eos_token_id,
+            'retained_fp32': {name: p.detach().cpu() for name, p in m.named_parameters()
+                             if name.endswith('A_log')}}, sys.argv[3])
+'''
+    process = subprocess.run([sys.executable, '-c', script, str(artifact), str(sample_path), str(logits_path)],
+                             cwd=ROOT, env=ENV, capture_output=True, text=True, timeout=60)
+    assert process.returncode == 0, process.stderr
+    fresh = torch.load(logits_path, weights_only=True)
+    assert torch.equal(expected_logits, fresh['logits']) and fresh['eos'] == c['eos']
+    assert set(fresh['retained_fp32']) == set(retained_fp32)
+    assert all(fresh['retained_fp32'][name].dtype == value.dtype and torch.equal(fresh['retained_fp32'][name], value)
+               for name, value in retained_fp32.items())
+    assert job_path.read_bytes() == job_bytes
+    assert all(Path(path).read_bytes() == data for path, data in producer_bytes.items())
+    assert local_directory_identity(c['root'] / 'source') == c['before']
+    assert local_directory_identity(c['root'] / 'tokenizer') == c['tokenizer_before']
+
+    # Sealed source/context checks also apply to all other requested controls.
+    from openbonsai.pipeline_decoder import assemble_stage
+    roles = ('decoder', 'embedding', 'head')
+    refs = {'decoder': c['stages'][0], 'head': c['stages'][1], 'embedding': c['stages'][2]}
+    for label, selected in [('H-only', ['head']), ('D-only', ['decoder']),
+                            ('D+E', ['decoder', 'embedding']), ('D+H', ['decoder', 'head'])]:
+        request = {**control, 'quantized_components': selected, 'evaluation_label': label,
+                   'retained_original_components': [role for role in roles if role not in selected]}
+        directories = [pipeline.completed_stage(refs[role], role)[0].parent for role in selected]
+        result = assemble_stage(context, directories, c['root'] / ('sealed-control-' + label),
+                                assembly_control=request)
+        assert result['pipeline_job_sha256'] == sealed_job['job_sha256']
+        assert result['candidate_payloads_unchanged'] and result['delivery_target_complete'] is False
+    assert job_path.read_bytes() == job_bytes
