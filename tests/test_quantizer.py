@@ -6,8 +6,8 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from scaleq_repro.packing import unpack_ternary_codes
-from scaleq_repro.quantizer import PackedTernaryLinear, TernaryLinear, hard_ternary, restore_ternary_linear, soft_ternary
+from openbonsai.packing import unpack_ternary_codes
+from openbonsai.quantizer import PackedTernaryLinear, TernaryLinear, hard_ternary, restore_ternary_linear, soft_ternary
 
 
 def linear_with_weight(values, bias=None):

@@ -6,8 +6,8 @@ from types import SimpleNamespace
 import pytest
 import torch
 
-from scaleq_repro.calibration import load_calibration
-from scaleq_repro.prepare import add_arguments, generate_record, read_prompts, run
+from openbonsai.calibration import load_calibration
+from openbonsai.prepare import add_arguments, generate_record, read_prompts, run
 
 
 def write_jsonl(tmp_path, records):

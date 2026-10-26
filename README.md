@@ -1,10 +1,16 @@
-# ScaleQ-style compression for Qwen3.5-9B
+# OpenBonsai
 
-An independent, experimental implementation of the missing training path: CAT-Q-style learned ternarization, AYOT self-generated calibration, native Qwen3.5 window reconstruction, and a standalone packed checkpoint. **This is working research code, not an official implementation or a reproduction of the paper's model-quality results.**
+[OpenBonsai](https://github.com/esokullu/openbonsai) is an independent, experimental ScaleQ-style compression project for Qwen3.5. It implements CAT-Q-style learned ternarization, AYOT self-generated calibration, native Qwen3.5 window reconstruction, and a standalone packed checkpoint. **This is working research code, not an official implementation or a reproduction of the paper's model-quality results.**
 
 The original [ScaleQ-1.58 paper is included as a PDF](papers/2608.01078.pdf), with [attribution and provenance](papers/README.md).
 
 The intended first target is `Qwen/Qwen3.5-9B`. No real 9B weights were downloaded, compressed, or evaluated when building this prototype. Validation uses random tiny native Qwen3.5 models with both GatedDeltaNet and full-attention blocks, plus a small multimodal fixture. It does not support arbitrary dense models or MoE models.
+
+## Motivation
+
+Prism ML's Ternary Bonsai 2 family already includes Qwen3.5-based **2B, 4B, and 9B** models, with publicly available Apache 2.0 weights. [Prism's release announcement](https://prismml.com/news/bonsai-2-family). We want developers to be able to apply ternary compression to their own fine-tuned models. The official [9B release](https://huggingface.co/prism-ml/Ternary-Bonsai-2-9B-mlx-2bit) and [demo repository](https://github.com/PrismML-Eng/Bonsai-demo) reviewed on October 26, 2026 provide weights and inference tooling, but do not include a reproducible Bonsai 2 training/compression pipeline for that workflow.
+
+**Our goal is to make fine-tunable ternary models available to everyone**, through open, reproducible training and compression tools. OpenBonsai is an initial step toward that goal: the current prototype calibrates ternary factors around frozen Qwen3.5 weights. It does not yet implement end-to-end task fine-tuning, and its packed checkpoints cannot resume training.
 
 ## What works
 
@@ -26,8 +32,10 @@ python3.12 -m venv .venv
 source .venv/bin/activate
 python -m pip install -e '.[test]'
 python -m pytest -q
-python -m scaleq_repro smoke --output runs/tiny-packed
+python -m openbonsai smoke --output runs/tiny-packed
 ```
+
+Installing the package also provides the `openbonsai` CLI. Run `openbonsai --help` to see its commands; every `python -m openbonsai ...` invocation in this README can also be written as `openbonsai ...`.
 
 The smoke command needs no network, model weights, or datasets. It trains a tiny hybrid model, exports it, and checks exact logits after reloading the same FP16-scale packed representation. A separate number measures rounding introduced when FP32 learned scales are exported to FP16. `runs/tiny-packed-report.json` records losses, bytes, and those checks. Existing nonempty output directories are refused.
 
@@ -40,7 +48,7 @@ These commands **load/download the original 9B weights** and require substantial
 Create `prompts.jsonl`, one object per line, containing `{"prompt":"..."}` or `{"question":"..."}`. The two prompts in `examples/prompts.jsonl` only demonstrate the format; they are not a sufficient calibration corpus.
 
 ```bash
-python -m scaleq_repro prepare \
+python -m openbonsai prepare \
   --model Qwen/Qwen3.5-9B --revision main \
   --prompts prompts.jsonl --output runs/ayot.jsonl \
   --device cuda --dtype bfloat16 --enable-thinking \
@@ -49,7 +57,7 @@ python -m scaleq_repro prepare \
 # Use the exact original-model revision that produced the calibration traces.
 REVISION=$(python -c 'import json; print(json.load(open("runs/ayot.jsonl.manifest.json"))["resolved_revision"])')
 
-python -m scaleq_repro train \
+python -m openbonsai train \
   --model Qwen/Qwen3.5-9B --revision "$REVISION" \
   --calibration runs/ayot.jsonl --output runs/qwen35-pilot \
   --device cuda --dtype bfloat16 \
@@ -79,7 +87,7 @@ The custom format stores four 2-bit ternary codes per byte and one FP16 scale pe
 ```python
 import torch
 from transformers import AutoTokenizer
-from scaleq_repro.export import load_compressed
+from openbonsai.export import load_compressed
 
 model = load_compressed("runs/qwen35-pilot", device="cuda")
 tokenizer = AutoTokenizer.from_pretrained("runs/qwen35-pilot/tokenizer")
@@ -119,4 +127,4 @@ Before using a compressed 9B model, evaluate the original and compressed checkpo
 - [SliderQuant](https://github.com/deep-optimization/SliderQuant), inspected commit `bf2641ece550d5f6edb0028c2ae8b0ee658bc9bf`: sliding-window implementation context. This prototype does not vendor its code or reproduce its full training system.
 - [Qwen3.5-9B configuration](https://huggingface.co/Qwen/Qwen3.5-9B/blob/main/config.json) and [native Transformers Qwen3.5 implementation](https://github.com/huggingface/transformers/tree/main/src/transformers/models/qwen3_5): architecture adaptation.
 
-This package is an independent implementation, unaffiliated with the paper authors. Model, tokenizer, datasets, and dependencies retain their respective licenses.
+OpenBonsai is an independent implementation, unaffiliated with the paper authors or the Bonsai model developers. Model, tokenizer, datasets, and dependencies retain their respective licenses.

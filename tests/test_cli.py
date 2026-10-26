@@ -5,9 +5,9 @@ import pytest
 import torch
 import transformers
 
-from scaleq_repro import adapter
-from scaleq_repro.cli import parser, train_command
-from scaleq_repro.export import load_compressed
+from openbonsai import adapter
+from openbonsai.cli import parser, train_command
+from openbonsai.export import load_compressed
 
 
 def test_train_entry_point_with_local_fixture_and_revision(monkeypatch, tmp_path):

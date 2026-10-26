@@ -4,8 +4,8 @@ import math
 import pytest
 import torch
 
-from scaleq_repro.adapter import tiny_model, replace_projections, get_text_layers, iter_ternary_modules, set_progress
-from scaleq_repro.trainer import TrainingConfig, build_windows, cache_window, replay_window, train
+from openbonsai.adapter import tiny_model, replace_projections, get_text_layers, iter_ternary_modules, set_progress
+from openbonsai.trainer import TrainingConfig, build_windows, cache_window, replay_window, train
 
 
 @pytest.fixture

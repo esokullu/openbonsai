@@ -22,6 +22,7 @@ from .adapter import config_from_dict, get_text_layers, iter_ternary_modules, mo
 from .quantizer import PackedTernaryLinear, TernaryLinear
 
 
+# Stable on-disk identifier: preserve compatibility with pre-OpenBonsai artifacts.
 FORMAT = "scaleq-qwen35.research.v1"
 _CHUNK_BYTES = 64 * 1024 * 1024
 

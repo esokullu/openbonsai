@@ -1,4 +1,7 @@
-"""Explicit local entry points: no model download in smoke or package import."""
+"""OpenBonsai: experimental ScaleQ-style compression for dense Qwen3.5.
+
+The smoke command and package import do not download model weights.
+"""
 from __future__ import annotations
 
 import argparse
@@ -50,7 +53,7 @@ def smoke(output, seed=2):
     torch.testing.assert_close(restored_logits, packed_logits, atol=0, rtol=0)
     if not bool(torch.isfinite(restored_logits).all()):
         raise FloatingPointError("Nonfinite restored logits")
-    result = {"test": "offline native hybrid training and packed round trip", "seed": seed,
+    result = {"project": "OpenBonsai", "test": "offline native hybrid training and packed round trip", "seed": seed,
               "real_9b_weights_loaded": False, "real_model_quality_evaluated": False,
               "original_parameters": original_parameters, "original_parameter_bytes": original_bytes,
               "converted_projections": len(names), "packed_roundtrip_max_logit_error": 0.0,
@@ -97,7 +100,7 @@ def train_command(args):
 
     report = train(model, samples, config, progress_callback=progress,
                    cache_directory=args.cache_dir)
-    metadata = {"base_model": args.model, "resolved_revision": revision,
+    metadata = {"project": "OpenBonsai", "base_model": args.model, "resolved_revision": revision,
         "method": "independent ScaleQ-style Qwen3.5 research adaptation",
         "calibration": calibration, "training": report,
         "aggressive_recurrent_gates": args.aggressive_gates, "converted_projections": replaced}
@@ -111,7 +114,7 @@ def train_command(args):
 
 def parser():
     from . import prepare
-    root = argparse.ArgumentParser(description=__doc__)
+    root = argparse.ArgumentParser(prog="openbonsai", description=__doc__)
     sub = root.add_subparsers(dest="command", required=True)
     prepare.add_arguments(sub.add_parser("prepare", help="Generate self-teacher calibration (loads model)"))
     demo = sub.add_parser("smoke", help="Offline test on random tiny Qwen3.5 (no downloads)")

@@ -3,9 +3,9 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "scaleq-qwen35-repro"
+name = "openbonsai"
 version = "0.1.0"
-description = "Independent experimental ScaleQ-style compression of native dense Qwen3.5"
+description = "OpenBonsai: independent experimental ScaleQ-style compression of native dense Qwen3.5"
 requires-python = ">=3.12"
 dependencies = ["torch>=2.6,<3", "transformers>=5.20.2,<5.21", "accelerate>=1.15,<2", "safetensors>=0.8,<1"]
 
@@ -13,10 +13,13 @@ dependencies = ["torch>=2.6,<3", "transformers>=5.20.2,<5.21", "accelerate>=1.15
 test = ["pytest>=9,<10"]
 
 [project.scripts]
-scaleq-repro = "scaleq_repro.cli:main"
+openbonsai = "openbonsai.cli:main"
+
+[project.urls]
+Repository = "https://github.com/esokullu/openbonsai"
 
 [tool.setuptools.packages.find]
-include = ["scaleq_repro*"]
+include = ["openbonsai*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

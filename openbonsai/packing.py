@@ -12,6 +12,7 @@ from typing import Any
 import torch
 from torch import Tensor
 
+# Stable on-disk identifier: preserve compatibility with pre-OpenBonsai artifacts.
 FORMAT = "scaleq.ternary-grouped.v1"
 
 

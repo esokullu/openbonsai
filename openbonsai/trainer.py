@@ -1,4 +1,4 @@
-"""Independent ScaleQ-style hidden-state reconstruction for native Qwen3.5.
+"""OpenBonsai's independent ScaleQ-style reconstruction for native Qwen3.5.
 
 This is a research adaptation, not the authors' implementation. In particular,
 the hybrid attention projection policy and schedule choices are documented in

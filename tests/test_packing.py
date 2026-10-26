@@ -4,7 +4,7 @@ import io
 import pytest
 import torch
 
-from scaleq_repro.packing import (
+from openbonsai.packing import (
     pack_grouped_weight, pack_ternary_codes, packed_state_nbytes,
     unpack_grouped_weight, unpack_ternary_codes, validate_packed_state,
 )

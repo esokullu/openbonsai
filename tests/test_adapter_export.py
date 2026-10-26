@@ -7,13 +7,13 @@ import torch
 from torch import nn
 from safetensors.torch import load_file
 
-from scaleq_repro import adapter
-from scaleq_repro.adapter import (
+from openbonsai import adapter
+from openbonsai.adapter import (
     get_text_layers, iter_ternary_modules, load_base_model, replace_projections,
     set_progress, set_quant_enabled, tiny_model,
 )
-from scaleq_repro.export import load_compressed, save_compressed
-from scaleq_repro.quantizer import PackedTernaryLinear, TernaryLinear
+from openbonsai.export import load_compressed, save_compressed
+from openbonsai.quantizer import PackedTernaryLinear, TernaryLinear
 
 
 def logits(model):
