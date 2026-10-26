@@ -26,7 +26,7 @@ from .export import (_all_tensors, _artifact_file, _check_tensor, _copy_checked_
                      _destination, _digest, _json_bytes, _publish, _tensor_description,
                      _torch_dtype, _under_module, _write_tensor_file)
 from .mixed_formats import (MixedLinear, MixedEmbedding, candidate_nbytes,
-                            encode_candidate, decode_candidate)
+                            save_candidate, decode_candidate)
 
 FORMAT = "openbonsai.mixed.qwen35.v1"
 
@@ -197,10 +197,12 @@ def save_mixed(plan, assignment, path, *, budget_bytes):
             if list(candidate.shape) != info['shape'] or candidate.module_kind != info['kind']:
                 raise ValueError(f"Candidate shape/kind mismatch: {name}")
             _check_source(candidate, info)
-            payload = encode_candidate(candidate)
             output = staging / info['file']
-            output.write_bytes(payload)
-            info.update(bytes=_count(len(payload)), sha256=_digest(output))
+            # Endpoint candidates can contain hundreds of MB. Stream the
+            # canonical payload instead of creating another complete bytes
+            # object while the packed tensors are already resident.
+            written = save_candidate(candidate, output)
+            info.update(bytes=_count(written), sha256=_digest(output))
         manifest['storage'].update(candidate_bytes=_count(predicted - plan.fixed_bytes), artifact_bytes=_count(predicted))
         encoded = _json_bytes(manifest)
         if len(encoded) != _parse_count(manifest['storage']['manifest_bytes']):

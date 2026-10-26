@@ -18,7 +18,9 @@ Run the bounded **random-fixture** comparison offline:
 python -m openbonsai.rotation_smoke --output runs/rotation-paired
 ```
 
-Both conditions use the same original BF16 fixture, 25 decoder projections, calibration samples and training settings. The command reports hard versus exported NLL, exact packed reload, complete artifact bytes, training time and reference-forward time. Random-model NLL is a software diagnostic, not evidence of useful language quality. Embedding/head rotation, gradients and export are separately tested; the decoder-window trainer explicitly rejects endpoint quantizers because it does not train them. A dedicated endpoint calibration stage remains necessary.
+Both conditions use the same original BF16 fixture, 25 decoder projections, calibration samples and training settings. The command reports hard versus exported NLL, exact packed reload, complete artifact bytes, training time and reference-forward time. Random-model NLL is a software diagnostic, not evidence of useful language quality. Embedding/head rotation, gradients and export are separately tested; the decoder-window trainer explicitly rejects endpoint quantizers because it does not train them.
+
+A separate [output-head calibration prototype](docs/endpoint-calibration.md) uses cached original BF16 hidden states, bounded row quantization, a full-vocabulary teacher KL loss, and streaming ternary export. Its offline integration command is `python -m openbonsai.head_smoke --output runs/head-paired`. [Validation](validation-endpoint-head.json) records 571 passing CPU tests and exact fresh-process fixture reloads. It is preparation for a later controlled head-only experiment; real 9B endpoint quality and CUDA memory remain unvalidated, and embedding calibration is still missing. It does not change the preserved decoder comparison or its next diversity control.
 
 [Validation results](validation-rotations.json) record **444 passing CPU tests** and the paired fixture run. The rotated fixture was slightly larger and had higher random-model NLL; this is not evidence of a pretrained-model benefit. Its timings are single reference forwards, not a throughput benchmark.
 

@@ -95,6 +95,27 @@ def test_assignment_changes_candidate_cost_but_never_manifest_overhead(tmp_path)
         assert results[0]['storage']['artifact_bytes'] != results[1]['storage']['artifact_bytes']
 
 
+def test_mixed_export_streams_canonical_candidates_without_complete_bytes_copy(tmp_path, monkeypatch):
+    from pathlib import Path
+    from openbonsai.mixed_formats import encode_candidate
+    original, assignment = fixture()
+    expected = {name: encode_candidate(candidate) for name, candidate in assignment.items()}
+    write_bytes = Path.write_bytes
+
+    def reject_complete_candidate_write(path, data):
+        if path.suffix == '.obc':
+            pytest.fail('candidate export must stream instead of assembling a whole bytes object')
+        return write_bytes(path, data)
+
+    monkeypatch.setattr(Path, 'write_bytes', reject_complete_candidate_write)
+    with prepare_mixed_export(original, assignment, metadata={'source_checkpoint': 'fixture'}) as plan:
+        output = tmp_path / 'streamed'
+        report = save_mixed(plan, assignment, output, budget_bytes=10**9)
+    for name, blob in expected.items():
+        assert (output / report['modules'][name]['file']).read_bytes() == blob
+    assert int(report['storage']['artifact_bytes']) == sum(p.stat().st_size for p in output.rglob('*') if p.is_file())
+
+
 @pytest.mark.parametrize('corruption', ['payload', 'extra', 'accounting', 'missing-state'])
 def test_mixed_artifact_rejects_corruption(tmp_path, corruption):
     original, assignment = fixture()
