@@ -8,6 +8,8 @@ The target is `Qwen/Qwen3.5-9B`. Real-model pilots on an RTX 5090 have shown sev
 
 The [completed original-prefix target control](docs/sequential-original-target-result.md) kept rotations and the 128-record, one-pass budget fixed. It improved common-target activation reconstruction but worsened hard NLL to **11.828** and fresh packed NLL to **11.849**; all four generated answers remained unusable. Its **6.597 GB** deployment directory passed exact stored-reference reload checks and retained BF16 embeddings/head and vision. The result separates correct serialization from failed model quality; it does not justify a larger run without further calibration evidence.
 
+A subsequent [first-layer calibration control](docs/window0-calibration-result.md) reduced separate search-set hard MSE by **46.03%** with 512 rather than 128 updates on the same records. Both compact states reloaded exactly, and late-step optimizer damping was measured. This is a local reconstruction improvement, not recovered full-model language quality or a new deployable artifact.
+
 ## Current research direction
 
 Prism's released inference implementation applies matching blockwise sign/Hadamard transforms to linear inputs and weights, and inverse transforms after embedding lookup. Its broad ternary coverage includes the embedding and output head. Our earlier artifact retained roughly **4.07 GB** in those two BF16 tensors alone. Keeping them uncompressed cannot approach the roughly 2 GB Bonsai language-model target. Vision must be reported separately. See the [pinned rotation audit](docs/rotations-audit.md) and [staged experiment plan](docs/research-direction.md).

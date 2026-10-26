@@ -42,14 +42,15 @@ four generations were unusable. Its 6.597 GB artifact still retained the BF16
 embedding and output head. Exact reload and lower boundary error therefore do
 not establish useful quality or near-Bonsai size.
 
-The next decision requires a bounded calibration diagnostic before any further
-full-model run. A longer first-window schedule can test whether the existing
-update budget limits local reconstruction; it cannot by itself validate later
-layers, endpoint compression, or language quality. Keep the data, initialization
-and optimizer recipe fixed, observe actual optimization and the soft-to-hard
-transition, and compare hard outputs on separate search records. Do not promote
-a local improvement into an automatic full-model rerun or sample/epoch sweep.
-The stages below retain their original gates.
+The subsequent [bounded first-window control](window0-calibration-result.md)
+has completed: 512 versus 128 updates on the same records reduced search hard
+MSE by 46.03%, with all 16 search records improving. Repeated exposure and
+annealing duration changed together. Late-step observations also found material
+epsilon damping, which motivates one fixed-schedule, epsilon-only control;
+changed-epsilon quality remains unmeasured in this result. Neither the local
+gain nor these observations validate later layers, endpoint compression or
+language quality. Do not promote them into an automatic full-model rerun or
+optimizer sweep. The stages below retain their original gates.
 
 The following sequence preserves the original stage plan and its decision
 boundaries. The completed decoder experiments exercise these stages on bounded
