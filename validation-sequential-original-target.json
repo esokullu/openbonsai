@@ -1,0 +1,553 @@
+{
+  "format": "openbonsai.sequential-original-target-validation.v1",
+  "date_utc": "2026-10-26",
+  "status": "completed_and_sealed",
+  "scientific_outcome": "Useful quality did not recover; original-prefix targets improved measured common-target activation alignment but worsened development NLL against the matched historical conditional-prefix recipe.",
+  "goal_achieved": false,
+  "run_label": "2026-10-26-5090-original-prefix-sequential-v2",
+  "source": {
+    "checkpoint": "Qwen/Qwen3.5-9B",
+    "revision": "c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+    "fine_tuning_performed": false,
+    "compute_dtype": "bfloat16",
+    "source_dtype_policy": "Historical BF16 load, including 48 small retained FP32-to-BF16 casts; not the later preserve-checkpoint pipeline policy.",
+    "implementation_identity": "The isolated executed source is bound by runtime-source-freeze.json, not by the current repository HEAD.",
+    "native_wrapper": "Qwen3.5 multimodal conditional generation",
+    "selected_decoder_matrices": 200,
+    "ternary_embedding": false,
+    "ternary_head": false,
+    "vision_retained": true
+  },
+  "control": {
+    "historical_run": "2026-10-26-5090-ultrachat-attempt2",
+    "historical_seal_sha256": "d7ae0ccf66b38f223366beb105beba32d651e5c2c1be166c21624eac7885bf8a",
+    "changed_variable": "Teacher targets use independent original prefix instead of original window on quantized-prefix inputs.",
+    "student_input": "Current hard-quantized prefix including earlier newly fitted windows.",
+    "teacher_target": "Original prefix plus original current window, bypassing learned factors and corrections.",
+    "initialization": "Fresh original BF16, no learned parent/repair warm start.",
+    "window0_historical_state_and_native_boundary_exact": true,
+    "original_bypass_and_764_original_retained_tensors_exact": true,
+    "historical_reuse_identity_gates_passed": true
+  },
+  "calibration": {
+    "dataset": "HuggingFaceH4/ultrachat_200k",
+    "dataset_revision": "8049631c405ae6576f93f445c6b8166f76f5505a",
+    "records": 128,
+    "epochs_per_window": 1,
+    "sequence_length": 512,
+    "batch_size": 1,
+    "windows": 32,
+    "window_size": 1,
+    "stride": 1,
+    "updates_per_window": 128,
+    "scientific_updates": 4096,
+    "soft_updates": 3264,
+    "hard_updates": 832,
+    "discarded_preflight_updates": 4,
+    "seed": 5090,
+    "group_size": 128,
+    "rotation_block_size": 4096,
+    "lora_rank": 64,
+    "factor_mapping": "sigmoid",
+    "reconstruction_loss": "huber",
+    "huber_delta": 1.0,
+    "factor_learning_rate": 0.005,
+    "lora_learning_rate": 0.001,
+    "weight_decay": 0.0,
+    "grad_clip": 1.0,
+    "fresh_optimizer_per_window": true,
+    "progress": "step/128 for one-based step",
+    "lr_multiplier": "1-(step-1)/128",
+    "hard_phase": "frozen_jacobian",
+    "last_soft_preupdate_step": 102,
+    "last_soft_sharpness": 29.8828125,
+    "first_hard_step": 103,
+    "trainable_and_optimizer_moment_dtype": "float32",
+    "consumed_records_sha256": "487a093fe330f35882ed04f969fa91e324b91630f5e17af003e02beebd23a699",
+    "raw_records_sha256": "d77644080002e396c597e93b084d0e00596a69895281b73cd1d7952a62ce80f6",
+    "valid_positions_per_window": 59855,
+    "data_scope": "Frozen original-BF16-generated continuations; reused calibration, separate 16-record search set; no final-confirmation access.",
+    "completed_execution_audit": {
+      "completed_steps": 4096,
+      "optimizer_intentions": 4096,
+      "violations": 0,
+      "all_finite_gradient_update_evidence_verified": true,
+      "cached_hard_mse_improved_windows": 32
+    },
+    "update_path_cancellation_review_complete": false
+  },
+  "evaluation": {
+    "scope": "Small reused development diagnostics, not untouched final confirmation or benchmark-wide results.",
+    "reduction": "Legacy FP32 cross-entropy / FP32 log-softmax, token-weighted accumulation.",
+    "nll_records": 4,
+    "input_tokens_per_nll_record": 513,
+    "scored_positions_inclusive": [
+      1,
+      512
+    ],
+    "nll_targets": 2048,
+    "arc_questions": 20,
+    "arc_scoring": "Single-token A/B/C/D option-letter likelihood, not generated answer text.",
+    "generation_prompts": 4,
+    "generation_cap_each": 128,
+    "eos_ids": [
+      248044,
+      248046
+    ],
+    "thinking": false,
+    "attention_implementation": "eager",
+    "use_kv_cache": false,
+    "quality_rows": [
+      {
+        "mean_nll": 2.4237768106127007,
+        "perplexity": 11.288413103908917,
+        "arc_correct": 19,
+        "eos_count": 2,
+        "cap_count": 2,
+        "generated_tokens": 341,
+        "evaluation_elapsed_seconds": 34.278135100379586,
+        "peak_allocated_bytes": 19278370304,
+        "peak_reserved_bytes": 19532873728,
+        "key": "baseline",
+        "label": "Original BF16",
+        "historical_result_reused": true,
+        "arc_total": 20,
+        "scored_tokens": 2048,
+        "all_A_predictions": false
+      },
+      {
+        "mean_nll": 9.121630685214768,
+        "perplexity": 9151.112039118581,
+        "arc_correct": 8,
+        "eos_count": 4,
+        "cap_count": 0,
+        "generated_tokens": 4,
+        "evaluation_elapsed_seconds": 34.01925899973139,
+        "peak_allocated_bytes": 21044729344,
+        "peak_reserved_bytes": 21334327296,
+        "key": "conditional_hard",
+        "label": "Historical conditional128 hard",
+        "historical_result_reused": true,
+        "arc_total": 20,
+        "scored_tokens": 2048,
+        "all_A_predictions": true
+      },
+      {
+        "mean_nll": 9.12380764131376,
+        "perplexity": 9171.055308219196,
+        "arc_correct": 8,
+        "eos_count": 4,
+        "cap_count": 0,
+        "generated_tokens": 4,
+        "evaluation_elapsed_seconds": 18.23012199997902,
+        "peak_allocated_bytes": 20894789120,
+        "peak_reserved_bytes": 21309161472,
+        "key": "conditional_packed",
+        "label": "Historical conditional128 packed",
+        "historical_result_reused": true,
+        "arc_total": 20,
+        "scored_tokens": 2048,
+        "all_A_predictions": true
+      },
+      {
+        "mean_nll": 11.827691901643295,
+        "perplexity": 136993.9306005733,
+        "arc_correct": 8,
+        "eos_count": 0,
+        "cap_count": 4,
+        "generated_tokens": 512,
+        "evaluation_elapsed_seconds": 637.3541767001152,
+        "peak_allocated_bytes": 21044729344,
+        "peak_reserved_bytes": 21334327296,
+        "key": "new_hard",
+        "label": "Original-prefix hard",
+        "historical_result_reused": false,
+        "arc_total": 20,
+        "scored_tokens": 2048,
+        "all_A_predictions": true
+      },
+      {
+        "mean_nll": 11.849104019368184,
+        "perplexity": 139958.89052560038,
+        "arc_correct": 8,
+        "eos_count": 0,
+        "cap_count": 4,
+        "generated_tokens": 512,
+        "evaluation_elapsed_seconds": 357.1071083000861,
+        "peak_allocated_bytes": 20889310208,
+        "peak_reserved_bytes": 21309161472,
+        "key": "new_packed",
+        "label": "Original-prefix fresh packed",
+        "historical_result_reused": false,
+        "arc_total": 20,
+        "scored_tokens": 2048,
+        "all_A_predictions": true
+      }
+    ],
+    "new_hard_nll_sum": 24223.113014565468,
+    "new_packed_nll_sum": 24266.96503166604,
+    "new_packed_minus_historical_packed_nll": 2.7252963780544235,
+    "new_packed_minus_hard_nll": 0.021412117724889157,
+    "new_hard_generations_useful_complete": 0,
+    "new_packed_generations_useful_complete": 0,
+    "generation_assessment": [
+      "Kitchen: repetitive fragments and zeros; no three cleaning tips.",
+      "Reasoning: repeated Sight text; no animal-count answer.",
+      "Coding: repeated formatting; no requested Python function.",
+      "Turkish: unrelated English/repetition; no formal rewrite."
+    ],
+    "same_wrapper_fp16_full_quality_measured": false,
+    "official_bonsai_common_fp64_score_directly_comparable": false
+  },
+  "search_boundaries": [
+    {
+      "window": 0,
+      "common_reference": "T0 from original prefix and original window",
+      "record_count": 16,
+      "valid_positions": 7203,
+      "valid_hidden_elements": 29503488,
+      "conditional128": {
+        "mse": 0.0003113105955107963,
+        "relative_rmse": 0.16418216528524363,
+        "cosine": 0.9864541121507877,
+        "rms_ratio": 0.9795621765046701,
+        "activation_rms": 0.1052696016791494,
+        "reference_rms": 0.1074659722517854,
+        "best_nonnegative_scale": 1.007035730667664,
+        "rescaled_mse": 0.0003107620352140978,
+        "optimal_scalar_mse_reduction_percent": 0.17620996670492106
+      },
+      "original_prefix": {
+        "mse": 0.0003113105955107963,
+        "relative_rmse": 0.16418216528524363,
+        "cosine": 0.9864541121507877,
+        "rms_ratio": 0.9795621765046701,
+        "activation_rms": 0.1052696016791494,
+        "reference_rms": 0.1074659722517854,
+        "best_nonnegative_scale": 1.007035730667664,
+        "rescaled_mse": 0.0003107620352140978,
+        "optimal_scalar_mse_reduction_percent": 0.17620996670492106
+      },
+      "mse_reduction_percent": 0.0,
+      "records_improved": 0,
+      "records_equal": 16,
+      "records_worsened": 0
+    },
+    {
+      "window": 16,
+      "common_reference": "T0 from original prefix and original window",
+      "record_count": 16,
+      "valid_positions": 7203,
+      "valid_hidden_elements": 29503488,
+      "conditional128": {
+        "mse": 0.19657456689651576,
+        "relative_rmse": 0.7609286635319422,
+        "cosine": 0.6708943936292684,
+        "rms_ratio": 0.8415159584670455,
+        "activation_rms": 0.4903227861786075,
+        "reference_rms": 0.5826660578984242,
+        "best_nonnegative_scale": 0.7972450039466972,
+        "rescaled_mse": 0.18669114621771699,
+        "optimal_scalar_mse_reduction_percent": 5.027822690817263
+      },
+      "original_prefix": {
+        "mse": 0.10479004140762385,
+        "relative_rmse": 0.555571918552531,
+        "cosine": 0.8317352283613592,
+        "rms_ratio": 0.810672304028243,
+        "activation_rms": 0.4723512356355692,
+        "reference_rms": 0.5826660578984242,
+        "best_nonnegative_scale": 1.0259820450611845,
+        "rescaled_mse": 0.10463942344287178,
+        "optimal_scalar_mse_reduction_percent": 0.14373309021434855
+      },
+      "mse_reduction_percent": 46.691963735680375,
+      "records_improved": 16,
+      "records_equal": 0,
+      "records_worsened": 0
+    },
+    {
+      "window": 31,
+      "common_reference": "T0 from original prefix and original window",
+      "record_count": 16,
+      "valid_positions": 7203,
+      "valid_hidden_elements": 29503488,
+      "conditional128": {
+        "mse": 18.12025912429325,
+        "relative_rmse": 1.3604810158499074,
+        "cosine": 0.2014131596411359,
+        "rms_ratio": 1.1455931506198804,
+        "activation_rms": 3.584430171689392,
+        "reference_rms": 3.128885826307408,
+        "best_nonnegative_scale": 0.17581561091924414,
+        "rescaled_mse": 9.392776011208225,
+        "optimal_scalar_mse_reduction_percent": 48.16422907211282
+      },
+      "original_prefix": {
+        "mse": 6.858338666306349,
+        "relative_rmse": 0.8369889944346834,
+        "cosine": 0.547380521193541,
+        "rms_ratio": 0.5341135778042231,
+        "activation_rms": 1.671180403229973,
+        "reference_rms": 3.128885826307408,
+        "best_nonnegative_scale": 1.0248391801681191,
+        "rescaled_mse": 6.856615523847034,
+        "optimal_scalar_mse_reduction_percent": 0.025124779383967066
+      },
+      "mse_reduction_percent": 62.150990119608196,
+      "records_improved": 16,
+      "records_equal": 0,
+      "records_worsened": 0
+    }
+  ],
+  "representations": {
+    "all_candidates_codec": "ternary-bitcos",
+    "candidate_count": 200,
+    "auto_candidates_allowed": [
+      "2bit",
+      "bitcos"
+    ],
+    "base3_used": false,
+    "scale_storage_dtype": "float16",
+    "row_chunk_size": 64,
+    "fp32_to_fp16_scales_same_wrapper": {
+      "bitwise_exact": false,
+      "max_absolute_logit_error": 0.134765625,
+      "mean_absolute_logit_error": 0.020363403484225273
+    },
+    "fp16_wrapper_to_packed_row64": {
+      "bitwise_exact": false,
+      "max_absolute_logit_error": 0.25,
+      "mean_absolute_logit_error": 0.017664192244410515
+    },
+    "decoded_cache_vs_uncached": {
+      "bitwise_exact": true,
+      "max_absolute_logit_error": 0.0,
+      "mean_absolute_logit_error": 0.0
+    },
+    "fresh_reload": {
+      "status": "passed",
+      "payloads": {
+        "projections": 200,
+        "retained_tensors": 564,
+        "all_payloads_exact": true
+      },
+      "stored_scale_logit_parity": {
+        "bitwise_exact": true,
+        "max_absolute_logit_error": 0.0,
+        "mean_absolute_logit_error": 0.0
+      }
+    },
+    "interpretation": "Exact fresh reload compares identical stored-scale packed representations. Scale casting and packed row-matmul differ from the FP32-scale wrapper; fixed probes do not apportion full quality loss between them."
+  },
+  "storage": {
+    "files": {
+      "total_deployable_directory": 6597192129,
+      "model_excluding_tokenizer": 6577193368,
+      "tokenizer_assets": 19998761,
+      "model_config": 3951,
+      "generation_config": 2059,
+      "manifest": 324800,
+      "candidate_files": 1581594438,
+      "retained_files": 4995268120,
+      "container_bytes_excluding_config_and_tokenizer": 579544,
+      "all_metadata_container_config_bytes_excluding_tokenizer": 585554
+    },
+    "candidate_payload": {
+      "codec_distribution": {
+        "ternary-bitcos": 200
+      },
+      "tensor_bytes_by_key": {
+        "presence": 864026624,
+        "rotation_signs": 1081344,
+        "row_sign_offsets": 11404864,
+        "scales": 108003328,
+        "signs": 596889750
+      },
+      "code_stream_bytes": 1460916374,
+      "scales_bytes": 108003328,
+      "bias_bytes": 0,
+      "explicit_rotation_sign_bytes": 1081344,
+      "row_offset_bytes": 11404864,
+      "total_tensor_bytes": 1581405910,
+      "container_breakdown": {
+        "prefix_bytes": 3400,
+        "header_bytes": 178728,
+        "checksum_bytes": 6400
+      }
+    },
+    "retained_payload": {
+      "tensor_bytes": 4995201904,
+      "persistent_tensor_bytes": 4995201504,
+      "generated_nonpersistent_tensor_bytes": 400,
+      "component_bytes": {
+        "output_head": 2034237440,
+        "token_embeddings": 2034237440,
+        "text_normalization": 546816,
+        "linear_attention_dynamics": 3072,
+        "linear_attention_convolutions": 1572864,
+        "linear_attention_gates": 12582912,
+        "text_rotary_buffers": 256,
+        "vision_encoder_including_vision_rotary_buffers": 912021104
+      }
+    },
+    "vision_file_bytes": 912058304,
+    "strict_persistent_tensor_comparison": {
+      "original_bytes": 18819627488,
+      "compressed_bytes": 6576607414,
+      "compression_factor": 2.8616011726559174,
+      "reduction_percent": 65.05452927698246
+    },
+    "equivalent_raw_checkpoint_tensor_bytes": 18819635168,
+    "retained_cast_difference_bytes": 7680,
+    "unused_mtp_bytes_excluded_from_both_scopes": 486581248,
+    "runtime_decoded_bf16_cache_bytes": 13824425984,
+    "runtime_cache_in_deployment_files": false,
+    "text_only_artifact_produced": false,
+    "two_gb_goal_achieved": false
+  },
+  "execution": {
+    "device": "NVIDIA GeForce RTX 5090",
+    "model_process_seconds": 6577.657000000123,
+    "model_process_minutes": 109.62761666666871,
+    "aggregate_cap_seconds": 14400,
+    "process_seconds": {
+      "preflight": 191.375,
+      "fit": 5912.563000000082,
+      "reload": 473.719000000041
+    },
+    "all_exit_codes_zero": true,
+    "all_children_reaped": true,
+    "no_overlap_retry_or_successor": true,
+    "completed_utc": "2026-10-26T21:39:39.693965+00:00",
+    "peak_allocated_bytes": 21708011520,
+    "peak_reserved_bytes": 22693281792,
+    "minimum_headroom_bytes": 9660530688,
+    "memory_phase_count": 841,
+    "all_memory_gates_passed": true,
+    "prior_v1_model_seconds": 192.98499999986961,
+    "prior_v1_scientific_updates": 0,
+    "combined_model_seconds": 6770.641999999993,
+    "combined_discarded_updates": 8,
+    "combined_scientific_updates": 4096,
+    "timing_scope": "Includes model loading, preflight, fitting, both evaluations, export and fresh reload. Later CPU reporting/sealing is separate; not a speed benchmark."
+  },
+  "provenance": {
+    "receipt_paths_relative_to_run": true,
+    "receipts": {
+      "sequential-supervisor.json": {
+        "bytes": 6383,
+        "sha256": "122c8dfca2f0868a785afb6e6d90b97bb393c2247594c3032378b18498b13262",
+        "evidence": "Direct remote file hash and selected receipt fields; not a local copy of the complete receipt."
+      },
+      "analysis/final-execution-audit.json": {
+        "bytes": 550064,
+        "sha256": "b90147f2e6260bf5ec600cc35dd78592a82bb684246412d8f1e4eeab3822662b",
+        "evidence": "Direct remote file hash and selected receipt fields; not a local copy of the complete receipt."
+      },
+      "analysis/final-preservation.json": {
+        "bytes": 115019,
+        "sha256": "faa3d5000672f9623356cf478aa5953f35c23b0548cf82f09a5eb9a9d407d674",
+        "evidence": "Direct remote file hash and selected receipt fields; not a local copy of the complete receipt."
+      },
+      "analysis/sequential-artifact-accounting.json": {
+        "bytes": 632701,
+        "sha256": "0c357e3c2e663bf160ce20db4764197a08d44c59b488146ca3c8d0cb8980fb02",
+        "evidence": "Direct remote file hash and selected receipt fields; not a local copy of the complete receipt."
+      },
+      "reload/exact-parity.json": {
+        "bytes": 1288,
+        "sha256": "c2d25956027d764b91f6d84500a9c737c1086cd7b82e70d9ff26c500e9477e7b",
+        "evidence": "Direct remote file hash and selected receipt fields; not a local copy of the complete receipt."
+      },
+      "reload/packed-evaluation.json": {
+        "bytes": 44787,
+        "sha256": "3f5772f62cb537b70c60acddb8e4dbfffb3593e28861b4bff7344433db402859",
+        "evidence": "Direct remote file hash and selected receipt fields; not a local copy of the complete receipt."
+      },
+      "runtime-source-freeze.json": {
+        "bytes": 30039,
+        "sha256": "717468370847ab1c3405589cf797f9d6fc26c450c57d0cce02290b980875025b",
+        "evidence": "Pre-execution freeze, 182 files, verified by terminal source/preservation gates."
+      },
+      "training/export/packed/manifest.json": {
+        "bytes": 324800,
+        "sha256": "cbdb501646f2978715e9e77cb28a6e992d471e499d024caeca706dfb2fdb727c",
+        "evidence": "Fresh-parity receipt binds this manifest; byte count from completed artifact audit."
+      },
+      "training/export/export-verification.json": {
+        "bytes": 705300,
+        "sha256": "0f17c565e6561cc897e4d304a15b27e8af3d3e8cd76653bcc5a4b79e86b843bc",
+        "evidence": "Fresh-parity receipt binds this export receipt; byte count from direct file listing."
+      },
+      "REPORT.md": {
+        "sha256": "e17dacfd00c23cb74b49999a466d6838fa3ecf7c4a32ac575e4f97d3cd7a299a",
+        "evidence": "Final report hash printed before final sealing; earlier report excerpts are incomplete."
+      },
+      "inputs/diagnostic-inputs.json": {
+        "bytes": 106354,
+        "sha256": "330ffeeb77fa384492a6494e1e698edd400d7088456dbd0b7bc0fd366b7d838a",
+        "evidence": "Authenticated reused development input, unchanged across legacy comparisons."
+      }
+    },
+    "seal": {
+      "path": "final-validation.json",
+      "bytes": 321692,
+      "sha256": "66e8712d99046fe80235a56b0a22fee2120fa0579afdc87a2bae7687aa72dc52",
+      "inventory_file_count": 1936,
+      "inventory_bytes": 8111555727,
+      "scope": "Research archive inventory includes deployment artifact, compact state, logs and reports. It is not deployment size.",
+      "remote_final_report_states_all_inventory_hashes_verified": true,
+      "full_archive_rehashed_locally_by_this_publication": false
+    },
+    "preservation": {
+      "sealed_ancestors": 6,
+      "ancestor_files_verified": 3865,
+      "ancestor_bytes_verified": 17549350928,
+      "frozen_files_verified": 182,
+      "main_source_changes_preserved": 39
+    },
+    "local_snapshot_evidence": [
+      {
+        "filename": "sequential-v2-evaluation-audit-2026-10-26T2120.json",
+        "bytes": 45511,
+        "sha256": "c4f7556bb0d4ef30b15bf11cdb5302189c0d4e5df7178c361dcabdfc0fdf787e",
+        "included_in_repository": false
+      },
+      {
+        "filename": "sequential-v2-postprocess-live-2026-10-26T2142.json",
+        "bytes": 580359,
+        "sha256": "173e7869bea7d185fabe9908d374f010665fc890758d582f4934e6053a7cb28a",
+        "included_in_repository": false
+      },
+      {
+        "filename": "sequential-v2-evaluation-audit-2026-10-26T2144.json",
+        "bytes": 38204,
+        "sha256": "8a291fb8d15dc6f975bc333d2fb2261a3b5c497fc0a56d026add9b7d878c781b",
+        "included_in_repository": false
+      },
+      {
+        "filename": "sequential-v2-sealed-final-2026-10-26T2147.json",
+        "bytes": 655498,
+        "sha256": "e11c016e8714e53b5c9ea5e2d3c3ca1c9aed780eaa590c9d3a28b29087e05923",
+        "included_in_repository": false
+      }
+    ]
+  },
+  "publication": {
+    "model_weights_included": false,
+    "tokenizer_assets_included": false,
+    "new_raw_evaluation_data_included": false,
+    "full_remote_archive_included": false,
+    "scope": "Small result document and source-qualified receipt only; existing frozen development manifest is linked separately.",
+    "new_model_execution_performed": false
+  },
+  "limitations": [
+    "Decoder-only coverage retains BF16 endpoints and vision; no 2 GB deployment or useful-quality equivalence is established.",
+    "This source was not a user BF16 fine-tune; fine-tune-to-ternary quality remains unproved.",
+    "The official Bonsai CPU result uses FP64 logsumexp and different kernels; numerical quality retention against it requires a common scorer.",
+    "Better common-T0 MSE and worse language quality coexist; this does not prove convergence, an amplitude-only remedy, or a unique causal explanation.",
+    "Saved update-path analysis is a separate pending review; no 512-update control or successor is authorized by this result.",
+    "Remote hashes and completed audit summaries are preserved here; source excerpts are not represented as local full-payload audits."
+  ]
+}
