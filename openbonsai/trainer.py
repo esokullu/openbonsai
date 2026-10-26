@@ -242,6 +242,11 @@ def train(model, samples, config: TrainingConfig, progress_callback=None, cache_
         raise ValueError("No calibration samples")
     layers = get_text_layers(model)
     all_modules = _module_values(model)
+    decoder_modules = {id(module) for layer in layers for module in layer.modules()}
+    if any(id(module) not in decoder_modules for module in all_modules):
+        raise ValueError("Embedding/head quantizers require explicit endpoint calibration; decoder windows do not train them")
+    if any(getattr(module, 'rotation_only', False) for module in all_modules):
+        raise ValueError("rotation_only is a floating-point diagnostic, not a calibration mode")
     if not all_modules:
         raise ValueError("No ternary projections; call replace_projections first")
     total_steps = config.epochs * ceil(len(samples) / config.batch_size)

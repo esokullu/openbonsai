@@ -1,0 +1,276 @@
+{
+  "project": "OpenBonsai",
+  "validation_scope": "Hadamard placement, native hybrid gradients, paired calibration, optional RCO byte allocation, mixed-format export; not 9B quality",
+  "source_base": "0cbf667fb5f65ef2e6a03ab269431dcb8f0f7db5",
+  "upstream_rco": "9a1e09c07d468109cbe60a1b87d5036034a79d10",
+  "experiment": {
+    "kind": "paired random native Qwen fixture; software/placement validation only",
+    "real_9b_weights_loaded": false,
+    "quality_claim": false,
+    "device": "cpu",
+    "seed": 5090,
+    "rotation_block_size": 64,
+    "group_size": 128,
+    "data": {
+      "fit": [
+        [
+          [
+            177,
+            105,
+            42,
+            18,
+            155,
+            222,
+            30,
+            183,
+            89,
+            53,
+            235,
+            63
+          ]
+        ],
+        [
+          [
+            156,
+            109,
+            214,
+            50,
+            98,
+            200,
+            225,
+            184,
+            48,
+            154,
+            112,
+            48
+          ]
+        ]
+      ],
+      "search_validation": [
+        [
+          [
+            23,
+            225,
+            137,
+            128,
+            59,
+            173,
+            26,
+            64,
+            15,
+            162,
+            181,
+            152
+          ]
+        ],
+        [
+          [
+            70,
+            121,
+            22,
+            163,
+            126,
+            162,
+            153,
+            230,
+            156,
+            116,
+            135,
+            151
+          ]
+        ]
+      ],
+      "benchmark_answers_used": false
+    },
+    "coverage": "same 25 decoder projections; endpoints BF16 in paired experiment",
+    "endpoint_status": "separate native invariance/gradient/export tests; not silently window-trained",
+    "conditions": {
+      "unrotated": {
+        "training_seconds": 1.0127920000813901,
+        "peak_allocated_bytes": null,
+        "teacher_bypass_exact_before_and_after": true,
+        "reference_reload_exact": true,
+        "fp16_export_rounding_max_logit_error": 0.0078125,
+        "original_nll": 5.4790425300598145,
+        "hard_nll": 5.47030782699585,
+        "packed_nll": 5.470408916473389,
+        "artifact_bytes": 365606,
+        "vision_file_bytes": 0,
+        "reference_forward_seconds": 0.07908387505449355,
+        "runtime": "floating-point reconstruction with optional explicit transforms; no low-bit kernel",
+        "training": {
+          "training_config": {
+            "epochs": 2,
+            "batch_size": 3,
+            "window_size": 2,
+            "stride": 2,
+            "learning_rate": 0.005,
+            "lora_learning_rate": 0.001,
+            "weight_decay": 0.0,
+            "grad_clip": 1.0,
+            "seed": 5090,
+            "gradient_checkpointing": true,
+            "reconstruction_loss": "huber",
+            "huber_delta": 1.0
+          },
+          "windows": [
+            {
+              "start": 0,
+              "end": 2,
+              "hard_mse_before": 0.00010493730466502409,
+              "hard_mse_after": 0.00010240548969401668,
+              "steps": 2,
+              "losses": [
+                5.232663170318119e-05,
+                5.161144508747384e-05
+              ],
+              "reconstruction_loss": "huber",
+              "huber_delta": 1.0
+            },
+            {
+              "start": 2,
+              "end": 4,
+              "hard_mse_before": 0.00025472164270468056,
+              "hard_mse_after": 0.0002435772136474649,
+              "steps": 2,
+              "losses": [
+                0.00012557195077533834,
+                0.00012381086708046496
+              ],
+              "reconstruction_loss": "huber",
+              "huber_delta": 1.0
+            }
+          ],
+          "samples": 2,
+          "reconstruction_objective": {
+            "name": "huber",
+            "huber_delta": 1.0,
+            "reduction": "mean over nonpadding hidden-state elements"
+          },
+          "nonpadding_tokens": 24,
+          "quantization": {
+            "lora_ranks": [
+              4
+            ],
+            "factor_mappings": [
+              "sigmoid"
+            ],
+            "lora_scaling": "1/rank; correction merged before ternarization",
+            "hard_phases": [
+              "frozen_jacobian"
+            ],
+            "frozen_jacobian_reference": "last actual soft forward, before its optimizer update",
+            "factor_parameters": 15360,
+            "lora_parameters": 33280
+          },
+          "quality_claim": "software execution only; no full-model benchmark reproduction"
+        }
+      },
+      "rotated": {
+        "training_seconds": 1.7300075409002602,
+        "peak_allocated_bytes": null,
+        "teacher_bypass_exact_before_and_after": true,
+        "reference_reload_exact": true,
+        "fp16_export_rounding_max_logit_error": 0.005859375,
+        "original_nll": 5.4790425300598145,
+        "hard_nll": 5.4917824268341064,
+        "packed_nll": 5.491856813430786,
+        "artifact_bytes": 373189,
+        "vision_file_bytes": 0,
+        "reference_forward_seconds": 0.11768841603770852,
+        "runtime": "floating-point reconstruction with optional explicit transforms; no low-bit kernel",
+        "training": {
+          "training_config": {
+            "epochs": 2,
+            "batch_size": 3,
+            "window_size": 2,
+            "stride": 2,
+            "learning_rate": 0.005,
+            "lora_learning_rate": 0.001,
+            "weight_decay": 0.0,
+            "grad_clip": 1.0,
+            "seed": 5090,
+            "gradient_checkpointing": true,
+            "reconstruction_loss": "huber",
+            "huber_delta": 1.0
+          },
+          "windows": [
+            {
+              "start": 0,
+              "end": 2,
+              "hard_mse_before": 0.00010435406875330955,
+              "hard_mse_after": 0.00010178823140449822,
+              "steps": 2,
+              "losses": [
+                5.188320210436359e-05,
+                5.134012826601975e-05
+              ],
+              "reconstruction_loss": "huber",
+              "huber_delta": 1.0
+            },
+            {
+              "start": 2,
+              "end": 4,
+              "hard_mse_before": 0.0002538454912913342,
+              "hard_mse_after": 0.00024386010287950435,
+              "steps": 2,
+              "losses": [
+                0.0001255546412721742,
+                0.00012360193068161607
+              ],
+              "reconstruction_loss": "huber",
+              "huber_delta": 1.0
+            }
+          ],
+          "samples": 2,
+          "reconstruction_objective": {
+            "name": "huber",
+            "huber_delta": 1.0,
+            "reduction": "mean over nonpadding hidden-state elements"
+          },
+          "nonpadding_tokens": 24,
+          "quantization": {
+            "lora_ranks": [
+              4
+            ],
+            "factor_mappings": [
+              "sigmoid"
+            ],
+            "lora_scaling": "1/rank; correction merged before ternarization",
+            "hard_phases": [
+              "frozen_jacobian"
+            ],
+            "frozen_jacobian_reference": "last actual soft forward, before its optimizer update",
+            "factor_parameters": 15360,
+            "lora_parameters": 33280
+          },
+          "quality_claim": "software execution only; no full-model benchmark reproduction"
+        }
+      }
+    },
+    "torch": "2.14.1"
+  },
+  "limitations": [
+    "Random native fixture; NLL does not measure useful pretrained quality",
+    "No real 9B rotation/CUDA result yet",
+    "Current rotated calibration reference requires remote row-chunk integration",
+    "Endpoint gradients/export validated; dedicated pretrained endpoint calibration missing",
+    "Optional RCO adapter rejects rotated candidates; no allocation search run",
+    "Inference reconstructs floating-point weights; no acceleration claim"
+  ],
+  "tests": {
+    "command": "python -m pytest -q",
+    "passed": 444,
+    "failed": 0,
+    "platform": "macOS CPU",
+    "duration_seconds": 23.13
+  },
+  "review_fixes": [
+    "Explicit endpoint progress in full native float-rotation test",
+    "Reject endpoint quantizers and float diagnostic mode in decoder-window training",
+    "Refuse legacy export that would discard rotation metadata",
+    "Preserve generation_config including multiple EOS tokens",
+    "Validate original BF16 weight fingerprints and bias contract",
+    "Dequantize affine codes with FP32 scales before final compute-dtype cast"
+  ]
+}

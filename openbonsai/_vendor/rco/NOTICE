@@ -1,0 +1,20 @@
+RCO: Riemannian Constrained Optimization
+Source: https://github.com/IST-DASLab/RCO
+Pinned commit: 9a1e09c07d468109cbe60a1b87d5036034a79d10
+License: Apache License 2.0 (included as LICENSE)
+
+OpenBonsai adapts the budget manifold operations and projected Gumbel
+optimization sequence from src/manifold.py and src/search/quant.py in
+openbonsai/allocation.py. Adaptations include tensor-specific integer-byte
+costs, ragged candidate sets, conservative budget-feasible decoding, and
+a checkpointed assembled-model evaluation context. The discrete decoder
+is an independent implementation, not a verbatim copy of upstream's
+rounded bit-budget dynamic programs.
+
+Selected quantization primitives under quant/ derive from upstream RCO.
+OpenBonsai changes their imports, supported layer geometry, and direct
+single-device execution dependencies, and removes import-time changes to
+global TF32 flags. openbonsai/candidates.py adds row-chunk execution and
+a Cholesky-factor cache around the upstream FastOBQ quantization core.
+These changes are not an upstream release, endorsement, or claim of
+reproducing reported model quality.

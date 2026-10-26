@@ -1,10 +1,30 @@
 # OpenBonsai
 
-[OpenBonsai](https://github.com/esokullu/openbonsai) is an independent, experimental ScaleQ-style compression project for Qwen3.5. It implements CAT-Q-style learned ternarization, AYOT self-generated calibration, native Qwen3.5 window reconstruction, and a standalone packed checkpoint. **This is working research code, not an official implementation or a reproduction of the paper's model-quality results.**
+[OpenBonsai](https://github.com/esokullu/openbonsai) is an independent compression research project for Qwen3.5 and its BF16 fine-tunes. Our current priority is **Hadamard rotations + ScaleQ-inspired ternary calibration + efficient ternary packing**. RCO mixed-precision allocation is an optional tool for identifying limited higher-precision exceptions. **This combination is a research hypothesis, not a reproduced Bonsai training pipeline or a proven quality-recovery method.**
 
 The original [ScaleQ-1.58 paper is included as a PDF](papers/2608.01078.pdf), with [attribution and provenance](papers/README.md).
 
-The intended first target is `Qwen/Qwen3.5-9B`. No real 9B weights were downloaded, compressed, or evaluated when building this prototype. Validation uses random tiny native Qwen3.5 models with both GatedDeltaNet and full-attention blocks, plus a small multimodal fixture. It does not support arbitrary dense models or MoE models.
+The target is `Qwen/Qwen3.5-9B`. Early real-model pilots on an RTX 5090 have shown severe quality loss; a useful compressed 9B model has **not** been demonstrated. The rotation and optional RCO additions currently have software validation on random tiny native Qwen3.5 models, not pretrained-model quality evidence. Arbitrary dense architectures and MoE are unsupported.
+
+## Current research direction
+
+Prism's released inference implementation applies matching blockwise sign/Hadamard transforms to linear inputs and weights, and inverse transforms after embedding lookup. Its broad ternary coverage includes the embedding and output head. Our earlier artifact retained roughly **4.07 GB** in those two BF16 tensors alone. Keeping them uncompressed cannot approach the roughly 2 GB Bonsai language-model target. Vision must be reported separately. See the [pinned rotation audit](docs/rotations-audit.md) and [staged experiment plan](docs/research-direction.md).
+
+The new prototype keeps transforms local to each operation, preserving native recurrent attention, gates and nonlinearities. It retains an exact original-weight teacher bypass, validates floating rotation equivalence separately, and exports explicit sign vectors with the packed weights. Deterministic signs and ScaleQ-style reconstruction are our choices; Prism's compression training recipe is not public in the audited sources. Rotations add metadata and computation and do not themselves compress weights.
+
+Run the bounded **random-fixture** comparison offline:
+
+```bash
+python -m openbonsai.rotation_smoke --output runs/rotation-paired
+```
+
+Both conditions use the same original BF16 fixture, 25 decoder projections, calibration samples and training settings. The command reports hard versus exported NLL, exact packed reload, complete artifact bytes, training time and reference-forward time. Random-model NLL is a software diagnostic, not evidence of useful language quality. Embedding/head rotation, gradients and export are separately tested; the decoder-window trainer explicitly rejects endpoint quantizers because it does not train them. A dedicated endpoint calibration stage remains necessary.
+
+[Validation results](validation-rotations.json) record **444 passing CPU tests** and the paired fixture run. The rotated fixture was slightly larger and had higher random-model NLL; this is not evidence of a pretrained-model benefit. Its timings are single reference forwards, not a throughput benchmark.
+
+The new `openbonsai.mixed_export` format supports rotated ternary, ordinary ternary, 4/6-bit affine and BF16 tensors. Its budget includes candidate headers, code streams, scales/zero points, row indices, rotation signs, retained tensors, config, generation settings and supplied tokenizer assets. Export verifies the predicted total against actual files. BITCOS is selected only when the **whole candidate file** is smaller. This format is separate from the legacy ternary format described below; use `load_mixed` for new artifacts. It reconstructs floating-point weights for execution and makes no inference acceleration claim.
+
+The preserved [RCO implementation and source audit](docs/rco-audit.md) use actual tangent projection, budget retraction, momentum transport and Gumbel straight-through optimization of assembled-model loss. Costs are tensor-specific serialized bytes. The final discrete decoder always checks integer-byte feasibility; large problems can use a conservatively rounded grid and explicitly report approximate optimization. GPTQ supplies optional 4/6-bit linear candidates from the original BF16 weights; embedding higher-precision candidates currently use a clearly labeled grouped RTN baseline. **Rotated candidates are currently rejected by the RCO assembled-search adapter**, pending a transform-aware integration and evidence that allocation is needed. No large allocation search is the next step.
 
 ## Motivation
 
