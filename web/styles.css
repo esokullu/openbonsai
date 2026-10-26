@@ -26,8 +26,10 @@ body {
 }
 
 main {
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(56px, 8vw, 80px);
   flex: 1;
   padding: clamp(48px, 9vh, 104px) 24px 64px;
 }
@@ -101,9 +103,66 @@ h1 {
 }
 
 .github-link:focus-visible,
+.explainer a:focus-visible,
+.explainer-video:focus-visible,
 footer a:focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 5px;
+}
+
+.explainer {
+  width: 100%;
+  max-width: 860px;
+  padding-top: 40px;
+  border-top: 1px solid #e4eae5;
+  text-align: center;
+}
+
+.explainer h2 {
+  margin: 0;
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
+  font-size: clamp(27px, 4vw, 36px);
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+
+.explainer-description {
+  max-width: 540px;
+  margin: 16px auto 28px;
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.7;
+  text-wrap: pretty;
+}
+
+.explainer-video {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  border: 1px solid #e4eae5;
+  border-radius: 4px;
+  background: var(--paper);
+}
+
+.explainer-details {
+  margin: 16px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.8;
+  text-wrap: balance;
+}
+
+.explainer a {
+  color: inherit;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.explainer a:hover {
+  color: var(--ink);
 }
 
 footer {

@@ -17,6 +17,11 @@ Open <http://127.0.0.1:8080>. The page can also be opened directly as `web/index
 - `index.html`: page copy, metadata, and GitHub link.
 - `styles.css`: responsive layout, type, and keyboard focus styles.
 - `assets/openbonsai-mark.svg`: original circular bonsai emblem, also used as the favicon.
+- `assets/openbonsai-explainer-en.mp4`: four-minute English instructional video, 1080p H.264/AAC (approximately 8.9 MB).
+- `assets/openbonsai-explainer-poster.jpg`: video cover shown before playback.
+- `assets/openbonsai-explainer-transcript.txt`: accessible text version with chapter timestamps and the paper reference.
+
+The native video player supports inline playback on mobile and loads the MP4 only when the visitor starts it (`preload="none"`). English captions are already burned into the video, so no duplicate subtitle track is enabled. The transcript is available below the player. All media is hosted with the page; no external video service is required.
 
 The visible pot and compact canopy distinguish the tree as a miniature bonsai. The logo is self-contained vector artwork on a transparent background.
 

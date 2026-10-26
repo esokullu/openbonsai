@@ -1,0 +1,45 @@
+How do you make a language model smaller? — ScaleQ, explained
+
+00:00:00 — A model is full of numbers
+A language model contains billions of numbers called weights: tiny dials shaping its calculations. Storing all those numbers takes space.
+
+00:00:10 — Same dials, shorter labels
+Compression keeps the same number of weights, but gives each a shorter label using fewer bits. A ternary label has three possibilities: minus one, zero, or plus one.
+
+00:00:23 — Three labels and one shared scale
+Those labels need a scale. If a group shares a scale of zero point seven, the labels mean minus zero point seven, zero, and plus zero point seven. We store the labels, plus one scale for the group.
+
+00:00:39 — Where the difficulty begins
+Replacing precise numbers changes the calculations. Small errors can grow through later layers. ScaleQ tries to limit that damage. Here is how.
+
+00:00:52 — Use the model's own worked examples
+First, ask the original model questions like those it will actually face. Save its written steps and answers. For example: three boxes, four pencils each, so twelve pencils. These worked examples become practice material for compression.
+
+00:01:10 — Adjust the conversion, not the original
+ScaleQ uses an earlier method called CAT-Q to adjust the conversion into three labels. Original weights stay fixed. Three settings help: a center, a threshold, and a scale.
+
+00:01:24 — 1. The center sets the reference point
+Start with the center. Imagine the weights as dots on a ruler. The center sets the reference point used to assign their labels. Moving that reference changes where the dots sit relative to it. The original numbers themselves do not move.
+
+00:01:43 — 2. The threshold sets the middle zone
+Next, the threshold sets a middle zone around that reference. A dot inside gets the zero label. To the left, minus one. To the right, plus one. Widen the middle zone, and more dots become zero. Watch the labels change as the boundary passes each dot.
+
+00:02:04 — 3. The scale sets the final values
+The scale sets how large the nonzero values are. A scale of zero point seven gives us these values. Changing the scale moves them apart or together. It also affects which labels weights receive. The center helps choose labels, but is not added back.
+
+00:02:24 — Let the conversion settle gradually
+During calibration, the conversion starts soft: temporary values can sit between the three final choices. That gives the optimizer smoother feedback about which adjustments help. The conversion gradually sharpens. In the final stage, the labels become exactly minus one, zero, or plus one.
+
+00:02:47 — Compare the same stretch of the model
+How do we know an adjustment helps? Take a short stretch of layers. Feed exactly the same input into the original stretch and its compressed copy. Compare the numerical outputs. These bars represent internal numbers, not the final words of an answer.
+
+00:03:07 — Measure, adjust, compare again
+The gap between the bars is the error. The optimizer changes the compression settings and tries again, aiming to reduce that gap across the practice examples. Then the comparison window moves along the model. The original remains the reference throughout.
+
+00:03:25 — A smaller file still needs a test
+Finally, save and reload the compressed model. Measure its actual size, including scales and weights kept at higher precision. Test quality on separate questions. A smaller file guarantees neither identical answers nor faster execution.
+
+00:03:44 — What to remember
+Use fewer values. Learn the conversion carefully. Compare with the original. The model's own worked examples guide the process. Independent testing tells us how much quality survives.
+
+Source: https://arxiv.org/abs/2608.01078
