@@ -7,7 +7,7 @@ does not reproduce Prism's unpublished compression training recipe.
 
 ## Preserved matched experiment
 
-| Condition | Packed NLL | ARC | Useful generations | Complete artifact bytes |
+| Condition | NLL | ARC | Useful generations | Complete artifact bytes |
 |---|---:|---:|---:|---:|
 | Original BF16 | 2.423777 | 19/20 | 2 complete, 2 relevant but truncated | Not measured in this comparison |
 | Unrotated ternary | 14.437115 | 1/20 | 0/4 | 6,592,437,649 |
@@ -72,7 +72,8 @@ recorded source patches while preserving the newer streaming endpoint export:
   Rotated chunks cover complete rows/groups before correction and statistics.
 - Native replacement transfers ownership of frozen source storage instead of
   cloning the whole weight. Standalone quantizer construction still copies by
-  default. No original weights are included in ternary deployment payloads.
+  default. Original projection weights are omitted from packed candidate
+  payloads; retained BF16 endpoints and vision remain separately accounted.
 - Candidate saving streams bounded rows; loading uses mmap plus owned tensor
   storage, avoiding a second full serialized blob and re-encoding. Native model
   parameters start on meta while constructor-created CPU buffers stay valid.
