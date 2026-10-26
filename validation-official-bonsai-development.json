@@ -1,0 +1,511 @@
+{
+  "format": "openbonsai.official-bonsai-development-validation.v1",
+  "date_utc": "2026-10-26",
+  "status": "complete",
+  "run_label": "official-bonsai-development-cpu-v1",
+  "claim_scope": "Official PTQ1_0 checkpoint plus pinned macOS CPU runtime on reused frozen development inputs.",
+  "fresh_heldout_confirmation": false,
+  "matched_bf16_openbonsai_comparison": false,
+  "legacy_fp32_reduction_compatible": false,
+  "source": {
+    "repository": "prism-ml/Ternary-Bonsai-2-9B-gguf",
+    "revision": "5b2abb02362efbed46bbe204014b02837778b2c2",
+    "filename": "Ternary-Bonsai-2-9B-PTQ1_0.gguf",
+    "format": "PTQ1_0",
+    "sha256": "3561df7ac7d26a71ffa991ac2db740b10841c3a350aa2676ccd3ff5d428b4e8b",
+    "bytes": 1997486976,
+    "scope": "Language-only GGUF with embedded tokenizer; vision and MTP excluded.",
+    "ternary_matrices": 202,
+    "ternary_endpoints": true
+  },
+  "runtime": {
+    "runtime_sha": "c9c34bc9c4042c13a31598ebf43461cd0ad8f00d",
+    "threads": 4,
+    "gpu_layers": 0,
+    "cuda_build": false,
+    "context_length": 513,
+    "allocated_context_length": 768,
+    "batch_size": 64,
+    "ubatch_size": 64,
+    "kv_cache_dtype": "float32",
+    "flash_attention": false,
+    "load_mtp": false,
+    "vocab_size": 248320,
+    "logits_dtype": "float32",
+    "cache_mode": "full-prefix-reference",
+    "reset_policy": "per-record",
+    "native_eog_ids": [
+      248044,
+      248046,
+      248063,
+      248064,
+      248065
+    ]
+  },
+  "worker": {
+    "sha256": "1d6c1fb39b3b9203a246d485f51d2fc2ab798d51a714a7cdbd30f87cb920fef9",
+    "bytes": 4887408,
+    "build_specific_hash": true
+  },
+  "implementation": {
+    "actual_runner": {
+      "kind": "reviewed local scratch runner",
+      "filename": "run_bonsai_development.py",
+      "sha256": "b6fdb42611473cba51e079b8d2dbf6381025dc8fc8b2eb9f5ba814a5f35394ae",
+      "bytes": 21265,
+      "portable_tool_executed": false,
+      "portable_successor": "tools/evaluate_prism_manifest.py",
+      "fixed_constants_bound_in_script": true
+    },
+    "files": {
+      "openbonsai/eval_backends.py": {
+        "sha256": "1240292a821ad311b8ea2eeff35a9f3ae7b05903164811798c6cde79857fa929",
+        "bytes": 30532
+      },
+      "openbonsai/evaluation.py": {
+        "sha256": "3b31b024db2bf56859494e0c5d69ffd13ac78a28b8b6f15134851be1949bfeb5",
+        "bytes": 27785
+      },
+      "tools/prism_eval_worker.cpp": {
+        "sha256": "39df5d66f46abfe4f212ea0e62b2a85b42f8bb6a464548052f19705557ba195f",
+        "bytes": 18827
+      }
+    }
+  },
+  "protocol": {
+    "name": "openbonsai.frozen-evaluation.v1",
+    "reduction": "fp32-logits-fp64-logsumexp-v1",
+    "role": "search_validation",
+    "greedy": true,
+    "lowest_id_argmax_tie": true,
+    "generation_eos_ids": [
+      248044,
+      248046
+    ],
+    "generation_cap_each": 128,
+    "extra_template_or_bos_inserted": false,
+    "native_tokenizer_gate": {
+      "texts": 88,
+      "exact_ids": true,
+      "exact_raw_pieces": true,
+      "before_any_score": true
+    },
+    "resource_scores_excluded": 3
+  },
+  "data": {
+    "frozen_sha256": "8021d9cc8f54943a3b816af74cbc41d588173d385f51b73a681e979393ef5fdf",
+    "source_manifest_file": {
+      "bytes": 637466,
+      "sha256": "9936a5382e9cc9921ac21ccae0ceb84fab8a9a7681d46fd0f3efbbc05e6b70be"
+    },
+    "run_manifest_file": {
+      "bytes": 637466,
+      "sha256": "e8304975a4a1f2ff79f0263f79e4f8c315884f2b51f602a3f6b23bc45f6c3e9b"
+    },
+    "manifest_files_semantically_identical": true,
+    "original_files": {
+      "checkout/scripts/diagnostic_eval.py": {
+        "bytes": 21550,
+        "sha256": "776acb4861bf274a2087e0e1452a87e305f3dac21e270e2f9c6da7635c585d0e"
+      },
+      "checkout/scripts/evaluate.py": {
+        "bytes": 19456,
+        "sha256": "44c6e6a90f35b10546029c9c9179563601b7bfc4cee3a122cfb999c42b4cad23"
+      },
+      "inputs/diagnostic-inputs.json": {
+        "bytes": 106354,
+        "sha256": "330ffeeb77fa384492a6494e1e698edd400d7088456dbd0b7bc0fd366b7d838a"
+      },
+      "inputs/diagnostic-inputs.provenance.json": {
+        "bytes": 11000,
+        "sha256": "22c0845c6d27ae08bead7dc8ddd051323a61a5e66a09819c4efc05189b9e6dcf"
+      }
+    },
+    "nll": {
+      "dataset": "Salesforce/wikitext",
+      "config": "wikitext-2-raw-v1",
+      "split": "test",
+      "revision": "b08601e04326c79dfdd32d625aee71d232d685c3",
+      "records": 4,
+      "input_tokens_per_record": 513,
+      "target_positions_inclusive": [
+        1,
+        512
+      ],
+      "targets": 2048,
+      "source_text_scope": "Authenticated existing token slices/source spans; raw text reconstructed from exact tokenizer pieces, not independently recovered original dataset text."
+    },
+    "arc": {
+      "dataset": "allenai/ai2_arc",
+      "config": "ARC-Easy",
+      "split": "validation",
+      "revision": "210d026faf9955653af8916fad021475a3f00453",
+      "questions": 20,
+      "options_per_question": 4,
+      "label_token_ids": [
+        32,
+        33,
+        34,
+        35
+      ],
+      "scoring": "Sum conditional option-letter logprob; independent full-prefix call per option; first option wins exact ties."
+    },
+    "generations": {
+      "records": 4,
+      "input_token_counts": [
+        31,
+        42,
+        38,
+        46
+      ],
+      "maximum_generated_tokens": 512,
+      "historical_heldout_names_do_not_indicate_fresh_data": true
+    },
+    "normalization": "Explicit pinned NFC; zero records changed; original token IDs preserved.",
+    "tokenizer_identity": {
+      "id": "Qwen/Qwen3.5-9B",
+      "revision": "c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+      "sha256": "58a188315ecbd022fa3059d8a2489c74ef53f1af06d7a54aa8ee7a6b996b01d0",
+      "files": {
+        "tokenizer_config.json": {
+          "bytes": 16710,
+          "sha256": "316230d6a809701f4db5ea8f8fc862bc3a6f3229c937c174e674ff3ca0a64ac8"
+        },
+        "tokenizer.json": {
+          "bytes": 12807982,
+          "sha256": "5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42"
+        },
+        "merges.txt": {
+          "bytes": 3353259,
+          "sha256": "a9d356d7bdf1ef4949e3e748e95b8e10ad9d4e2e838eddc38a0a7b6b94d1db8d"
+        },
+        "chat_template.jinja": {
+          "bytes": 7756,
+          "sha256": "a4aee8afcf2e0711942cf848899be66016f8d14a889ff9ede07bca099c28f715"
+        },
+        "vocab.json": {
+          "bytes": 6722759,
+          "sha256": "ce99b4cb2983d118806ce0a8b777a35b093e2000a503ebde25853284c9dfa003"
+        }
+      }
+    },
+    "packaged_manifest": {
+      "path": "research/evaluation/bonsai-development/frozen-inputs.json",
+      "bytes": 637466,
+      "sha256": "9936a5382e9cc9921ac21ccae0ceb84fab8a9a7681d46fd0f3efbbc05e6b70be",
+      "exact_source_manifest_file_bytes": true
+    }
+  },
+  "results": {
+    "aggregate": {
+      "choice_accuracy": 0.8,
+      "choice_correct": 16,
+      "choice_labelled": 20,
+      "generations": 4,
+      "mean_nll": 3.1921478146079645,
+      "nll_sum": 6537.518724317111,
+      "perplexity": 24.340650545056054,
+      "scored_tokens": 2048
+    },
+    "nll_blocks": [
+      {
+        "id": "wikitext-test-block-00",
+        "count": 512,
+        "nll_sum_independent_fsum": 1434.9251887926152,
+        "mean_nll_independent_fsum": 2.8025882593605767
+      },
+      {
+        "id": "wikitext-test-block-01",
+        "count": 512,
+        "nll_sum_independent_fsum": 1770.017360940253,
+        "mean_nll_independent_fsum": 3.4570651580864316
+      },
+      {
+        "id": "wikitext-test-block-02",
+        "count": 512,
+        "nll_sum_independent_fsum": 1694.0752339715168,
+        "mean_nll_independent_fsum": 3.3087406913506188
+      },
+      {
+        "id": "wikitext-test-block-03",
+        "count": 512,
+        "nll_sum_independent_fsum": 1638.5009406127288,
+        "mean_nll_independent_fsum": 3.200197149634236
+      }
+    ],
+    "arc": {
+      "correct": 16,
+      "total": 20,
+      "accuracy": 0.8,
+      "minimum_top_two_logprob_margin": 0.20588111877441395,
+      "prediction_counts": {
+        "D": 3,
+        "B": 6,
+        "A": 5,
+        "C": 6
+      },
+      "answer_counts": {
+        "A": 8,
+        "B": 7,
+        "C": 4,
+        "D": 1
+      },
+      "all_a_accuracy_on_same_subset": 0.4,
+      "wrong_record_ids": [
+        "MCAS_2000_4_6",
+        "Mercury_7006213",
+        "Mercury_7249970",
+        "Mercury_189018"
+      ]
+    },
+    "generations": [
+      {
+        "id": "manual-heldout-00",
+        "input_tokens": 31,
+        "max_new_tokens": 128,
+        "generated_tokens": 69,
+        "stop_reason": "eos",
+        "eos_ids": [
+          248044,
+          248046
+        ],
+        "seconds": 332.36609720787965,
+        "generation_receipt_sha256": "8331593c8a5ba5c94d0724660c9d2d5906926bc24471eb35b51723ab5919a0bb",
+        "pieces_receipt_sha256": "b6f5939b2ff675ecce9faaee2b1cabd7fa1897cd122a4db436f44f446d5a1a2a",
+        "generated_bytes_sha256": "34f93a2e8bd658d619b76bb2e34265b7cc20174156109cb55db2b0327feecf93",
+        "assessment": "Satisfies three numbered one-sentence kitchen tips."
+      },
+      {
+        "id": "manual-heldout-02",
+        "input_tokens": 42,
+        "max_new_tokens": 128,
+        "generated_tokens": 128,
+        "stop_reason": "length",
+        "eos_ids": [
+          248044,
+          248046
+        ],
+        "seconds": 1014.8290402081329,
+        "generation_receipt_sha256": "823316e184b6bcb919592fa66c961dbbf068fd9352f197daa7f7872ec9c1f31c",
+        "pieces_receipt_sha256": "811825983db83b6ea0b619b708cf22dfe91ec361b55ef2ec65c395e73e497d10",
+        "generated_bytes_sha256": "4ec732f902efd196ceda169e340faf0db2d84ffcc0968bacf5ee07410385b96f",
+        "assessment": "Correct equation setup; no final answer before fixed length cap."
+      },
+      {
+        "id": "manual-heldout-04",
+        "input_tokens": 38,
+        "max_new_tokens": 128,
+        "generated_tokens": 128,
+        "stop_reason": "length",
+        "eos_ids": [
+          248044,
+          248046
+        ],
+        "seconds": 973.7954452089034,
+        "generation_receipt_sha256": "1e9e02dc7b99605c1b2fb50a49e7d5a83e81c8589dc44b0d9515c3dc152465f3",
+        "pieces_receipt_sha256": "126dce5e2016f72703ab3dc1b63ae841a3353604a95c9f9634fcfbb407825567",
+        "generated_bytes_sha256": "eb0c0bf3f01d9f6a065230014df31f6cfcdd834ce8c3487f300adee7ecbca61c",
+        "assessment": "Complete valid function body and correct empty-string behavior; missing closing Markdown fence and explicit empty-string example."
+      },
+      {
+        "id": "manual-heldout-07",
+        "input_tokens": 46,
+        "max_new_tokens": 128,
+        "generated_tokens": 99,
+        "stop_reason": "eos",
+        "eos_ids": [
+          248044,
+          248046
+        ],
+        "seconds": 731.0346130828839,
+        "generation_receipt_sha256": "3132cbb7c419a5bcae3e15b670cb6b9786f2b94d8d251de013dd2198e88bf495",
+        "pieces_receipt_sha256": "34ee44468d2a0e00edb39bc45e3e1d225fdf176e731a592cf20f88350b5f4e7d",
+        "generated_bytes_sha256": "e1ae2218e106890650a17c6ee7c3299d8eab62d8956c0296b17327060d361ad3",
+        "assessment": "Two formal Turkish rewrites; second preserves intent naturally, first wording is awkward."
+      }
+    ],
+    "coding_posthoc_smoke": {
+      "cases": 14,
+      "passed": 14,
+      "preregistered": false,
+      "benchmark_claim": false,
+      "exact_body_extraction": "Only the observed opening Python Markdown fence was removed; no body edits.",
+      "independent_review_reexecuted_code": false,
+      "review_verified": "Exact text/hash, AST syntax, recorded expectations/results against an independent balance-counter calculation.",
+      "receipt": {
+        "bytes": 2766,
+        "sha256": "cbeaa975856f59804f24e6ae0741c224ac3b559478c1245fe133f4860eb41bbe"
+      }
+    }
+  },
+  "execution": {
+    "device": "CPU",
+    "platform_family": "macOS arm64",
+    "completed_calls": 449,
+    "quality_score_calls": 84,
+    "resource_score_calls": 3,
+    "generation_calls": 4,
+    "whole_process_elapsed_seconds": 3746.9061732499395,
+    "maximum_whole_process_seconds": 10800.0,
+    "exit_code": 0,
+    "backend_close_complete": true,
+    "no_live_group_members_after_cleanup": true,
+    "sampled_peak_summed_rss_bytes": 2751627264,
+    "supervisor_sampled_peak_rss_bytes": 47333376,
+    "memory_method": "sampled sum of runner+descendant RSS; shared pages can count more than once; not exact peak physical memory",
+    "rss_sample_interval_seconds": 0.5,
+    "rss_samples": 7242,
+    "isolated_performance_benchmark": false,
+    "admission": {
+      "admitted": true,
+      "arc_independent_option_calls": 80,
+      "components_seconds": {
+        "arc_independent_options": 885.5314100161195,
+        "generation_512_maximum_tokens": 5919.190186500549,
+        "nll": 160.64541633147746,
+        "repeated_full_tokenization": 0.22089766687713563
+      },
+      "early_eos_assumed": false,
+      "factor": 1.25,
+      "forecast_is_not_a_guarantee": true,
+      "maximum_generation_tokens": 512,
+      "measured_probe_seconds": {
+        "arc": 11.069142625201494,
+        "generation_last_logit": 11.560918333008885,
+        "nll": 40.161354082869366,
+        "tokenization": 0.22089766687713563
+      },
+      "nll_records": 4,
+      "projected_remaining_seconds": 9006.98488814378,
+      "remaining_seconds_at_admission": 10735.160792832961,
+      "reserve_seconds": 300.0
+    }
+  },
+  "independent_review": {
+    "all_call_requests_matched_frozen_inputs": true,
+    "all_stops_and_raw_generation_bytes_matched": true,
+    "mean_nll_fsum": 3.192147814607966,
+    "maximum_individual_nll_sum_difference": 1.5916157281026244e-12,
+    "postrun_small_source_and_worker_hashes_match_job": true,
+    "note_receipt": {
+      "bytes": 7943,
+      "sha256": "e362eda6207a688f36d81bf0523ea069c3fe4455a3c996ed8c273b98e06d2ecf"
+    },
+    "audit_receipt": {
+      "bytes": 10935,
+      "sha256": "0bb761100f77d9f085eae24b482063c551317166f27d215fabc3ce2439ed2c0a"
+    }
+  },
+  "actual_receipts": {
+    "job.json": {
+      "bytes": 2220,
+      "sha256": "5a97f8a0c7541b2512123c0f96b5a1d8f8dc6ecf5202c7cc52eec63f5a8b7e05"
+    },
+    "frozen-inputs.json": {
+      "bytes": 637466,
+      "sha256": "e8304975a4a1f2ff79f0263f79e4f8c315884f2b51f602a3f6b23bc45f6c3e9b"
+    },
+    "native-tokenization-gate.json": {
+      "bytes": 1075,
+      "sha256": "e2401089ff1ae540b7a074ba8be1b0a3b3acdf22a3e6c2556db9075cf06a6713"
+    },
+    "worker-startup.json": {
+      "bytes": 2561,
+      "sha256": "3124e94fbdbe967157b6116955db61b824c087207654aa7796d2fcef148dc071"
+    },
+    "resource-preflight.json": {
+      "bytes": 7970,
+      "sha256": "897a29d50b58278c204a61a43716e05728860f52589de2a1c6e78be955f387c1"
+    },
+    "admission.json": {
+      "bytes": 747,
+      "sha256": "aaa1af3d11742091891613d6ca8959b7875f4eb3702c8c3b71ad2dbf9ad8d98b"
+    },
+    "evaluation.json": {
+      "bytes": 298572,
+      "sha256": "98043ddd9eba65a913522d52bf2e24d5e9b0786659d7370a5785fc58465547e8"
+    },
+    "child-status.json": {
+      "bytes": 1547,
+      "sha256": "0fd900ed1d39f554b73cb5961c8a700df2b9f28439b8154d52e55b534e947cb3"
+    },
+    "supervisor-process.json": {
+      "bytes": 1311,
+      "sha256": "758c5bec77f35eef4b14bfcb96968e7be592263e8c7cfccd93556ba71d1023a4"
+    },
+    "result.json": {
+      "bytes": 1548,
+      "sha256": "4115f7c5f30ba00f14366a39ee9b4cfaf776aa1db62e4af9d6c3c85ec1183525"
+    }
+  },
+  "archive_seal": {
+    "status": "complete",
+    "filename": "official-bonsai-development-final-seal.json",
+    "bytes": 78496,
+    "sha256": "a57291a8e4b27e9066403b25b02bbd43d14edccd2e7b50ee515ebd33d3b23d2f",
+    "sealed_utc": "2026-10-26T20:51:01.811738+00:00",
+    "run_files_count": 463,
+    "run_bytes": 3811993,
+    "run_files_unchanged_by_sealing": true,
+    "model_rerun": false,
+    "prism_source_commit": "c9c34bc9c4042c13a31598ebf43461cd0ad8f00d",
+    "prism_tracked_clean": true,
+    "postrun_rehashed_bindings": {
+      "gguf": {
+        "bytes": 1997486976,
+        "sha256": "3561df7ac7d26a71ffa991ac2db740b10841c3a350aa2676ccd3ff5d428b4e8b"
+      },
+      "worker": {
+        "bytes": 4887408,
+        "sha256": "1d6c1fb39b3b9203a246d485f51d2fc2ab798d51a714a7cdbd30f87cb920fef9"
+      },
+      "openbonsai/eval_backends.py": {
+        "bytes": 30532,
+        "sha256": "1240292a821ad311b8ea2eeff35a9f3ae7b05903164811798c6cde79857fa929"
+      },
+      "openbonsai/evaluation.py": {
+        "bytes": 27785,
+        "sha256": "3b31b024db2bf56859494e0c5d69ffd13ac78a28b8b6f15134851be1949bfeb5"
+      },
+      "tools/prism_eval_worker.cpp": {
+        "bytes": 18827,
+        "sha256": "39df5d66f46abfe4f212ea0e62b2a85b42f8bb6a464548052f19705557ba195f"
+      },
+      "runner": {
+        "bytes": 21265,
+        "sha256": "b6fdb42611473cba51e079b8d2dbf6381025dc8fc8b2eb9f5ba814a5f35394ae"
+      },
+      "source_manifest": {
+        "bytes": 637466,
+        "sha256": "9936a5382e9cc9921ac21ccae0ceb84fab8a9a7681d46fd0f3efbbc05e6b70be"
+      }
+    },
+    "independent_publication_review_rechecked_every_run_file_against_seal": true,
+    "scope": "Exact inventory of run receipts only; excludes GGUF, tokenizer assets, original transport and audit sidecars."
+  },
+  "limitations": [
+    "Tiny repeatedly inspected development subset; no fresh held-out confirmation or benchmark-wide claim.",
+    "Legacy FP32 CE/log-softmax scores are not the common FP64 reduction; BF16/OpenBonsai numeric comparison is pending.",
+    "Official CPU PTQ1_0 uses Q8_0 activation operands; backend/device/kernel effects remain distinct from weight compression.",
+    "Official model training provenance differs; no losslessness, fine-tune equivalence or OpenBonsai endpoint quality claim.",
+    "Language-only artifact excludes vision and MTP; older OpenBonsai totals retained BF16 endpoints and vision.",
+    "Observed timings include concurrent local work and full-prefix reference generation; no production throughput claim.",
+    "Exact frozen development inputs and ARC answer keys are included at research/evaluation/bonsai-development/frozen-inputs.json. Model weights, tokenizer assets, original raw WikiText source, original transport files and the full run archive are not included; NLL text is reconstructed from exact token pieces.",
+    "This run used the scratch runner; the later portable runner was not executed for these measurements."
+  ],
+  "documentation": {
+    "docs/official-bonsai-development-result.md": {
+      "bytes": 7564,
+      "sha256": "4c4fe291d3cf88295f9828e780dc5e7342fa2ab5bb17d55cd0441420f7c48399"
+    }
+  },
+  "included_material": {
+    "frozen_development_inputs": true,
+    "arc_answer_keys": true,
+    "model_weights": false,
+    "tokenizer_assets": false,
+    "original_raw_wikitext_source": false,
+    "original_transport_files": false,
+    "full_run_archive": false
+  }
+}

@@ -7,6 +7,11 @@ Qwen3.5, an OpenBonsai mixed artifact, and the pinned Prism runtime. It is an
 experimental **text-only** evaluation path. It does not establish 9B quality,
 multimodal preservation, CUDA feasibility or Bonsai equivalence.
 
+The official PTQ1_0 model has now [completed the frozen development workload on
+CPU](official-bonsai-development-result.md). Its [exact input manifest](../research/evaluation/bonsai-development/README.md)
+is included for the native comparison; the BF16/OpenBonsai rescore remains
+pending. This small reused dataset is separate from final held-out confirmation.
+
 ## Contract
 
 `openbonsai.evaluation` defines `openbonsai.frozen-evaluation.v1`. A frozen
@@ -188,9 +193,9 @@ unsuitable profile is rejected before loading the model; the runner does not
 select substitute data or probes.
 
 The bundled [Bonsai development profile](../configs/evaluation/bonsai-development-cpu.json)
-is bound to one existing development manifest. It contains no questions,
-answers, token sequences or weights and does not supply that manifest. It is not
-a default profile for arbitrary datasets. Other manifests need their own
+is bound to one existing development manifest. The profile contains no questions,
+answers, token sequences or weights; the [frozen inputs](../research/evaluation/bonsai-development/frozen-inputs.json)
+are supplied separately. It is not a default profile for arbitrary datasets. Other manifests need their own
 reviewed profile and expected file hashes. This bounded runner currently requires
 NLL, choice and generation records in a `search_validation` or `evaluation`
 manifest; it does not accept calibration-role inputs.

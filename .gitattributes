@@ -1,0 +1,2 @@
+# Preserve the authenticated development input bytes on Windows checkouts.
+/research/evaluation/bonsai-development/frozen-inputs.json -text
