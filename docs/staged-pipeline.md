@@ -322,6 +322,25 @@ valid token IDs and binary masks are checked; head calibration requires valid
 adjacent next-token positions. In-memory tensors are checked again against
 their receipts before reuse. EOS tokens remain part of the data.
 
+If the original text config omits `pad_token_id` or sets it to null, sealing
+resolves the existing pad token from the authenticated local fast tokenizer.
+This supports the original Qwen3.5 checkpoint without editing its config.
+The token must already exist in the saved tokenizer vocabulary and fit the
+model vocabulary. Explicit model and tokenizer declarations must agree;
+invalid model IDs do not trigger fallback. There is no EOS or zero-ID default.
+An explicit valid model ID retains the existing byte-only path when the
+tokenizer does not declare padding.
+
+Each new trace receipt records `padding_source` (`model_text_config` or
+`tokenizer`), and loading checks that policy against the sealed source again.
+Resolution uses a temporary tokenizer-only package without network access or
+custom tokenizer code. It does not alter the runtime model config, generation
+settings, embedding padding index, raw IDs, existing masks or EOS tokens.
+Only missing right-tail positions receive the resolved pad ID and a zero mask.
+The [padding validation receipt](../validation-staged-tokenizer-padding.json)
+records the native CPU command proof and original-tokenizer check; it does not
+claim pretrained CUDA or model-quality validation.
+
 The supplied pipeline producer writes an attributable execution receipt. Hashes
 authenticate its bytes and link the stages; they cannot prove that an arbitrary
 third-party producer is honest. Direct Python `seal_job` also accepts a producer

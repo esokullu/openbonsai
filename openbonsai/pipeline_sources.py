@@ -270,6 +270,60 @@ def _rotation_mode(stage, quantization):
     return mode
 
 
+def _trace_padding(text_config, tokenizer_directory):
+    """Resolve original padding policy without changing model/tokenizer settings."""
+    vocab_size = _positive(text_config["vocab_size"], "vocab_size")
+    model_pad = text_config.get("pad_token_id")
+    if model_pad is not None and (type(model_pad) is not int or not 0 <= model_pad < vocab_size):
+        raise ValueError("Original text config pad_token_id must be an in-vocabulary integer")
+    root = Path(tokenizer_directory)
+    token_config = _read_json(root / "tokenizer_config.json")
+    special = _read_json(root / "special_tokens_map.json") if (root / "special_tokens_map.json").exists() else {}
+    backend_json = _read_json(root / "tokenizer.json")
+    backend_padding = backend_json.get("padding")
+    declarations = [token_config.get("pad_token"), special.get("pad_token")]
+    numeric_claims = [token_config.get("pad_token_id")]
+    if backend_padding is not None:
+        if not isinstance(backend_padding, dict):
+            raise ValueError("Invalid tokenizer padding declaration")
+        declarations.append(backend_padding.get("pad_token"))
+        numeric_claims.append(backend_padding.get("pad_id"))
+    has_declaration = any(value is not None for value in declarations + numeric_claims)
+    if model_pad is not None and not has_declaration:
+        return model_pad, vocab_size, "model_text_config"
+
+    # Resolve only the authenticated tokenizer subset. AutoTokenizer must not
+    # consult an unrelated model config beside the supplied tokenizer files.
+    # A temporary copy preserves seal_job's rejection-before-output behavior.
+    import tempfile
+    from tokenizers import Tokenizer
+    from transformers import AutoTokenizer
+    with tempfile.TemporaryDirectory(prefix="openbonsai-padding-") as temporary:
+        packaged = package_tokenizer(root, Path(temporary) / "tokenizer")
+        tokenizer = AutoTokenizer.from_pretrained(packaged["path"], local_files_only=True,
+                                                 trust_remote_code=False)
+        if not tokenizer.is_fast:
+            raise ValueError("Trace padding requires the original native fast tokenizer")
+        token, token_pad = tokenizer.pad_token, tokenizer.pad_token_id
+        if (not isinstance(token, str) or not token or type(token_pad) is not int
+                or not 0 <= token_pad < vocab_size):
+            raise ValueError("Original tokenizer must declare an in-vocabulary pad token")
+        saved = Tokenizer.from_file(str(Path(packaged["path"]) / "tokenizer.json"))
+        if saved.token_to_id(token) != token_pad:
+            raise ValueError("Tokenizer pad token must already exist in the saved vocabulary")
+    for declared in declarations:
+        if declared is not None:
+            content = declared.get("content") if isinstance(declared, dict) else declared
+            if not isinstance(content, str) or content != token:
+                raise ValueError("Conflicting tokenizer pad token declarations")
+    for claimed in numeric_claims:
+        if claimed is not None and (type(claimed) is not int or claimed != token_pad):
+            raise ValueError("Conflicting tokenizer pad_token_id declaration")
+    if model_pad is not None and model_pad != token_pad:
+        raise ValueError("Original model and tokenizer pad_token_id declarations disagree")
+    return token_pad, vocab_size, "tokenizer" if model_pad is None else "model_text_config"
+
+
 def _validate_recipes(decoder, head, embedding, assembly):
     from dataclasses import fields
     from .trainer import TrainingConfig
@@ -352,10 +406,7 @@ def seal_job(*, model_directory, tokenizer_directory, traces_by_role, decoder, h
     _validate_recipes(decoder, head, embedding, assembly)
     config = _read_json(Path(model_directory) / "config.json")
     config = config["text_config"] if config["model_type"] == "qwen3_5" else config
-    vocab_size = _positive(config["vocab_size"], "vocab_size")
-    pad_id = config.get("pad_token_id")
-    if type(pad_id) is not int or not 0 <= pad_id < vocab_size:
-        raise ValueError("Original text config must specify an in-vocabulary pad_token_id")
+    pad_id, vocab_size, padding_source = _trace_padding(config, tokenizer_directory)
     prepared = {}
     for role, spec in traces_by_role.items():
         if not isinstance(spec, dict) or set(spec) != {"path", "sequence_length", "max_samples", "producer"}:
@@ -404,6 +455,7 @@ def seal_job(*, model_directory, tokenizer_directory, traces_by_role, decoder, h
             "provenance_status": "authenticated-receipt; producer claims are not independent generation proof",
             "sequence_length": spec["sequence_length"],
             "max_samples": spec["max_samples"], "pad_token_id": pad_id, "vocab_size": vocab_size,
+            "padding_source": padding_source,
             "padding_side": "right", "truncation_side": "right", **stats})
     provenance = {"source_checkpoint": "sha256:" + source["sha256"],
                   "source_content_sha256": source["sha256"], "source_revision": source["sha256"]}
@@ -477,9 +529,16 @@ def load_context(job_path):
     verify_context(context)
     if "calibration" not in job["traces_by_role"] or set(job["traces_by_role"]) - ROLES:
         raise ValueError("Invalid trace roles")
+    config = _read_json(Path(job["source"]["model_directory"]["path"]) / "config.json")
+    text_config = config["text_config"] if config["model_type"] == "qwen3_5" else config
+    pad_id, vocab_size, padding_source = _trace_padding(text_config, context.tokenizer_directory)
     for role, receipt in job["traces_by_role"].items():
         if receipt["role"] != role or receipt["format"] != TRACE_FORMAT:
             raise ValueError("Trace role mismatch")
+        if (type(receipt.get("pad_token_id")) is not int or receipt["pad_token_id"] != pad_id
+                or type(receipt.get("vocab_size")) is not int or receipt["vocab_size"] != vocab_size
+                or receipt.get("padding_source", "model_text_config") != padding_source):
+            raise ValueError("Trace padding policy differs from the original source/tokenizer")
         producer = receipt["producer"]
         if (producer.get("source_content_sha256") != expected
                 or producer.get("tokenizer_content_sha256") != job["source"]["tokenizer_directory"]["sha256"]
