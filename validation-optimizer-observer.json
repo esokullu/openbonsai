@@ -1,0 +1,41 @@
+{
+  "scope": "Opt-in read-only stored AdamW moment observer; CPU mathematical and noninterference validation",
+  "date": "2026-10-26",
+  "status": "passed",
+  "implementation_files_sha256": {
+    "openbonsai/optimizer_diagnostics.py": "eb2821b0ebc39e24ce211362c724cfe87d4a8834eb1e48c8f2b110552de3e942",
+    "tests/test_optimizer_diagnostics.py": "e3debf7cd6c95d897e2a18cd73c77a6c714b7470d4062cb403c3493f52e40286",
+    "docs/optimizer-diagnostics.md": "cc48247ea6503bc1e3264d01b165524c93c34087bae7f74c3dec8bccde54fc4f"
+  },
+  "focused_tests": {
+    "passed": 40,
+    "seconds": 1.36,
+    "command": "OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 CUDA_VISIBLE_DEVICES=-1 PYTHONDONTWRITEBYTECODE=1 python -m pytest -q tests/test_optimizer_diagnostics.py",
+    "log_sha256": "ed322fc450d53dc73d654825e3bd4827e35515816a18222a7cb9000324b5cdbf",
+    "log_kind": "Captured successful tool output, not a second test run"
+  },
+  "environment": {
+    "python": "3.12.9",
+    "torch": "2.14.1",
+    "platform": "macOS-26.0.1-arm64-arm-64bit",
+    "device": "cpu"
+  },
+  "checks": [
+    "Known moment arithmetic, strict epsilon-ratio bins, domain counts and energy-weighted attenuation.",
+    "Actual standard and foreach AdamW parameter updates, including decoupled weight decay, agree with FP64 moment formulas within FP32 tolerance.",
+    "Per-parameter stored step and group-specific betas/epsilon are respected; family summaries pool coordinates.",
+    "Different chunk sizes agree within FP64 roundoff; slicing precedes CPU conversion.",
+    "Parameters, gradients, moment values, counters, storage references, tensor versions, group settings, state membership and CPU/Python RNG remain unchanged.",
+    "Uninitialized state, stored zero moments and undefined zero-second-moment comparators stay distinct.",
+    "Unsupported, malformed or nonfinite state and duplicate membership are rejected."
+  ],
+  "default_trainer_or_cli_changed": false,
+  "current_5090_run_changed": false,
+  "limitations": [
+    "No CUDA transfer/synchronization-overhead measurement or 9B observation has been performed.",
+    "Stored-moment formulas describe normalized adaptive directions; attenuation excludes learning rates, weight decay and native rounding.",
+    "A ratio indicating epsilon damping does not establish model-quality causation or justify changing epsilon.",
+    "Stored zeros do not establish zero gradient history; unsupported state variants are rejected explicitly.",
+    "Only an explicit future caller adds observations after selected completed optimizer updates."
+  ]
+}
