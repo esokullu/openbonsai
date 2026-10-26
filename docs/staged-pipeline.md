@@ -114,7 +114,8 @@ Head-cache inputs and assembly candidate-stage inputs also use successful
 outer-result references. These checks prevent a pipeline command from silently
 treating arbitrary token files or incomplete caches as completed preparation.
 
-All stage recipe fields are explicit. Decoder settings include both the
+Stage recipe fields are explicit, with the backward-compatible head rotation
+option described below. Decoder settings include both the
 quantizer configuration and every `TrainingConfig` field, including teacher
 prefix, objective, optimizer parameters and update schedule. Head and embedding
 settings include every respective training and quantizer field. Endpoint LoRA
@@ -123,6 +124,42 @@ position/shard limits, packing choice, assembly coverage, output scope, byte
 budget and runtime row chunk/cache policy are also part of the sealed job.
 Changing any of them creates a different job; the workflow does not choose or
 recommend a new 9B recipe automatically.
+
+## Rotated and unrotated head controls
+
+The head recipe accepts `head.quantization.rotation_mode` as `"hadamard"` or
+`"none"`. Omitting it preserves the existing signed Hadamard behavior and leaves
+the sealed recipe unchanged. The option applies only to the head; decoder and
+embedding recipes continue to require their existing rotations.
+Existing code-identity checks still apply: this option does not migrate or
+retag jobs sealed against an earlier implementation.
+
+For an unrotated head, add `"rotation_mode": "none"` to the otherwise complete
+head quantization object. This supplies no rotation signs to the head operator;
+it does not substitute all-positive signs, which would still apply a Hadamard
+transform. Publication, loading and assembly check that the candidate's actual
+rotation metadata and sign storage agree with its sealed head recipe.
+
+Use two separate jobs for a matched comparison, changing only the head rotation
+mode. Keep the original checkpoint and precision policy, token records, position
+selection, initialization seed, training settings, packing and evaluation
+settings identical. Each job requires its own bound cache/stage receipts; do not
+relabel one job's cache or candidate as belonging to the other. Assemble each as
+an `H-only` control so its decoder and embedding remain original, and evaluate O
+through the original-model path. Head fitting continues to use complete
+full-vocabulary KL and its own optimizer settings; decoder optimizer findings
+do not automatically transfer to this objective.
+
+This option enables a controlled experiment. It does not establish that rotating
+or ternarizing the pretrained 9B head preserves quality, nor that a head-only
+artifact meets the full model's size target.
+
+The [validation receipt](../validation-head-rotation-control.json) records
+1,746 passing CPU tests and one Windows-only skip. The paired supervised native
+fixture uses identical cached inputs, initialization and training budgets for
+both head modes, and checks exact fresh-process logits, EOS settings, retained
+FP32 tensors, candidate bytes and complete artifact sizes. These random-model
+checks establish software behavior, not pretrained endpoint quality.
 
 ## Isolated endpoint controls from one job
 

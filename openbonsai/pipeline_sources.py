@@ -260,6 +260,16 @@ def _check_job_seal(job):
         raise ValueError("Job seal mismatch")
 
 
+def _rotation_mode(stage, quantization):
+    """Resolve the optional head control without adding defaults to sealed data."""
+    if "rotation_mode" in quantization and stage != "head":
+        raise ValueError("rotation_mode is supported only for the head stage")
+    mode = quantization.get("rotation_mode", "hadamard")
+    if not isinstance(mode, str) or mode not in {"hadamard", "none"}:
+        raise ValueError("head rotation_mode must be hadamard or none")
+    return mode
+
+
 def _validate_recipes(decoder, head, embedding, assembly):
     from dataclasses import fields
     from .trainer import TrainingConfig
@@ -277,8 +287,11 @@ def _validate_recipes(decoder, head, embedding, assembly):
         cls(**config["training"]).validate()
         quant = config["quantization"]
         required_quant = quant_common | ({"aggressive_gates"} if stage == "decoder" else {"row_chunk_size", "initialization_seed"})
-        if not isinstance(quant, dict) or set(quant) != required_quant:
+        optional_quant = {"rotation_mode"} if stage == "head" else set()
+        if (not isinstance(quant, dict) or not required_quant <= set(quant)
+                or set(quant) - required_quant - optional_quant):
             raise ValueError(f"All {stage} quantization options must be explicit")
+        _rotation_mode(stage, quant)
         for key in ("group_size", "block_size", "row_chunk_size"):
             if key in quant:
                 _positive(quant[key], key)
@@ -621,11 +634,16 @@ def _candidate_description(context, stage, name, candidate):
         raise ValueError("Candidate provenance must be bound before packing/cost selection")
     source_hash = _digest(provenance.get("source_weight_sha256"), "source_weight_sha256")
     rotation = candidate.metadata.get("rotation")
-    if rotation is None or "rotation_signs" not in candidate.tensors:
+    mode = _rotation_mode(stage, context.job[stage]["quantization"])
+    if mode == "none":
+        if rotation is not None or "rotation_signs" in candidate.tensors:
+            raise ValueError("Unrotated head candidate differs from sealed rotation_mode")
+    elif rotation is None or "rotation_signs" not in candidate.tensors:
         raise ValueError("Rotated pipeline candidate is missing authoritative signs")
     return {"shape": list(candidate.shape), "module_kind": candidate.module_kind,
         "encoding": candidate.encoding, "source_weight_sha256": source_hash,
-        "rotation": rotation, "rotation_signs_sha256": _tensor_sha256(candidate.tensors["rotation_signs"])}
+        "rotation": rotation, "rotation_signs_sha256": (
+            None if rotation is None else _tensor_sha256(candidate.tensors["rotation_signs"]))}
 
 
 def publish_candidates(context, stage, candidates, output, *, report):

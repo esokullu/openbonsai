@@ -246,10 +246,11 @@ def _embedding_export_certificate(candidate, source, provenance):
 
 
 class _AssemblyCandidates(Mapping):
-    def __init__(self, by_original, name_map, native, provenance):
+    def __init__(self, by_original, name_map, native, provenance, *, head_rotation_mode="hadamard"):
         self.by_original, self.name_map = by_original, name_map
         self.inverse = {target: original for original, target in name_map.items()}
         self.native, self.provenance = native, provenance
+        self.head_rotation_mode = head_rotation_mode
         if len(self.inverse) != len(name_map):
             raise ValueError("Candidate name mapping is not one-to-one")
 
@@ -268,8 +269,11 @@ class _AssemblyCandidates(Mapping):
             raise ValueError(f"Candidate original module identity mismatch: {original}")
         if any(details.get(key) != value for key, value in self.provenance.items()):
             raise ValueError(f"Candidate source provenance mismatch: {original}")
-        if (not candidate.encoding.startswith("ternary-") or "rotation" not in candidate.metadata
-                or "rotation_signs" not in candidate.tensors):
+        unrotated_head = original == "lm_head" and self.head_rotation_mode == "none"
+        if unrotated_head and ("rotation" in candidate.metadata or "rotation_signs" in candidate.tensors):
+            raise ValueError(f"Expected saved unrotated head candidate: {original}")
+        if (not candidate.encoding.startswith("ternary-") or (not unrotated_head
+                and ("rotation" not in candidate.metadata or "rotation_signs" not in candidate.tensors))):
             raise ValueError(f"Expected saved rotated ternary candidate: {original}")
         expected_kind = "embedding" if isinstance(source, nn.Embedding) else "linear"
         if candidate.module_kind != expected_kind or list(candidate.shape) != list(source.weight.shape):
@@ -386,7 +390,9 @@ def assemble_stage(context, candidate_stages, output, *, operation=None, assembl
         metadata["vision_scope"] = "retained-original" if config["output_scope"] == "retain-vision" else "excluded"
     # Freeze native source/export view before any candidate module replacement.
     # No replacement is needed during assembly at all.
-    assignment = _AssemblyCandidates(by_original, mapping, model, context.source_provenance)
+    from .pipeline_sources import _rotation_mode
+    assignment = _AssemblyCandidates(by_original, mapping, model, context.source_provenance,
+                                    head_rotation_mode=_rotation_mode("head", context.job["head"]["quantization"]))
     with prepare_mixed_export(export_model, sorted(mapping.values()), metadata=metadata,
                               tokenizer_dir=context.tokenizer_directory,
                               row_chunk_size=config["row_chunk_size"],

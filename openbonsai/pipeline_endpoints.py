@@ -53,7 +53,10 @@ def _recipe(context, stage):
     recipe = copy.deepcopy(context.job[stage])
     _exact(recipe, {'quantization', 'training', 'packing'} | ({'cache'} if stage == 'head' else set()), stage)
     quantization = recipe['quantization']
-    _exact(quantization, _QUANTIZATION_KEYS, stage + '.quantization')
+    keys = _QUANTIZATION_KEYS | ({'rotation_mode'} if stage == 'head'
+                                 and isinstance(quantization, dict) and 'rotation_mode' in quantization else set())
+    _exact(quantization, keys, stage + '.quantization')
+    sources._rotation_mode(stage, quantization)
     for name in ('rotation_seed', 'initialization_seed'):
         if type(quantization[name]) is not int or not 0 <= quantization[name] < 2**63:
             raise ValueError(f'{name} must be an integer in [0,2**63)')
@@ -234,8 +237,11 @@ def _endpoint_source(context, stage, device, operation):
 
 def _construct(endpoint, stage, name, recipe):
     quantization = copy.deepcopy(recipe['quantization'])
+    mode = sources._rotation_mode(stage, quantization)
+    quantization.pop('rotation_mode', None)
     rotation_seed, initialization_seed = (quantization.pop(key) for key in ('rotation_seed', 'initialization_seed'))
-    signs = fixed_signs(endpoint.weight.shape[1], seed=rotation_seed, name=name)
+    signs = (None if mode == 'none' else
+             fixed_signs(endpoint.weight.shape[1], seed=rotation_seed, name=name))
     cls = BoundedTernaryHead if stage == 'head' else BoundedTernaryEmbedding
     device = endpoint.weight.device
     devices = [device.index if device.index is not None else torch.cuda.current_device()] if device.type == 'cuda' else []

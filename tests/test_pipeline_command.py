@@ -423,3 +423,193 @@ torch.save({'logits': logits, 'eos': m.generation_config.eos_token_id,
         assert result['pipeline_job_sha256'] == sealed_job['job_sha256']
         assert result['candidate_payloads_unchanged'] and result['delivery_target_complete'] is False
     assert job_path.read_bytes() == job_bytes
+
+
+def test_supervised_paired_head_rotation_same_source_and_fresh_reload(full_chain):
+    """Exercise O/UH/RH stage composition, not a random-model quality contest."""
+    from openbonsai.export import _all_tensors
+    from openbonsai.head_calibration import load_head_input_cache
+    from openbonsai.pipeline_endpoints import _construct
+    from openbonsai.rotations import fixed_signs
+    from openbonsai.text_export import extract_text_model
+
+    c, root = full_chain, full_chain['root']
+    rotated_job_path, rotated_job = pipeline.completed_stage(c['job'], 'seal')
+    protected = {str(path): sha(path) for directory in
+                 [root / 'source', root / 'tokenizer', root / 'seal', root / 'head',
+                  root / 'prepare-calibration', root / 'prepare-search_validation',
+                  root / 'cache-calibration', root / 'cache-search_validation']
+                 for path in directory.rglob('*') if path.is_file()}
+    # Omitting the new option must preserve the old rotated job and its payload.
+    assert 'rotation_mode' not in rotated_job['head']['quantization']
+    recipes = copy.deepcopy(c['recipes'])
+    recipes['head']['quantization']['rotation_mode'] = 'none'
+    unrotated_job_ref = invoke(root, 'head-none-seal', 'seal', {
+        'model_directory': str(root / 'source'), 'tokenizer_directory': str(root / 'tokenizer'),
+        'traces_by_role': {role: {'prepared': ref, 'sequence_length': 64, 'max_samples': None}
+                          for role, ref in c['prepared'].items()}, **recipes})
+    unrotated_job_path, unrotated_job = pipeline.completed_stage(unrotated_job_ref, 'seal')
+    normalized_head = copy.deepcopy(unrotated_job['head'])
+    assert normalized_head['quantization'].pop('rotation_mode') == 'none'
+    assert normalized_head == rotated_job['head']
+    assert unrotated_job['job_sha256'] != rotated_job['job_sha256']
+    for field in ('source_provenance', 'decoder', 'embedding', 'assembly', 'code'):
+        assert unrotated_job[field] == rotated_job[field]
+    for field in ('model_directory', 'checkpoint_tensors'):
+        assert unrotated_job['source'][field] == rotated_job['source'][field]
+    assert unrotated_job['source']['tokenizer_directory']['sha256'] == rotated_job['source']['tokenizer_directory']['sha256']
+    for role in c['prepared']:
+        # Sealing copies the same authenticated bytes to different owned paths.
+        records = [copy.deepcopy(job['traces_by_role'][role]) for job in (rotated_job, unrotated_job)]
+        for record in records:
+            record.pop('sha256')
+            for field in ('file', 'producer_file'):
+                record[field].pop('path')
+        assert records[0] == records[1]
+
+    contexts = {'RH': sources.load_context(rotated_job_path),
+                'UH': sources.load_context(unrotated_job_path)}
+    unrotated_caches = {role: invoke(root, 'head-none-cache-' + role, 'cache-head',
+        {'job': unrotated_job_ref, 'role': role}) for role in c['prepared']}
+    for role, ref in unrotated_caches.items():
+        rotated_path, rotated_receipt = pipeline.completed_stage(
+            reference(root / ('cache-' + role) / 'result.json'), 'cache-head')
+        unrotated_path, unrotated_receipt = pipeline.completed_stage(ref, 'cache-head')
+        assert rotated_receipt['job_sha256'] == contexts['RH'].job_sha256
+        assert unrotated_receipt['job_sha256'] == contexts['UH'].job_sha256
+        caches = [load_head_input_cache(path.parent / 'cache')
+                  for path in (rotated_path, unrotated_path)]
+        assert caches[0].manifest == caches[1].manifest
+        assert len(caches[0]) == len(caches[1]) == 2
+        for index in range(len(caches[0])):
+            batches = [list(cache.iter_record(index, token_microbatch=8)) for cache in caches]
+            assert len(batches[0]) == len(batches[1])
+            for left, right in zip(*batches):
+                assert set(left) == set(right) == {'hidden', 'labels', 'positions'}
+                assert all(left[key].dtype == right[key].dtype and torch.equal(left[key], right[key])
+                           for key in left)
+    unrotated_head = invoke(root, 'head-none-fit', 'head', {
+        'job': unrotated_job_ref, 'calibration_cache': unrotated_caches['calibration'],
+        'search_cache': unrotated_caches['search_validation'], 'evaluation_cache': None})
+    heads = {'RH': c['stages'][1], 'UH': unrotated_head}
+    jobs = {'RH': c['job'], 'UH': unrotated_job_ref}
+    reports = {arm: pipeline.completed_stage(ref, 'head')[1]['report'] for arm, ref in heads.items()}
+    for field in ('config', 'source_provenance', 'source_weight_sha256', 'positions', 'records',
+                  'initial_trainable_state_sha256', 'objective'):
+        assert reports['RH'][field] == reports['UH'][field]
+    for report in reports.values():
+        assert [(row['step'], row['total_steps'], row['progress']) for row in report['steps']] == [
+            (1, 2, .5), (2, 2, 1.)]
+        assert report['search_validation']['role'] == 'search_validation'
+        assert report['evaluation_cache_used_for_scoring'] is False
+    assert reports['RH']['head_configuration']['rotation'] is not None
+    assert reports['UH']['head_configuration']['rotation'] is None
+
+    samples = [
+        {'input_ids': torch.tensor([[4, 7, 4, 11]]), 'attention_mask': torch.ones(1, 4, dtype=torch.long)},
+        {'input_ids': torch.tensor([[4, 7, 4, 11, c['tokenizer'].pad_token_id]]),
+         'attention_mask': torch.tensor([[1, 1, 1, 1, 0]])},
+    ]
+    # O is the native original, not an artifact with a quantized head. Extraction
+    # and unquantized operator bypass are checked independently of packing.
+    original = sources.load_original(contexts['RH'])
+    extracted = extract_text_model(original, source_id=contexts['RH'].source_provenance['source_checkpoint'],
+                                   source_revision=contexts['RH'].source_provenance['source_revision']).model
+    with torch.no_grad():
+        for sample in samples:
+            assert torch.equal(original(**sample, use_cache=False).logits,
+                               extracted(**sample, use_cache=False).logits)
+    hidden = torch.arange(2 * original.lm_head.in_features, dtype=torch.bfloat16).reshape(2, -1) / 128
+    initial_states = []
+    for arm in ('RH', 'UH'):
+        operator = _construct(original.lm_head, 'head', 'lm_head', contexts[arm].job['head'])
+        initial_states.append({name: value.detach().clone() for name, value in operator.named_parameters()})
+        operator.quant_enabled = False
+        with torch.no_grad():
+            for start in range(0, operator.out_features, 31):
+                end = min(start + 31, operator.out_features)
+                reference_logits = torch.nn.functional.linear(hidden, original.lm_head.weight[start:end])
+                assert torch.equal(operator.teacher_rows(hidden, start, end), reference_logits)
+                assert torch.equal(operator.forward_rows(hidden, start, end), reference_logits)
+    assert set(initial_states[0]) == set(initial_states[1])
+    assert all(torch.equal(initial_states[0][key], initial_states[1][key]) for key in initial_states[0])
+    del operator, original, extracted, initial_states
+
+    sample_path = root / 'paired-head-inputs.pt'
+    torch.save(samples, sample_path)
+    control = {'quantized_components': ['head'], 'retained_original_components': ['decoder', 'embedding'],
+               'output_scope': 'language-only', 'evaluation_label': 'H-only', 'budget_bytes': 100_000_000}
+    for arm in ('RH', 'UH'):
+        context = contexts[arm]
+        assembled = invoke(root, 'paired-head-' + arm, 'assemble',
+            {'job': jobs[arm], 'candidate_stages': [heads[arm]], 'assembly_control': control})
+        path, report = pipeline.completed_stage(assembled, 'assemble')
+        artifact = path.parent / 'artifact'
+        manifest = read_json(artifact / 'manifest.json')
+        assert set(manifest['modules']) == {'lm_head'} and report['module_count'] == 1
+        assert report['coverage'] == 'control' and report['delivery_target_complete'] is False
+        assert report['assembly_control'] == control and report['quality_claim'] is False
+        assert report['pipeline_job_sha256'] == context.job_sha256
+        assert int(manifest['storage']['artifact_bytes']) == sum(
+            p.stat().st_size for p in artifact.rglob('*') if p.is_file())
+        assert int(manifest['storage']['vision_file_bytes']) == 0
+        head_stage = pipeline.completed_stage(heads[arm], 'head')[0].parent
+        candidates, receipt = sources.load_candidate_stage(context, head_stage, expected_stage='head')
+        candidate, descriptor = candidates['lm_head'], receipt['candidates']['lm_head']
+        assert candidate.metadata['provenance']['pipeline_job_sha256'] == context.job_sha256
+        assert candidate.metadata['provenance']['source_weight_sha256'] == reports[arm]['source_weight_sha256']
+        if arm == 'UH':
+            assert 'rotation' not in candidate.metadata and 'rotation_signs' not in candidate.tensors
+            assert descriptor['rotation'] is None and descriptor['rotation_signs_sha256'] is None
+        else:
+            assert candidate.metadata['rotation'] == descriptor['rotation']
+            assert torch.equal(candidate.tensors['rotation_signs'], fixed_signs(128, seed=41, name='lm_head'))
+        assert (artifact / manifest['modules']['lm_head']['file']).read_bytes() == (
+            head_stage / descriptor['file']).read_bytes()
+
+        expected = sources.load_original(context)
+        retained = {text_module_name(name): (value.detach().clone(), kind, persistent)
+                    for name, value, kind, persistent in _all_tensors(expected)
+                    if not name.startswith(('lm_head.', 'model.visual.'))}
+        expected.lm_head = MixedLinear(candidate, row_chunk_size=31)
+        loaded = load_mixed(artifact, cache_decoded_weights=False)
+        actual_tensors = {name: (value, kind, persistent) for name, value, kind, persistent in _all_tensors(loaded)}
+        for name, (value, kind, persistent) in retained.items():
+            actual, actual_kind, actual_persistent = actual_tensors[name]
+            assert (actual.dtype, actual_kind, actual_persistent) == (value.dtype, kind, persistent)
+            assert torch.equal(actual, value)
+        expected_fp32 = {name: value for name, (value, _, _) in retained.items() if name.endswith('A_log')}
+        assert expected_fp32 and all(value.dtype == torch.float32 for value in expected_fp32.values())
+        assert all(not torch.equal(value, value.bfloat16().float()) for value in expected_fp32.values())
+        with torch.no_grad():
+            expected_logits = [expected(**sample, use_cache=False).logits for sample in samples]
+            assert all(torch.equal(logits, loaded(**sample, use_cache=False).logits)
+                       for sample, logits in zip(samples, expected_logits))
+        fresh_path = root / ('paired-head-' + arm + '-fresh.pt')
+        script = '''import sys, torch
+from openbonsai.mixed_export import load_mixed
+torch.set_num_threads(2)
+model = load_mixed(sys.argv[1], cache_decoded_weights=False)
+samples = torch.load(sys.argv[2], weights_only=True)
+with torch.no_grad():
+    logits = [model(**sample, use_cache=False).logits for sample in samples]
+torch.save({'logits': logits, 'eos': model.generation_config.eos_token_id,
+            'retained_fp32': {name: p.detach().cpu() for name, p in model.named_parameters()
+                             if name.endswith('A_log')}}, sys.argv[3])
+'''
+        process = subprocess.run([sys.executable, '-c', script, str(artifact), str(sample_path), str(fresh_path)],
+            cwd=ROOT, env=ENV, capture_output=True, text=True, timeout=60)
+        (root / ('paired-head-' + arm + '-fresh.stdout.txt')).write_text(process.stdout)
+        (root / ('paired-head-' + arm + '-fresh.stderr.txt')).write_text(process.stderr)
+        assert process.returncode == 0, process.stderr
+        fresh = torch.load(fresh_path, weights_only=True)
+        assert len(fresh['logits']) == len(expected_logits)
+        assert all(torch.equal(left, right) for left, right in zip(fresh['logits'], expected_logits))
+        assert fresh['eos'] == loaded.generation_config.eos_token_id == c['eos']
+        assert set(fresh['retained_fp32']) == set(expected_fp32)
+        assert all(fresh['retained_fp32'][name].dtype == value.dtype
+                   and torch.equal(fresh['retained_fp32'][name], value) for name, value in expected_fp32.items())
+    assert all(sha(path) == digest for path, digest in protected.items())
+    assert local_directory_identity(root / 'source') == c['before']
+    assert local_directory_identity(root / 'tokenizer') == c['tokenizer_before']
+    assert all(sha(row['file']) == row['sha256'] for row in c['prompts'].values())

@@ -33,7 +33,10 @@ def context(tmp_path, monkeypatch, *, multimodal=True, coverage="all", output_sc
     tokenizer.mkdir()
     (tokenizer / "tokenizer.json").write_text('{"fixture":true}')
     job = {"decoder": {"quantization": quantization, "training": training, "packing": "auto"},
-           "head": {"fixture": "actual bounded KL fit"}, "embedding": {"fixture": "actual full table fit"},
+           # This mocked context bypasses source sealing; declare its endpoint
+           # rotation settings without inventing a complete sealed recipe.
+           "head": {"fixture": "actual bounded KL fit", "quantization": {"rotation_seed": 17, "block_size": 64}},
+           "embedding": {"fixture": "actual full table fit", "quantization": {"rotation_seed": 17, "block_size": 64}},
            "assembly": {"coverage": coverage, "output_scope": output_scope,
                         "budget_bytes": 10**8, "row_chunk_size": 17, "cache_decoded_weights": False},
            "code": {"sha256": "c" * 64},
