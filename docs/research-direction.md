@@ -104,6 +104,13 @@ transform. `MixedLinear` reconstructs row chunks and transforms inputs;
 `MixedEmbedding` decodes unique requested rows and inverse-transforms them.
 No original dense master is stored in a ternary deployment candidate.
 
+The [broad-coverage storage calculation](storage-budget.md) projects a
+1.965 GB language component subtotal with base-3 codes, group scales, rotation
+signs, retained small tensors and tokenizer. Container overhead and any
+precision exceptions must fit the remaining budget. This is not an exported
+9B artifact or a quality result; the existing checkpoint's vision packaging
+and pretrained endpoint quality still need validation.
+
 `prepare_mixed_export(original, names, metadata=..., tokenizer_dir=...)` freezes
 all common files before search. `plan.fixed_bytes + sum(candidate_nbytes(...))`
 is the exact final cost. Fixed-width byte fields keep manifest overhead constant
