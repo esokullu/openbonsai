@@ -182,8 +182,17 @@ class BoundedTernaryHead(nn.Module):
     def _group_slice(self, start, end):
         return slice(start * self.groups_per_row, end * self.groups_per_row)
 
-    def _base_rows(self, start, end):
-        value = self.weight[start:end].float()
+    def _select_rows(self, value, start, end, row_ids=None, *, grouped=False):
+        """Select before promotion/computation; IDs are validated by the caller."""
+        if row_ids is None:
+            return value[self._group_slice(start, end)] if grouped else value[start:end]
+        if grouped:
+            return value.reshape(self.out_features, self.groups_per_row, 1).index_select(
+                0, row_ids).reshape(-1, 1)
+        return value.index_select(0, row_ids)
+
+    def _base_rows(self, start, end, *, row_ids=None):
+        value = self._select_rows(self.weight, start, end, row_ids).float()
         return value if self.rotation_signs is None else rotate(value, self.rotation_signs, self.block_size)
 
     def _statistics(self, grouped):
@@ -191,25 +200,27 @@ class BoundedTernaryHead(nn.Module):
         alpha = (grouped - mean).abs().mean(dim=1, keepdim=True)
         return mean, alpha + 1e-6 if self.factor_mapping == "sigmoid" else alpha.clamp_min(1e-8)
 
-    def _parameter_rows(self, start, end, *, snapshot=False):
-        sl = self._group_slice(start, end)
+    def _parameter_rows(self, start, end, *, snapshot=False, row_ids=None):
         current = (*self.factor_parameters(), self.lora_A, self.lora_B)
         values = []
         for index, parameter in enumerate(current):
             if parameter is None:
                 values.append(None)
                 continue
-            view = parameter[sl] if index < 3 else (parameter if index == 3 else parameter[start:end])
+            def select(value):
+                return value if index == 3 else self._select_rows(
+                    value, start, end, row_ids, grouped=index < 3)
+            view = select(parameter)
             if snapshot:
                 saved = getattr(self, self._snapshot_names()[index])
-                saved = saved[sl] if index < 3 else (saved if index == 3 else saved[start:end])
+                saved = select(saved)
                 view = saved + (view - view.detach())
             values.append(view)
         return tuple(values)
 
-    def _components(self, start, end, parameters, *, snapshot=False):
+    def _components(self, start, end, parameters, *, snapshot=False, row_ids=None):
         raw_mu, raw_scale, raw_threshold, lora_A, lora_B = parameters
-        weight = self._base_rows(start, end)
+        weight = self._base_rows(start, end, row_ids=row_ids)
         if self.lora_rank:
             weight = weight + (lora_B @ lora_A) / self.lora_rank
         grouped = weight.reshape(-1, self.group_size)
@@ -217,9 +228,10 @@ class BoundedTernaryHead(nn.Module):
             # Differentiate through statistics of the adapted rotated weight.
             mu0, alpha0 = self._statistics(grouped)
         else:
-            sl = self._group_slice(start, end)
-            mu0 = (self._hard_snapshot_mu0 if snapshot else self.mu0)[sl]
-            alpha0 = (self._hard_snapshot_alpha0 if snapshot else self.alpha0)[sl]
+            mu0 = self._select_rows(self._hard_snapshot_mu0 if snapshot else self.mu0,
+                                   start, end, row_ids, grouped=True)
+            alpha0 = self._select_rows(self._hard_snapshot_alpha0 if snapshot else self.alpha0,
+                                      start, end, row_ids, grouped=True)
         if self.factor_mapping == "sigmoid":
             mu = mu0 + (2 * torch.sigmoid(raw_mu) - 1) * alpha0
             alpha = (2 * torch.sigmoid(raw_scale)) * alpha0
@@ -230,9 +242,10 @@ class BoundedTernaryHead(nn.Module):
             threshold = .5 * torch.exp(raw_threshold)
         return grouped, mu, alpha, threshold
 
-    def _soft_rows(self, start, end, sharpness, *, snapshot=False):
+    def _soft_rows(self, start, end, sharpness, *, snapshot=False, row_ids=None):
         grouped, mu, alpha, threshold = self._components(
-            start, end, self._parameter_rows(start, end, snapshot=snapshot), snapshot=snapshot)
+            start, end, self._parameter_rows(start, end, snapshot=snapshot, row_ids=row_ids),
+            snapshot=snapshot, row_ids=row_ids)
         return alpha * soft_ternary((grouped - mu) / alpha, threshold, sharpness)
 
     def clear_soft_snapshot(self):
@@ -279,15 +292,40 @@ class BoundedTernaryHead(nn.Module):
     def hard_codes_rows(self, start, end):
         """Return bounded int8 latent codes and FP32 per-row group scales."""
         self._check_rows(start, end)
-        parameters = self._parameter_rows(start, end)
+        return self._hard_codes_selection(start, end)
+
+    @torch.no_grad()
+    def _hard_codes_selection(self, start, end, *, row_ids=None):
+        parameters = self._parameter_rows(start, end, row_ids=row_ids)
         if any(value is not None and not bool(torch.isfinite(value).all()) for value in parameters):
             raise ValueError("nonfinite endpoint quantizer parameter")
-        grouped, mu, alpha, threshold = self._components(start, end, parameters)
+        grouped, mu, alpha, threshold = self._components(start, end, parameters, row_ids=row_ids)
         if (not all(bool(torch.isfinite(v).all()) for v in (grouped, mu, alpha, threshold))
                 or bool((alpha <= 0).any()) or bool((threshold <= 0).any())):
             raise ValueError("cannot export invalid mapped endpoint factors")
         codes = hard_ternary((grouped - mu) / alpha, threshold).to(torch.int8)
         return codes.reshape(end - start, self.in_features), alpha.reshape(end - start, self.groups_per_row)
+
+    def _quantized_rows(self, start, end, *, row_ids=None):
+        """Shared latent row math; caller handles bypass, bounds and ID checks."""
+        if self.progress <= self.soft_fraction:
+            grouped = self._soft_rows(start, end, self.max_sharpness * self.progress / self.soft_fraction,
+                                      row_ids=row_ids)
+        else:
+            codes, scales = self._hard_codes_selection(start, end, row_ids=row_ids)
+            hard = (codes.reshape(-1, self.group_size).float() * scales.reshape(-1, 1))
+            if torch.is_grad_enabled() and any(p.requires_grad for p in self.trainable_parameters()):
+                if self.hard_phase == "frozen_jacobian":
+                    if self._hard_snapshot_sharpness is None:
+                        raise RuntimeError("hard-stage gradients require a preceding soft begin_step")
+                    surrogate = self._soft_rows(start, end, self._hard_snapshot_sharpness,
+                                                snapshot=True, row_ids=row_ids)
+                else:
+                    surrogate = self._soft_rows(start, end, self.max_sharpness, row_ids=row_ids)
+                grouped = hard + (surrogate - surrogate.detach())
+            else:
+                grouped = hard
+        return grouped.reshape(end - start, self.in_features).to(self.weight.dtype)
 
     def forward_rows(self, hidden, start, end):
         self._check_rows(start, end)
@@ -310,22 +348,7 @@ class BoundedTernaryHead(nn.Module):
                 work = rotate(work, self.rotation_signs, self.block_size)
                 weight = rotate(weight, self.rotation_signs, self.block_size)
             return F.linear(work, weight, None if bias is None else bias.float()).to(hidden.dtype)
-        if self.progress <= self.soft_fraction:
-            grouped = self._soft_rows(start, end, self.max_sharpness * self.progress / self.soft_fraction)
-        else:
-            codes, scales = self.hard_codes_rows(start, end)
-            hard = (codes.reshape(-1, self.group_size).float() * scales.reshape(-1, 1))
-            if torch.is_grad_enabled() and any(p.requires_grad for p in self.trainable_parameters()):
-                if self.hard_phase == "frozen_jacobian":
-                    if self._hard_snapshot_sharpness is None:
-                        raise RuntimeError("hard-stage gradients require a preceding soft begin_step")
-                    surrogate = self._soft_rows(start, end, self._hard_snapshot_sharpness, snapshot=True)
-                else:
-                    surrogate = self._soft_rows(start, end, self.max_sharpness)
-                grouped = hard + (surrogate - surrogate.detach())
-            else:
-                grouped = hard
-        weight = grouped.reshape(end - start, self.in_features).to(self.weight.dtype)
+        weight = self._quantized_rows(start, end)
         work = hidden if self.rotation_signs is None else rotate(hidden, self.rotation_signs, self.block_size)
         return F.linear(work, weight, bias)
 

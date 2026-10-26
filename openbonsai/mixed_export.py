@@ -55,6 +55,47 @@ def _module_kind(module):
     raise ValueError("Candidates require original native Linear/Embedding modules")
 
 
+def _check_candidate_storage(model, selected):
+    """Reject aliases that independently replacing a candidate would sever.
+
+    Storage sharing is deliberately unsupported even for disjoint views. The
+    check scans tensor metadata only, including unselected retained tensors
+    and nonpersistent buffers; it never materializes or copies source values.
+    """
+    owners = {}
+    for name, tensor, _, _ in _all_tensors(model):
+        if tensor.is_meta:
+            raise ValueError(f"Export requires materialized source tensors, not meta: {name}")
+        if tensor.numel():
+            key = (tensor.device, tensor.untyped_storage().data_ptr())
+            owners.setdefault(key, []).append(name)
+    for name, native in selected.items():
+        weight = native.weight
+        if not weight.numel():
+            continue
+        key = (weight.device, weight.untyped_storage().data_ptr())
+        aliases = [other for other in owners.get(key, ()) if other != name + '.weight']
+        if aliases:
+            raise ValueError(
+                f"Tied or aliased candidate weight {name}.weight shares storage with "
+                f"{', '.join(aliases[:5])}; shared-storage views require an explicit "
+                "shared allocation policy and are unsupported")
+
+    # Configured tying remains part of the reload contract even if a caller
+    # temporarily assigned separate tensors to the native endpoint modules.
+    configs = (model.config, getattr(model.config, 'text_config', None))
+    if any(getattr(config, 'tie_word_embeddings', False) for config in configs):
+        endpoints = []
+        for method in ('get_input_embeddings', 'get_output_embeddings'):
+            getter = getattr(model, method, None)
+            if callable(getter):
+                endpoints.append(getter())
+        if any(native is endpoint for native in selected.values() for endpoint in endpoints):
+            raise ValueError(
+                "Tied embedding/head configuration (tie_word_embeddings=True) is "
+                "unsupported when either endpoint is selected for independent allocation")
+
+
 def _bias_hash(bias):
     return source_weight_sha256(bias.detach().to(torch.bfloat16).reshape(1, -1))
 
@@ -95,6 +136,9 @@ def prepare_mixed_export(model, module_names, *, metadata, tokenizer_dir=None, w
     the artifact: adding them later would change the predeclared size budget.
     ``cache_decoded_weights`` records an inference-only MixedLinear cache policy;
     no decoded cache tensors are included in the artifact or its byte budget.
+    Source tensors must be materialized. Selected weights cannot share storage
+    with any other named tensor, including disjoint views and retained endpoints;
+    independently replacing such tensors would break their aliasing contract.
     """
     if type(row_chunk_size) is not int or row_chunk_size <= 0:
         raise ValueError("row_chunk_size must be a positive integer")
@@ -109,19 +153,18 @@ def prepare_mixed_export(model, module_names, *, metadata, tokenizer_dir=None, w
         raise ValueError("Original source_checkpoint provenance is required")
     if getattr(model.config, "quantization_config", None) is not None:
         raise ValueError("Export plan requires an original uncompressed model")
-    modules = {}
-    seen_weights = set()
-    for index, name in enumerate(names):
-        native = model.get_submodule(name)
-        kind = _module_kind(native)
+    selected = {name: model.get_submodule(name) for name in names}
+    kinds = {}
+    for name, native in selected.items():
+        kinds[name] = _module_kind(native)
         if native.weight.dtype != torch.bfloat16:
             raise ValueError("Mixed candidates must start from original BF16 weights")
-        if id(native.weight) in seen_weights:
-            raise ValueError("Tied candidate weights need an explicit shared allocation policy")
-        seen_weights.add(id(native.weight))
+    _check_candidate_storage(model, selected)
+    modules = {}
+    for index, (name, native) in enumerate(selected.items()):
         bias = getattr(native, 'bias', None)
         allowed_bias = [] if bias is None else sorted({_bias_hash(bias), _bias_hash(bias.to(torch.float16))})
-        modules[name] = {"file": f"candidate-{index:05d}.obc", "kind": kind,
+        modules[name] = {"file": f"candidate-{index:05d}.obc", "kind": kinds[name],
                          "shape": list(native.weight.shape), "compute_dtype": "bfloat16",
                          "source_weight_sha256": source_weight_sha256(native.weight),
                          "allowed_bias_compute_sha256": allowed_bias,

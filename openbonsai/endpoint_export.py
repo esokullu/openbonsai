@@ -1,4 +1,4 @@
-"""Row-bounded export of a calibrated ternary vocabulary head.
+"""Row-bounded export of calibrated ternary vocabulary endpoints.
 
 Only one row chunk of hard codes and FP32 scales is requested at a time.
 Compact payloads reside on CPU. A count pass determines the exact complete
@@ -108,9 +108,10 @@ def _update_digest(digest, codes, scales):
     digest.update(scales.view(torch.uint8).numpy().tobytes())
 
 
-def _prototype(encoding, rows, width, group_size, nonzero, provenance, bias, rotation):
+def _prototype(encoding, rows, width, group_size, nonzero, provenance, bias, rotation,
+               *, module_kind='linear'):
     metadata = {'format': FORMAT, 'encoding': encoding, 'shape': [rows, width],
-                'module_kind': 'linear', 'source': 'openbonsai-endpoint-calibration',
+                'module_kind': module_kind, 'source': 'openbonsai-endpoint-calibration',
                 'provenance': copy.deepcopy(provenance), 'group_size': group_size,
                 'group_axis': 'flattened'}
     tensors = {'scales': torch.empty(rows * (width // group_size), dtype=torch.float16, device='meta')}
@@ -136,8 +137,9 @@ def _prototype(encoding, rows, width, group_size, nonzero, provenance, bias, rot
 
 
 @torch.no_grad()
-def export_head_candidate(head, *, packing='auto', provenance=None, row_chunk_size=None) -> MixedWeightCandidate:
-    """Export a BoundedTernaryHead, retaining only one compact codec payload.
+def _export_endpoint_candidate(head, *, packing='auto', provenance=None, row_chunk_size=None,
+                               module_kind='linear') -> MixedWeightCandidate:
+    """Shared two-pass export; final metadata is set before byte-cost selection.
 
     Source identity is checked before and after export by the head's bounded
     hash guard. A supplied ``source_weight_sha256`` must match that original
@@ -145,6 +147,10 @@ def export_head_candidate(head, *, packing='auto', provenance=None, row_chunk_si
     Positive scales that underflow to zero in FP16 are rejected explicitly.
     ``row_chunk_size`` can reduce, but never exceed, the head's chunk limit.
     """
+    if module_kind not in ('linear', 'embedding'):
+        raise ValueError('Unsupported endpoint module kind')
+    if module_kind == 'embedding' and head.bias is not None:
+        raise ValueError('Embedding candidates cannot have bias')
     if packing not in ('auto', '2bit', 'bitcos'):
         raise ValueError('packing must be auto, 2bit or bitcos')
     if provenance is not None and not isinstance(provenance, dict):
@@ -166,7 +172,9 @@ def export_head_candidate(head, *, packing='auto', provenance=None, row_chunk_si
     if 'source_weight_sha256' in details and details['source_weight_sha256'] != source_hash:
         raise ValueError('source_weight_sha256 does not match the original BF16 head')
     details.update(source_weight_sha256=source_hash, source_dtype='bfloat16',
-                   scale_storage='float16', export_method='bounded-head-hard-ternary-v1')
+                   scale_storage='float16', export_method=(
+                       'bounded-head-hard-ternary-v1' if module_kind == 'linear'
+                       else 'bounded-embedding-hard-ternary-v1'))
     # Canonical JSON/type validation happens in _prototype before any payload
     # allocation. Preserve caller provenance; never infer the model revision.
     bias = None
@@ -193,7 +201,7 @@ def export_head_candidate(head, *, packing='auto', provenance=None, row_chunk_si
         del codes, scales, half
     choices = ('2bit', 'bitcos') if packing == 'auto' else (packing,)
     prototypes = [_prototype('ternary-' + codec, rows, width, group_size, nonzero,
-                             details, bias, rotation) for codec in choices]
+                             details, bias, rotation, module_kind=module_kind) for codec in choices]
     prototype, planned_bytes = min(prototypes, key=lambda pair: pair[1])
     codec = prototype.encoding.removeprefix('ternary-')
     groups_per_row = width // group_size
@@ -245,4 +253,58 @@ def export_head_candidate(head, *, packing='auto', provenance=None, row_chunk_si
     validate_candidate(candidate)
     if candidate_nbytes(candidate) != planned_bytes:
         raise RuntimeError('Actual candidate cost disagrees with the metadata-only size plan')
+    return candidate
+
+
+def export_head_candidate(head, *, packing='auto', provenance=None, row_chunk_size=None) -> MixedWeightCandidate:
+    """Stream a vocabulary head into one compact codec, counting complete bytes.
+
+    Source and rotation identity, FP16 representability and equality of the two
+    hard-code passes are checked. This entry point has linear semantics;
+    embeddings must use their coverage-checked export entry point.
+    """
+    if getattr(head, 'module_kind', 'linear') != 'linear':
+        raise ValueError('Use export_embedding_candidate for embeddings')
+    return _export_endpoint_candidate(head, packing=packing, provenance=provenance,
+                                      row_chunk_size=row_chunk_size, module_kind='linear')
+
+
+@torch.no_grad()
+def export_embedding_candidate(embedding, *, packing='auto', provenance=None,
+                               row_chunk_size=None) -> MixedWeightCandidate:
+    """Export a fully table-calibrated embedding with certified row coverage.
+
+    The certificate binds complete soft/hard sweeps to the original BF16 source,
+    current parameters and rotation. It is checked before and after both packing
+    passes. Table coverage is not downstream quality evidence. The resulting
+    candidate contains latent ternary rows; MixedEmbedding applies the inverse
+    transform on lookup. Model-level tying is rejected by prepare_mixed_export.
+    """
+    from .embedding_calibration import require_complete_calibration
+    from .embedding_quantizer import BoundedTernaryEmbedding
+
+    if not isinstance(embedding, BoundedTernaryEmbedding):
+        raise TypeError('export_embedding_candidate requires BoundedTernaryEmbedding')
+    if provenance is not None and not isinstance(provenance, dict):
+        raise ValueError('provenance must be a dictionary')
+    certificate = require_complete_calibration(embedding)
+    details = copy.deepcopy(certificate['source_provenance'])
+    extra = copy.deepcopy(provenance or {})
+    if 'resolved_revision' in extra:
+        revision = extra.pop('resolved_revision')
+        if 'source_revision' in extra and extra['source_revision'] != revision:
+            raise ValueError('Export provenance contains conflicting source revisions')
+        extra['source_revision'] = revision
+    for key, value in extra.items():
+        if key in details and details[key] != value:
+            raise ValueError(f'Export provenance contradicts calibration: {key}')
+        details[key] = copy.deepcopy(value)
+    if 'calibration_certificate' in details:
+        raise ValueError('calibration_certificate is reserved for verified calibration')
+    details['calibration_certificate'] = copy.deepcopy(certificate)
+    candidate = _export_endpoint_candidate(
+        embedding.quantizer, packing=packing, provenance=details,
+        row_chunk_size=row_chunk_size, module_kind='embedding')
+    if require_complete_calibration(embedding) != certificate:
+        raise ValueError('Embedding calibration state changed during export')
     return candidate

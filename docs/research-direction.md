@@ -85,8 +85,10 @@ original BF16 master stays frozen. The imported decoder path recomputes rotated
 FP32 weights in complete row/group chunks and uses checkpoint recomputation to
 bound saved FP32 intermediates. It still reconstructs a complete source-dtype
 weight for the projection. The reconciled branch has CPU parity coverage;
-larger configurations require a new CUDA preflight. This does not implement
-memory-bounded embedding calibration.
+larger configurations require a new CUDA preflight. This decoder path does not
+train embeddings. A [separate embedding operator and full-table trainer](embedding-calibration.md)
+now provide bounded row computation and certified soft/hard vocabulary coverage;
+pretrained endpoint quality and CUDA feasibility remain unvalidated.
 
 `RotatedTernaryLinear.mixed_candidate()` includes the rotation. Legacy
 `packed_state()`/`save_compressed()` reject it, preventing a silent missing

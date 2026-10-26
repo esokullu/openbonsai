@@ -3,8 +3,8 @@
 The head-only prototype addresses one necessary coverage gap: the original
 Qwen3.5-9B output head is a 248320 x 4096 BF16 matrix, about 2.03 GB. The
 embedding is another equally large matrix. Compressing the head alone cannot
-meet the roughly 2 GB language-model target. Embedding calibration remains a
-separate stage, and useful pretrained head quality has not been demonstrated.
+meet the roughly 2 GB language-model target. The [embedding prototype](embedding-calibration.md)
+is a separate stage, and useful pretrained endpoint quality has not been demonstrated.
 
 The decoder rotation comparison has completed and remains a preserved
 baseline. This code is prepared for a later, separately reviewed experiment
