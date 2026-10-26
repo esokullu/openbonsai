@@ -46,4 +46,4 @@ Model-process time was **6,577.657 seconds (109.63 minutes)**, within 14,400 sec
 
 Run `2026-10-26-5090-original-prefix-sequential-v2` is sealed: SHA256 `66e8712d99046fe80235a56b0a22fee2120fa0579afdc87a2bae7687aa72dc52`, 1,936 inventoried files / 8,111,555,727 archive bytes. The [validation receipt](../validation-sequential-original-target.json) binds executed source, inputs, result and parity receipts. Weights and the full archive are not included here.
 
-The [official Bonsai result](official-bonsai-development-result.md) uses a different FP64 scorer/runtime; its scalar NLL is not a matched retention comparison. Saved update-path analysis remains pending; this report does not authorize a 512-update control or another experiment.
+The [official Bonsai result](official-bonsai-development-result.md) uses a different FP64 scorer/runtime; its scalar NLL is not a matched retention comparison. Follow-up optimization diagnostics require their own design and evidence review. These results alone do not justify a longer full-model run or establish quality recovery.

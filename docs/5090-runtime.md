@@ -172,7 +172,7 @@ frozen runtime archive hash is
 its source/model/data identities and earlier failed attempt remain preserved.
 These results come from the reviewed remote receipts, not a rerun of this branch.
 
-## Evidence guiding the selected next control
+## Evidence guiding follow-up controls
 
 A subsequent [activation diagnostic](activation-diagnostic.md) restored the
 final128 FP32 research state and measured fixed windows 0 and 16 on 16 additional
@@ -196,9 +196,13 @@ rate in the hard phase. Neither observation proves a quality remedy. The next
 control kept the schedule and optimizer fixed while changing only its target.
 At identical saved last-soft parameters it showed no large common-target
 hardening error jump. This does not establish full-model soft-phase quality or
-optimal Adam conditioning. A fresh sequential original-prefix pass at the
-existing 128×1 budget is the next controlled hypothesis, subject to exact
-historical-control and resource gates; no result is claimed for it yet.
+optimal Adam conditioning. The subsequent
+[fresh sequential original-prefix pass](sequential-original-target-result.md)
+completed at the existing 128×1 budget and passed its historical-control and
+resource gates. Despite better measured alignment to original targets, packed
+development NLL worsened to 11.849 and all four generations were unusable.
+That negative result requires further bounded diagnosis, not automatic promotion
+to a longer full-model run.
 
 Embedding/head calibration and a matched Prism inference evaluation remain
 separate prerequisites. RCO is preserved for limited exceptions and has no
