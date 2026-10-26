@@ -208,6 +208,9 @@ def test_checkpointed_sigmoid_huber_training_keeps_hard_metrics_as_mse():
     assert report["reconstruction_objective"] == {
         "name": "huber", "huber_delta": delta,
         "reduction": "mean over nonpadding hidden-state elements",
+        "teacher_prefix": "quantized",
+        "student_input": "frozen hard-quantized prefix output",
+        "teacher_target": "original-weight window on the same quantized-prefix input",
     }
     assert report["quantization"]["factor_mappings"] == ["sigmoid"]
     with torch.no_grad():

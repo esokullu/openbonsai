@@ -35,6 +35,7 @@ class TrainingConfig:
     gradient_checkpointing: bool = False
     reconstruction_loss: str = "mse"
     huber_delta: float = 1.0
+    teacher_prefix: str = "quantized"
 
     def validate(self):
         for name in ("epochs", "batch_size", "window_size", "stride"):
@@ -48,6 +49,12 @@ class TrainingConfig:
                 or self.weight_decay < 0 or self.grad_clip <= 0):
             raise ValueError("learning rates/grad_clip must be finite and positive; weight_decay finite and nonnegative")
         _validate_reconstruction_loss(self.reconstruction_loss, self.huber_delta)
+        _validate_teacher_prefix(self.teacher_prefix)
+
+
+def _validate_teacher_prefix(teacher_prefix):
+    if type(teacher_prefix) is not str or teacher_prefix not in ("quantized", "original"):
+        raise ValueError("teacher_prefix must be quantized or original")
 
 
 def _validate_reconstruction_loss(reconstruction_loss, huber_delta):
@@ -119,6 +126,32 @@ def _module_values(model):
     return [module for _, module in iter_ternary_modules(model)]
 
 
+def _original_teacher_extra_modules(model, layers, end):
+    """Validate original-source availability before changing any model state.
+
+    The decoder adapter intentionally excludes bounded endpoint prototypes.
+    Handle the known embedding's exact bypass locally; a packed/mixed artifact
+    does not establish an original source and cannot supply this teacher.
+    """
+    from .embedding_quantizer import BoundedTernaryEmbedding
+    from .mixed_formats import MixedLinear
+    from .quantizer import PackedTernaryLinear
+    from .rotations import RotatedTernaryEmbedding
+
+    embedding = model.get_input_embeddings()
+    if type(embedding) not in (torch.nn.Embedding, RotatedTernaryEmbedding, BoundedTernaryEmbedding):
+        raise ValueError("original teacher prefix requires a supported original-source embedding; "
+                         "packed/mixed or unknown replaced embeddings cannot supply original targets")
+    if (any(isinstance(module, PackedTernaryLinear) for module in model.modules())
+            or any(isinstance(module, MixedLinear)
+                   for layer in layers[:end] for module in layer.modules())):
+        raise ValueError("original teacher prefix cannot use packed/mixed decoder weights without an original source")
+    if isinstance(embedding, BoundedTernaryEmbedding):
+        embedding.assert_source_unchanged()
+        return [embedding]
+    return []
+
+
 def build_windows(num_layers: int, width: int, stride: int):
     if num_layers < 1 or width < 1 or stride < 1 or stride > width:
         raise ValueError("Invalid layer count/window size/stride")
@@ -134,24 +167,42 @@ def _run_until_capture(model, sample):
 
 
 @torch.no_grad()
-def cache_window(model, samples, start: int, end: int, cache_directory=None):
-    """Cache one shared window input and its original-weight window target.
+def cache_window(model, samples, start: int, end: int, cache_directory=None, *, teacher_prefix="quantized"):
+    """Cache quantized-prefix student inputs and an explicit teacher target.
 
     Masks/rotary kwargs are captured per block. Qwen3.5 full-attention and
     GatedDeltaNet blocks must not share a blindly copied attention mask.
-    The prefix is already quantized; teacher and student windows receive the
-    same X (CAT-Q Eq. 7). All tensors are cached on CPU or optional disk.
+    The default retains the local conditional objective: original window
+    weights receive the same quantized-prefix input as the student. The
+    original option instead obtains targets from a second native forward with
+    every quantizer disabled. Paper notation alone does not establish which
+    prefix produced X; this switch records that independent implementation
+    choice. Passes stop at the window boundary without vocabulary logits.
+    Student kwargs always come from the first pass. Caches live on CPU/disk;
+    no second model or extra retained hidden-state stream is required.
+    A bounded trainable embedding retains its caller-selected student state
+    and uses its original-source bypass for the teacher. Packed/mixed sources
+    on the teacher path are rejected before mutation in original mode.
     """
+    _validate_teacher_prefix(teacher_prefix)
     layers = get_text_layers(model)
     if not 0 <= start < end <= len(layers):
         raise ValueError("Invalid capture window")
+    extra_modules = (_original_teacher_extra_modules(model, layers, end)
+                     if teacher_prefix == "original" else [])
+    extra_states = [(module, module.quant_enabled) for module in extra_modules]
     prior_states = [(module, module.quant_enabled) for module in _module_values(model)]
+    prior_states.extend(extra_states)
     records = [] if cache_directory is None else DiskRecords(cache_directory)
     try:
         for sample in samples:
             record = {"kwargs": {}, "mask": sample["attention_mask"].detach().cpu()}
             hooks = []
             set_quant_enabled(model, True)
+            # The legacy decoder adapter leaves bounded endpoints alone. Keep
+            # precisely that student path, including across multiple samples.
+            for module, enabled in extra_states:
+                module.quant_enabled = enabled
             for layer in layers[start:end]:
                 for module in layer.modules():
                     if module in dict(prior_states):
@@ -176,14 +227,30 @@ def cache_window(model, samples, start: int, end: int, cache_directory=None):
                 record["target"] = _hidden(output).detach().cpu()
                 raise _Captured
 
+            def stop_window(_module, _args, _output):
+                raise _Captured
+
             try:
                 for index in range(start, end):
                     hooks.append(layers[index].register_forward_pre_hook(capture_kwargs(index), with_kwargs=True))
-                hooks.append(layers[end - 1].register_forward_hook(capture_target))
+                hooks.append(layers[end - 1].register_forward_hook(
+                    capture_target if teacher_prefix == "quantized" else stop_window))
                 _run_until_capture(model, sample)
             finally:
                 for hook in hooks:
                     hook.remove()
+
+            if teacher_prefix == "original":
+                # Keep the student's quantized-prefix input and native kwargs.
+                # Only the target comes from this independent original path.
+                set_quant_enabled(model, False)
+                for module in extra_modules:
+                    module.quant_enabled = False
+                target_hook = layers[end - 1].register_forward_hook(capture_target)
+                try:
+                    _run_until_capture(model, sample)
+                finally:
+                    target_hook.remove()
 
             if len(record["kwargs"]) != end - start or "target" not in record or "input" not in record:
                 raise RuntimeError("Incomplete window capture")
@@ -251,6 +318,8 @@ def train(model, samples, config: TrainingConfig, progress_callback=None, cache_
     if not samples:
         raise ValueError("No calibration samples")
     layers = get_text_layers(model)
+    if config.teacher_prefix == "original":
+        _original_teacher_extra_modules(model, layers, len(layers))
     all_modules = _module_values(model)
     decoder_modules = {id(module) for layer in layers for module in layer.modules()}
     if any(id(module) not in decoder_modules for module in all_modules):
@@ -278,6 +347,12 @@ def train(model, samples, config: TrainingConfig, progress_callback=None, cache_
               "reconstruction_objective": {
                   "name": config.reconstruction_loss, "huber_delta": loss_metadata["huber_delta"],
                   "reduction": "mean over nonpadding hidden-state elements",
+                  "teacher_prefix": config.teacher_prefix,
+                  "student_input": "frozen hard-quantized prefix output",
+                  "teacher_target": (
+                      "original-weight window on the same quantized-prefix input"
+                      if config.teacher_prefix == "quantized" else
+                      "original-weight window on original-weight prefix input"),
               },
               "nonpadding_tokens": sum(int(x["attention_mask"].sum()) for x in samples),
               "quantization": {
@@ -303,7 +378,8 @@ def train(model, samples, config: TrainingConfig, progress_callback=None, cache_
         # window. On an exception TemporaryDirectory still owns its cleanup.
         cache_owner = (tempfile.TemporaryDirectory(prefix=f"window-{window_id}-", dir=cache_directory)
                        if cache_directory is not None else None)
-        records = cache_window(model, samples, start, end, cache_owner.name if cache_owner else None)
+        records = cache_window(model, samples, start, end, cache_owner.name if cache_owner else None,
+                               teacher_prefix=config.teacher_prefix)
         cache_finished = _phase_time(device)
         before = window_mse(layers, records, start, end, device)
         evaluation_before_finished = _phase_time(device)

@@ -27,7 +27,14 @@ OpenBonsai initializes `A` with Kaiming uniform (`a = sqrt(5)`) and `B` with zer
 
 For rank greater than zero, group means and centered mean absolute deviations are recomputed from `W_effective`, with derivatives flowing through those statistics. The learned group factors then control redistribution, reconstruction scale, and threshold. The original teacher ignores the low-rank update. Progress zero also returns the original dense weight; positive progress runs the student quantization path.
 
-The defaults are exposed as:
+Window target provenance is an independent choice. By default, both original
+and quantized windows receive the quantized prefix's input. The experimental
+`--teacher-prefix original` control instead obtains the target from the original
+prefix while preserving the student's quantized input. The [source audit and
+paired control](teacher-target-control.md) explain the distinction; the papers'
+shared-input notation does not establish the missing trainer's cache semantics.
+
+The learning-rate and refinement defaults are:
 
 ```bash
 python -m openbonsai train ... \

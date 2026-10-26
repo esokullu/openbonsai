@@ -58,7 +58,7 @@ The compact model retains its parameter count; the storage reduction comes from 
 - Differentiable soft ternarization, followed by exact hard ternary forward values; no mean is added back to the reconstructed weights.
 - Selectable CAT-Q sigmoid factor mappings and masked Huber reconstruction, alongside the original exponential mapping and MSE defaults.
 - The hard-stage surrogate uses the parameters and sharpness from the actual last soft forward, with the current loss gradient. This is an explicit interpretation of the paper's backward rule.
-- Sliding windows reconstruct original-weight window outputs from the **same input** as the quantized window. The input comes from the previously quantized prefix. Padding is excluded from the loss.
+- By default, sliding windows reconstruct original-weight window outputs from the **same input** as the quantized window, produced by the previously quantized prefix. An opt-in [original-prefix teacher control](docs/teacher-target-control.md) tests accumulated-error correction; it has not established a pretrained quality improvement. Padding is excluded from the loss.
 - Native Qwen3.5 blocks retain their individual masks, rotary inputs, gates, and recurrent behavior. Gradient checkpointing is supported in the tested CPU reference path.
 - Packed checkpoint export with lossless BITCOS or legacy two-bit storage, retained floating tensors, checksums, exact byte accounting, and offline reload.
 - CPU-only repacking of existing artifacts, with unchanged ternary codes, scales, biases, and retained weights; no new calibration or training.

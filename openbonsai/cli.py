@@ -81,6 +81,7 @@ def train_command(args):
     output = _empty_output(args.output)
     config = TrainingConfig(epochs=args.epochs, batch_size=args.batch_size,
         window_size=args.window_size, stride=args.stride, learning_rate=args.learning_rate,
+        teacher_prefix=args.teacher_prefix,
         lora_learning_rate=args.lora_learning_rate,
         reconstruction_loss=args.reconstruction_loss, huber_delta=args.huber_delta,
         weight_decay=args.weight_decay, grad_clip=args.grad_clip, seed=args.seed,
@@ -192,6 +193,8 @@ def parser():
     run.add_argument("--batch-size", type=int, default=3)
     run.add_argument("--window-size", type=int, default=4)
     run.add_argument("--stride", type=int, default=2)
+    run.add_argument("--teacher-prefix", choices=["quantized", "original"], default="quantized",
+        help="Prefix used for original-weight teacher targets; original is an experimental accumulated-error control")
     run.add_argument("--learning-rate", type=float, default=0.001)
     run.add_argument("--lora-rank", type=int, default=64,
         help="Rank of the learned pre-quantization correction (default: 64; 0 disables it)")

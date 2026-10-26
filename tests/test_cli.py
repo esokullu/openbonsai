@@ -12,8 +12,9 @@ from openbonsai.export import load_compressed
 
 @pytest.mark.parametrize("lora_rank", [0, 4])
 @pytest.mark.parametrize("factor_mapping,reconstruction_loss", [("exp", "mse"), ("sigmoid", "huber")])
+@pytest.mark.parametrize("teacher_prefix", ["quantized", "original"])
 def test_train_entry_point_with_local_fixture_and_revision(
-    monkeypatch, tmp_path, lora_rank, factor_mapping, reconstruction_loss,
+    monkeypatch, tmp_path, lora_rank, factor_mapping, reconstruction_loss, teacher_prefix,
 ):
     torch.set_num_threads(2)
     data = tmp_path / "calibration.jsonl"
@@ -49,7 +50,8 @@ def test_train_entry_point_with_local_fixture_and_revision(
         "--epochs", "3", "--batch-size", "1", "--sequence-length", "8", "--stride", "4",
         "--cache-dir", str(tmp_path / "cache"), "--lora-rank", str(lora_rank),
         "--lora-learning-rate", "0.002", "--factor-mapping", factor_mapping,
-        "--reconstruction-loss", reconstruction_loss, "--huber-delta", "0.25"])
+        "--reconstruction-loss", reconstruction_loss, "--huber-delta", "0.25",
+        "--teacher-prefix", teacher_prefix])
     result = train_command(args)
     assert calls[0][1]["local_files_only"] and calls[1][1]["local_files_only"]
     assert calls[0][1]["revision"] == calls[1][1]["revision"] == "test-commit"
@@ -67,6 +69,8 @@ def test_train_entry_point_with_local_fixture_and_revision(
     assert training["training_config"]["reconstruction_loss"] == reconstruction_loss
     assert training["training_config"]["huber_delta"] == 0.25
     assert training["reconstruction_objective"]["name"] == reconstruction_loss
+    assert training["training_config"]["teacher_prefix"] == teacher_prefix
+    assert training["reconstruction_objective"]["teacher_prefix"] == teacher_prefix
     assert (training["quantization"]["lora_parameters"] > 0) == (lora_rank > 0)
     assert (output / "tokenizer/test-tokenizer.json").is_file()
     loaded = load_compressed(output)
@@ -110,6 +114,13 @@ def test_default_lora_recipe():
     assert args.factor_mapping == "exp"
     assert args.reconstruction_loss == "mse"
     assert args.huber_delta == 1.0
+    assert args.teacher_prefix == "quantized"
+
+
+def test_unknown_teacher_prefix_is_rejected():
+    with pytest.raises(SystemExit):
+        parser().parse_args(["train", "--calibration", "unused", "--output", "unused",
+                             "--teacher-prefix", "unknown"])
 
 
 @pytest.mark.parametrize("command,required", [
