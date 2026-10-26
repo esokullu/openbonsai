@@ -1,8 +1,9 @@
 """Evaluate one existing native original/mixed model on a frozen manifest.
 
 No downloads, training, export, requantization, module renaming or research-state
-restoration. The original source loads in BF16; a mixed source keeps its stored
-payload dtypes, signs, native names and row chunks. Each attempt owns one child.
+restoration. Originals default to the historical BF16 cast; an explicit policy
+can preserve saved checkpoint dtypes. Mixed sources keep stored payload dtypes,
+signs, native names and row chunks. Each attempt owns one child.
 """
 from __future__ import annotations
 
@@ -386,11 +387,21 @@ def check_source_inputs(args):
     require(args.device in ('cpu', 'cuda:0'), 'device must be cpu or cuda:0')
     require(args.cache_policy in ('cold', 'warm'), 'cache-policy must be cold or warm')
     require(args.kind == 'mixed' or args.cache_policy == 'cold', 'Original models have no decoded-weight cache')
+    original_dtype_policy(args)
     model = local_directory_identity(args.model)
     tokenizer = model if Path(args.model).absolute() == Path(args.tokenizer).absolute() else local_directory_identity(args.tokenizer)
     require(model['sha256'] == sha_string(args.expected_model_sha256), 'Model directory SHA mismatch')
     require(tokenizer['sha256'] == sha_string(args.expected_tokenizer_sha256), 'Tokenizer directory SHA mismatch')
     return model, tokenizer
+
+
+def original_dtype_policy(args):
+    """Keep old programmatic Namespace callers on the historical load policy."""
+    policy = getattr(args, 'original_dtype_policy', 'bf16-cast')
+    require(policy in ('bf16-cast', 'preserve-checkpoint'), 'Unsupported original dtype policy')
+    require(args.kind == 'original' or policy == 'bf16-cast',
+            'preserve-checkpoint applies only to original models; mixed dtypes are stored in the artifact')
+    return policy if args.kind == 'original' else None
 
 
 def cuda_driver_identity():
@@ -454,9 +465,16 @@ def load_backend(args, plan, output, deadline, *, measure=None):
     torch.set_num_threads(plan['threads'])
     tokenizer = measure('load-local-tokenizer', lambda: AutoTokenizer.from_pretrained(
         str(args.tokenizer), local_files_only=True, trust_remote_code=False))
-    model = measure('load-one-native-model', lambda: (
-        load_mixed(args.model, device=args.device, cache_decoded_weights=False) if args.kind == 'mixed' else
-        load_base_model(str(args.model), device=args.device, dtype='bfloat16', local_files_only=True)))
+    dtype_policy = original_dtype_policy(args)
+    def load_model():
+        if args.kind == 'mixed':
+            return load_mixed(args.model, device=args.device, cache_decoded_weights=False)
+        if dtype_policy == 'preserve-checkpoint':
+            from openbonsai.pipeline_sources import checkpoint_tensors, load_original_source
+            return load_original_source({'model_directory': source,
+                'checkpoint_tensors': checkpoint_tensors(args.model)}, device=args.device)
+        return load_base_model(str(args.model), device=args.device, dtype='bfloat16', local_files_only=True)
+    model = measure('load-one-native-model', load_model)
     prefix, text = _text_module(model)
     require(text.config._attn_implementation == 'eager' and text.config.use_cache is False,
             'Native eager/no-cache configuration required')
@@ -487,7 +505,11 @@ def load_backend(args, plan, output, deadline, *, measure=None):
     measure('post-load-source-identities', lambda: require(check_source_inputs(args) == (source, tokens), 'Sources changed while loading'))
     execution = {'model_kind': args.kind, 'device': args.device, 'native_model_class': type(model).__name__,
                  'native_text_prefix': prefix, 'attention_backend': 'eager', 'use_cache': False,
-                 'original_load_dtype': 'bfloat16' if args.kind == 'original' else None,
+                 'original_dtype_policy': dtype_policy,
+                 'original_load_dtype': ('checkpoint-preserved' if dtype_policy == 'preserve-checkpoint' else
+                                         'bfloat16' if args.kind == 'original' else None),
+                 'original_source_load_receipt': (copy.deepcopy(model._openbonsai_source_receipt)
+                     if dtype_policy == 'preserve-checkpoint' else None),
                  'mixed_compute_dtype': 'bfloat16' if args.kind == 'mixed' else None,
                  'cache_policy': args.cache_policy, 'mixed_modules': modules,
                  'artifact_manifest_sha256': digest(Path(args.model) / 'manifest.json') if args.kind == 'mixed' else None,
@@ -631,6 +653,7 @@ def supervisor_main(args):
         result.update(whole_process_elapsed_seconds=time.monotonic() - started,
                       maximum_whole_process_seconds=args.max_seconds,
                       manifest_sha256=manifest['frozen_sha256'], model_kind=args.kind,
+                      original_dtype_policy=original_dtype_policy(args),
                       fresh_heldout_confirmation=False, legacy_fp32_cross_entropy_compatible=False)
         write_new(output / 'result.json', result)
         print(json.dumps({'status': result['status'], 'output': str(output)}))
@@ -652,6 +675,8 @@ def main():
     parser.add_argument('--kind', choices=('original', 'mixed'))
     parser.add_argument('--device', choices=('cpu', 'cuda:0'), default='cpu')
     parser.add_argument('--cache-policy', choices=('cold', 'warm'), default='cold')
+    parser.add_argument('--original-dtype-policy', choices=('bf16-cast', 'preserve-checkpoint'),
+                        default='bf16-cast', help='Original loading only: historical BF16 cast or saved checkpoint dtypes')
     parser.add_argument('--max-seconds', type=float)
     args = parser.parse_args()
     sys.path.insert(0, str(ROOT))

@@ -1,0 +1,217 @@
+# Staged local BF16 compression
+
+This workflow joins the existing rotation, decoder, endpoint and mixed-export
+APIs around one immutable local Qwen3.5 checkpoint. A merged BF16 fine-tune is a
+new source checkpoint: generate its calibration traces with that same source,
+seal a new job, and fit new candidates. Candidates from the base model cannot
+be relabeled as candidates for the fine-tune.
+
+The workflow is experimental. Native tiny-model tests establish composition,
+source preservation and reload behavior. They do not establish useful 9B
+quality, 5090 memory fit, a good calibration recipe, or equivalence to Prism's
+training method. The current real-model quality limitations remain documented
+in [the research direction](research-direction.md) and
+[the 5090 results](5090-runtime.md).
+
+## One process and one output per stage
+
+Install the process-monitor dependency with `python -m pip install -e '.[evaluation]'`.
+The older `openbonsai train` command remains the unrotated decoder-only path;
+these stages use `openbonsai pipeline`.
+
+The command-line interface accepts a JSON request with exactly this envelope:
+
+```json
+{
+  "format": "openbonsai.pipeline-request.v1",
+  "stage": "decoder",
+  "parameters": {}
+}
+```
+
+Use absolute local paths. Each invocation owns a new output directory and one
+externally supervised child process. Its deadline includes loading, hashing,
+fitting, packing and publication; a timeout is not a request to shorten training
+or retry. CUDA observations record the process's allocator peaks and device
+free memory before and after each measured operation. They do not bound
+unobserved transient allocations by other processes or enforce a host RAM cap.
+The Windows supervisor requires the documented harmless native-process
+validation before actual model work; Mac mocks do not establish Windows support
+on a particular machine.
+
+Run either the installed command or the module entry point. This example uses
+environment variables for the caller-selected paths, exact request file hash
+and time budget; the budget is a limit, not a runtime estimate:
+
+```sh
+openbonsai pipeline --run \
+  --request "$REQUEST_FILE" --expected-request-sha256 "$REQUEST_SHA256" \
+  --output "$NEW_OUTPUT_DIRECTORY" --device cpu --threads 2 \
+  --max-seconds "$BUDGET_SECONDS" --minimum-free-cuda-bytes 0
+```
+
+`python -m openbonsai.pipeline` accepts the same flags. `--max-seconds` must be
+positive and at most 14,400. CUDA uses `--device cuda:0` and requires an explicit
+`--minimum-free-cuda-bytes` of at least 1,073,741,824. This lower bound is a guard,
+not evidence that 1 GiB of margin suffices for a particular 9B operation. Seal
+and assembly are CPU-only stages. Omitting `--run` does not launch work.
+
+A downstream command references a completed upstream operation using:
+
+```json
+{"path": "/absolute/previous-output/result.json", "sha256": "<exact file SHA256>"}
+```
+
+The outer successful `result.json` is the handoff. Consumers check its payload
+hash, successful process status and cleanup. An inner `stage.json`, candidate
+file, or producer receipt alone does not satisfy the command-line contract.
+This distinction matters when a function publishes its files and a subsequent
+deadline or memory check fails. Such files remain diagnostic evidence; the
+failed operation is not an admitted input to the next command.
+
+There is no optimizer resume. A failed attempt is preserved and a retry needs a
+new output directory. Completed stages can be reused only with their exact job,
+source, code, data and recipe bindings. Source, tokenizer, sealed job and Python
+package directories cannot be stage output locations.
+
+## Stage order and inputs
+
+| Stage | Purpose and handoff |
+|---|---|
+| `prepare` | Load one original local native model and generate self-produced calibration traces from explicit prompts. Preserve prompt IDs and generated IDs without decoding and re-tokenizing them. Publish a producer receipt bound to the exact model, tokenizer, prompt file, generation configuration and output JSONL. |
+| `seal` | Consume successful preparation results, package tokenizer assets, validate the declared roles and freeze all stage recipes. Publish `job.json`; original model weights remain at their existing path. |
+| `decoder` | Fit the declared rotated native text projections using the existing window trainer. Preserve original module names, source hashes and actual rotation signs in each candidate. |
+| `cache-head` | Capture original final-normalized hidden states before the large vocabulary projection. Run separately for each declared role, using the same original checkpoint and common source provenance. |
+| `head` | Fit the bounded head with the existing full-vocabulary KL objective on the calibration cache. An optional search-validation cache is scored; an optional evaluation cache is bound and checked for separation, but is not scored by this fitting stage. |
+| `embedding` | Fit the bounded embedding table using complete row sweeps against its original BF16 rows. Export requires the live all-row soft/hard coverage certificate. This stage does not train on the text traces. |
+| `assemble` | Verify the completed candidate stages, original source and declared coverage. Write one mixed artifact with retained tensors, native configuration and tokenizer assets. Its exact artifact byte total excludes the outer operation receipts. |
+
+The `parameters` object has these exact fields; unknown and missing fields are
+rejected:
+
+| Stage | Parameter fields |
+|---|---|
+| `prepare` | `model_directory`, `expected_model_sha256`, `tokenizer_directory`, `expected_tokenizer_sha256`, `prompts`, `expected_prompts_sha256`, `generation`, `role` |
+| `seal` | `model_directory`, `tokenizer_directory`, `traces_by_role`, `decoder`, `head`, `embedding`, `assembly` |
+| `decoder`, `embedding` | `job` |
+| `cache-head` | `job`, `role` |
+| `head` | `job`, `calibration_cache`, `search_cache`, `evaluation_cache`; use JSON `null` for absent optional caches |
+| `assemble` | `job`, `candidate_stages` (a nonempty list of result references) |
+
+`job` references a successful seal result. The preparation `generation` object
+requires `seed`, `max_new_tokens`, `max_prompt_tokens`, `max_samples`,
+`enable_thinking`, `do_sample`, `temperature`, and `top_p`. Tokenizer hashes use
+the supported subset from `pipeline_sources.tokenizer_identity`, while model
+hashes use `eval_backends.local_directory_identity`; they are different scopes
+even when the files originally share one directory. Prompt and result references
+use the SHA256 of the exact file bytes.
+
+The preparation and seal operations are separate. Seal's role map has the form
+`traces_by_role[role] = {prepared, sequence_length, max_samples}`, where
+`prepared` is a successful preparation-result reference. The roles are
+`calibration`, optional `search_validation`, and optional `evaluation`.
+Head-cache inputs and assembly candidate-stage inputs also use successful
+outer-result references. These checks prevent a pipeline command from silently
+treating arbitrary token files or incomplete caches as completed preparation.
+
+All stage recipe fields are explicit. Decoder settings include both the
+quantizer configuration and every `TrainingConfig` field, including teacher
+prefix, objective, optimizer parameters and update schedule. Head and embedding
+settings include every respective training and quantizer field. Endpoint LoRA
+initialization has its own seed, separate from the rotation seed. Head cache
+position/shard limits, packing choice, assembly coverage, output scope, byte
+budget and runtime row chunk/cache policy are also part of the sealed job.
+Changing any of them creates a different job; the workflow does not choose or
+recommend a new 9B recipe automatically.
+
+## What the source and trace receipts prove
+
+The source identity hashes the relative names, byte lengths and SHA256s of every
+file in the materialized local checkpoint directory. Its common provenance is
+`source_checkpoint = "sha256:<content digest>"`, with the same digest recorded
+as `source_content_sha256` and `source_revision`. A local path, a model name,
+`main`, or a missing Hugging Face commit hash is not an immutable identity.
+There are no downloads or remote Python code execution in this workflow.
+
+Supported sources are original native dense Qwen3.5 causal or conditional
+checkpoints with merged safetensors weights. Candidate matrices must already be
+BF16. Adapter-only, quantized, tied endpoint, unsupported custom topology, and
+unsupported dtype sources are rejected. Loading uses eager native execution
+with default RoPE and no inherited request cache. Bounded saved FP32 exceptions
+are read back from their individual safetensors tensors if the native loader
+would otherwise cast them; they are not rounded and relabeled as originals.
+Unused checkpoint `mtp.*` tensors are recorded separately and are not counted
+as compression savings.
+
+Tokenizer packaging copies the supported files byte-for-byte: required
+`tokenizer.json` and `tokenizer_config.json`; optional `vocab.json`, `merges.txt`,
+`added_tokens.json`, `special_tokens_map.json`, `chat_template.jinja`, and direct
+`chat_templates/*.jinja` files. It does not recursively copy the source
+checkpoint directory, model weights, model/generation configuration or vision
+processor assets. Custom tokenizer code and version-selected tokenizer files
+are outside the initial supported contract. Symlinks are rejected. Raw template
+newlines remain intact even when the native text loader normalizes them in
+memory. The model's native configuration and generation settings are written
+by the mixed exporter separately.
+
+A trace receipt binds the raw JSONL and raw producer-receipt file hashes,
+producer-declared source/tokenizer identities, role, ordered token/mask hashes,
+sequence length, maximum consumed records, vocabulary and padding ID. It records
+right-padding/right-truncation and counts the exact consumed prefix. Native
+valid token IDs and binary masks are checked; head calibration requires valid
+adjacent next-token positions. In-memory tensors are checked again against
+their receipts before reuse. EOS tokens remain part of the data.
+
+The supplied pipeline producer writes an attributable execution receipt. Hashes
+authenticate its bytes and link the stages; they cannot prove that an arbitrary
+third-party producer is honest. Direct Python `seal_job` also accepts a producer
+receipt for caller-declared token records. That is a lower-level trust boundary,
+not independent evidence that those tokens were generated by the claimed
+checkpoint. The command-line workflow requires its completed preparation
+handoff instead.
+
+Exact token-record overlap between declared roles is rejected. This is not a
+semantic contamination detector: callers must keep benchmarks and final
+confirmation data out of preparation prompts and calibration. The fitting
+workflow does not create a new final benchmark or claim a quality improvement
+from serialization success.
+
+## Rotation identity, memory ownership and deployment
+
+Candidate keys remain the original source module names throughout fitting and
+stage publication. Rotation signs are generated from the declared seed and
+original name, then stored as authoritative bytes with a digest. For a
+conditional model's language-only export, assembly maps
+`model.language_model.*` to `model.*`; `lm_head` is unchanged. It renames only
+the manifest keys. Regenerating signs from the new text-only names would change
+the model and is not allowed. Causal source names already use the text layout.
+
+Each stage loads one source model. The native language-only extraction creates
+separate module and tensor objects sharing frozen original storage; it does not
+deep-copy a second full checkpoint. Neither view may mutate that shared source
+storage. Endpoint fitting releases the original decoder before moving only the
+selected endpoint to its compute device. Candidate publication and reading use
+one candidate at a time rather than accumulating every decoded matrix.
+
+The all-matrix scope combines the supported decoder projections with embedding
+and output head. The random four-layer hybrid fixture has 27 such matrices; the
+target 9B topology has 202 under the conservative gate policy. Tiny recurrence
+gates, normalization/dynamics and other retained native tensors remain at
+their recorded precision. A language-only artifact excludes vision through the
+native extraction helper; a retain-vision artifact preserves that component.
+See [text-only export](text-only-export.md) for its pure-text input contract.
+
+Packing choices are `2bit`, `bitcos`, `base3` and `auto`. Auto compares complete
+candidate bytes, including indexes and metadata. Repacking fixed ternary codes
+is lossless. Original BF16-to-ternary fitting and export scale/bias rounding are
+separate approximation steps and can change quality. Learned low-rank
+corrections are folded into the final ternary decisions, not deployed as a full
+additional LoRA weight sidecar. [The storage budget](storage-budget.md) explains
+the conditional size projection and why it is not a quality result.
+
+The deployed artifact uses the existing reference floating-point reconstruction
+runtime. It is not an optimized ternary GPU kernel or GGUF. The optional decoded
+BF16 cache is an explicit inference memory tradeoff and is excluded from disk
+bytes. Use [the matched evaluator](matched-evaluation.md) on the original and
+assembled model with the same frozen development protocol; endpoint losses and
+an artifact reload do not substitute for assembled-model quality evaluation.

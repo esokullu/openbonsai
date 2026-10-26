@@ -1,0 +1,94 @@
+{
+  "scope": "Staged original BF16 source to broad rotated ternary artifact; native random CPU integration, not pretrained quality",
+  "date": "2026-10-26",
+  "status": "passed",
+  "implementation_python_sha256": "f36b618600045aaf3a2e3d1b517adfeec3c2afa7ecd4c3309a46fdc28307fd6c",
+  "fixture": {
+    "native_source": "Qwen3.5ForConditionalGeneration random tiny BF16",
+    "original_source_sha256": "fdcaef2f4a2ceacf484b6849725c63b16b72d873918fbc5158cd9b5d28434fa6",
+    "successful_supervised_stages": 9,
+    "stage_sequence": [
+      "prepare calibration",
+      "prepare search_validation",
+      "seal",
+      "decoder",
+      "cache-head calibration",
+      "cache-head search_validation",
+      "head",
+      "embedding",
+      "assemble"
+    ],
+    "genuine_original_generated_records": true,
+    "ternary_matrix_count": 27,
+    "artifact_scope": "language-only",
+    "artifact_bytes": 276693,
+    "candidate_bytes": 202363,
+    "fixed_bytes": 74330,
+    "vision_bytes": 0,
+    "fresh_process_logits_max_absolute_error": 0.0,
+    "independent_native_conditional_composition_logits_exact": true,
+    "candidate_payloads_and_signs_unchanged": true,
+    "original_source_files_unchanged": true,
+    "all_supervised_children_cleaned_up": true
+  },
+  "focused_tests": {
+    "source_receipts": 31,
+    "decoder_assembly": 19,
+    "endpoints": 18,
+    "prepare_and_meter": 23,
+    "full_supervised_command": 5,
+    "dtype_policy_and_existing_evaluator": 46
+  },
+  "environment": {
+    "device": "cpu",
+    "packages": {
+      "psutil": "7.2.2",
+      "safetensors": "0.8.0",
+      "torch": "2.14.1",
+      "transformers": "5.20.2"
+    },
+    "platform": "macOS-26.0.1-arm64-arm-64bit",
+    "python": "3.12.9",
+    "threads": 2,
+    "torch_cuda": null
+  },
+  "validation_reproduction": "python -m pytest -q; tests/test_pipeline_command.py exercises nine real supervised stages and separate fresh-process loading",
+  "dtype_policy": {
+    "historical_default": "bf16-cast",
+    "new_optional": "preserve-checkpoint",
+    "causal_and_conditional_saved_fp32_value_checks": true,
+    "scorer_changed": false
+  },
+  "limitations": [
+    "No new pretrained model run, real9B endpoint quality result, or CUDA memory validation.",
+    "Tiny random model results are software correctness evidence, not useful language quality.",
+    "Individual decoder/head/embedding fitting does not establish assembled quality; common held-out evaluation remains required.",
+    "Windows supervisor native harmless-process gate remains required on the5090 host.",
+    "Runtime reconstructs floating-point weights; no low-bit inference acceleration is claimed.",
+    "Lossless code packing follows the existing FP16 scale/bias serialization rounding.",
+    "No optimizer resume or automatic next experiment; each stage has an explicit cap."
+  ],
+  "current_5090_run_changed": false,
+  "active_reference_scientific_sources_changed": false,
+  "full_suite": {
+    "passed": 1666,
+    "skipped": 1,
+    "seconds": 95.72,
+    "skip": "Native Windows-only harmless process test; not available on this Mac"
+  },
+  "independent_review_scopes": [
+    "source and tokenizer preservation",
+    "native decoder and endpoint stage composition",
+    "supervised handoff and operation resource accounting",
+    "original dtype baseline selection"
+  ],
+  "implementation_files_sha256": {
+    "openbonsai/pipeline.py": "6f77055cb9632ef9eac4e1235e80f6352d823c70cf488638fe6a7203c301ce77",
+    "openbonsai/pipeline_sources.py": "5ca09d9e11f5c550b8b3f452c2c4df33c1d7ed09d1f18e6f812aefbe7ebe0ab1",
+    "openbonsai/pipeline_decoder.py": "899899be95877788a730fd07dd0858163c664e6dd71cc79903268dac8e3eff25",
+    "openbonsai/pipeline_endpoints.py": "44c4f29405a985275de1cc441213c4329fa151962b1256a59094a7d95836643b",
+    "openbonsai/pipeline_prepare.py": "1d5f22262a2e86803236dfad2b07ee09213111bb7ab7e9dfd1732215b611000c",
+    "openbonsai/stage_runtime.py": "693c34e1fc6ed7187d63e2dcccc2efe1af7af2b5812723b2abfac49f5035ad36",
+    "tools/evaluate_transformers_manifest.py": "16a94c7e1524403fd4211556d16dde80465ef50e9d122204f690ae92c3c4711d"
+  }
+}

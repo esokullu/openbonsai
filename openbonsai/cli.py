@@ -166,6 +166,8 @@ def parser():
     from . import prepare
     root = argparse.ArgumentParser(prog="openbonsai", description=__doc__)
     sub = root.add_subparsers(dest="command", required=True)
+    from .pipeline import add_arguments as pipeline_arguments
+    pipeline_arguments(sub.add_parser("pipeline", help="Run one pinned, bounded rotation research stage"))
     prepare.add_arguments(sub.add_parser("prepare", help="Generate self-teacher calibration (loads model)"))
     demo = sub.add_parser("smoke", help="Offline test on random tiny Qwen3.5 (no downloads)")
     demo.add_argument("--output", required=True)
@@ -212,7 +214,14 @@ def parser():
 
 def main(argv=None):
     args = parser().parse_args(argv)
-    if args.command == "prepare":
+    if args.command == "pipeline":
+        from .pipeline import run
+        result = run(args)
+        print(json.dumps(result, indent=2, allow_nan=False))
+        if result["status"] != "complete":
+            raise SystemExit(1)
+        return
+    elif args.command == "prepare":
         from .prepare import run
         result = run(args)
     elif args.command == "smoke":

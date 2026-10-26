@@ -248,6 +248,20 @@ They are not a Hub revision or a hash of just one shard. The runner rejects
 symlinks and changed sources; authenticate these directory identities against
 the intended checkpoint before dispatch. Inputs remain offline and read-only.
 
+Original loading defaults to `--original-dtype-policy bf16-cast`, preserving
+the historical baseline that casts retained small FP32 tensors to BF16. For a
+[staged-pipeline](staged-pipeline.md) artifact, explicitly select
+`--original-dtype-policy preserve-checkpoint`: its loader checks saved native
+tensor names/shapes/dtypes and restores bounded FP32 exceptions from the sealed
+safetensors source. The execution receipt records the selected policy and the
+restoration/unused-MTP table. The original directory hash is identical under
+both policies, so it cannot identify this execution choice by itself. The two
+policies must not be conflated when attributing a quality difference to
+compression. Mixed artifacts retain their stored dtypes unchanged and reject a
+`preserve-checkpoint` override. Scoring, tokenization, EOS, generation caps and
+resource admission use the same evaluator under either original policy; no
+claim is made about the quality impact of the dtype difference.
+
 The [native development profile](../configs/evaluation/bonsai-development-native.json)
 binds the same development manifest as the CPU profile, with separate native
 resource shapes. Native scoring forwards **all input IDs**, including trailing
