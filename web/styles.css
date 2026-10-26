@@ -1,0 +1,166 @@
+:root {
+  color-scheme: light;
+  --paper: #ffffff;
+  --ink: #19211c;
+  --text: #59615c;
+  --muted: #69736b;
+  --focus: #34734d;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  color: var(--ink);
+  background: var(--paper);
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 280px;
+  min-height: 100vh;
+  min-height: 100svh;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+main {
+  display: grid;
+  place-items: center;
+  flex: 1;
+  padding: clamp(48px, 9vh, 104px) 24px 64px;
+}
+
+.introduction {
+  width: 100%;
+  max-width: 560px;
+  text-align: center;
+}
+
+.brand-mark {
+  display: block;
+  width: clamp(160px, 20vw, 202px);
+  height: auto;
+  margin: 0 auto 25px;
+}
+
+h1 {
+  margin: 0;
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
+  font-size: clamp(46px, 8vw, 64px);
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: -0.055em;
+}
+
+.research-line {
+  margin: 24px 0 0;
+  font-size: clamp(17px, 2.8vw, 20px);
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: -0.022em;
+  text-wrap: balance;
+}
+
+.description {
+  max-width: 430px;
+  margin: 17px auto 0;
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1.8;
+  text-wrap: pretty;
+}
+
+.github-link {
+  display: inline-flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  gap: 11px;
+  margin-top: 32px;
+  padding: 13px 22px;
+  border: 1px solid var(--ink);
+  border-radius: 4px;
+  color: var(--paper);
+  background: var(--ink);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+  text-decoration: none;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+
+.github-icon {
+  flex: 0 0 auto;
+}
+
+.github-link:hover {
+  color: var(--ink);
+  background: var(--paper);
+}
+
+.github-link:focus-visible,
+footer a:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 5px;
+}
+
+footer {
+  padding: 0 24px 29px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+footer p {
+  margin: 0;
+  text-wrap: balance;
+}
+
+footer a {
+  color: inherit;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+footer a:hover {
+  color: var(--ink);
+}
+
+::selection {
+  color: var(--ink);
+  background: #deebe2;
+}
+
+@media (max-width: 480px) {
+  main {
+    padding: 48px 25px 48px;
+  }
+
+  .brand-mark {
+    margin-bottom: 24px;
+  }
+
+  .description {
+    max-width: 350px;
+    font-size: 15px;
+    line-height: 1.8;
+  }
+
+  .research-line {
+    margin-top: 21px;
+  }
+
+  footer {
+    padding-bottom: 24px;
+    font-size: 11px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .github-link {
+    transition: none;
+  }
+}
