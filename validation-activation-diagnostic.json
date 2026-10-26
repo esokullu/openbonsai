@@ -1,0 +1,765 @@
+{
+  "format": "openbonsai.activation-diagnostic-validation.v1",
+  "date_utc": "2026-10-26",
+  "base_commit": "40d5799c96b9ec0e4df637b8b13a35d8b3ec3c33",
+  "quality_claim": false,
+  "training_defaults_changed": false,
+  "active_5090_run_changed": false,
+  "hardware": {
+    "platform": "macOS-26.0.1-arm64-arm-64bit",
+    "device": "cpu",
+    "python": "3.12.9",
+    "torch": "2.14.1",
+    "transformers": "5.20.2",
+    "performance_benchmark": false,
+    "timing_note": "Native probe and full suite ran concurrently; not a performance comparison."
+  },
+  "implementation_files": {
+    "openbonsai/activation_capture.py": {
+      "sha256": "14d3b11567a88849937c5b98ee941ea93827c59a07888986b99b61c1784bf6c3",
+      "bytes": 8996
+    },
+    "openbonsai/activation_metrics.py": {
+      "sha256": "92d36e60ca1b80c7d93425fa811f5319e69716ea609f52f15ca61391abaf28fb",
+      "bytes": 11543
+    },
+    "tests/test_activation_capture.py": {
+      "sha256": "4a5055e2eaf0e04918182c0ed267ae844d0d60c483634c53eb1f862d3f841e86",
+      "bytes": 14323
+    },
+    "tests/test_activation_metrics.py": {
+      "sha256": "02eb7528c4a3fc3c5ef155c10c4314c65d78c10fe770c16d54506a47b77e85ca",
+      "bytes": 10228
+    },
+    "tools/probe_activation_diagnostic.py": {
+      "sha256": "ab68c814b0e79db807299894a7a26d59524a3a632013f11acce2f6a7985380f5",
+      "bytes": 6018
+    }
+  },
+  "tests": {
+    "command": "python -m pytest -q",
+    "passed": 1439,
+    "seconds": 28.91,
+    "new_capture_tests": 26,
+    "new_metrics_tests": 32,
+    "log_receipt": {
+      "sha256": "2a253b2854aa10c5b334c1a47ec91513de2b2de69085bd9a6e73f5b022811397",
+      "bytes": 1622
+    },
+    "coverage": [
+      "Independent untouched native original and hard/conditional forward oracles in F32/BF16",
+      "Nonzero learned low-rank correction and rotation bypass",
+      "Native recurrent/full attention masks and explicit positions",
+      "Temporary modes/flags restored before yield and on every failure path",
+      "Exact parameters, source buffers, gradients, snapshot identities and hooks preserved",
+      "Existing conditional-wrapper rope_deltas restored",
+      "Streaming iterator consumes one record and releases prior activations",
+      "Packed/mixed/soft/unknown embedding/dynamic RoPE/cache/media sources rejected",
+      "Masking before bounded CPU FP64 metric arithmetic",
+      "Independent literal vector and scalar-optimum oracle, cancellation cross terms, zero norm/zero error handling",
+      "Unequal-length pooled element weights and atomic invalid-record rejection"
+    ]
+  },
+  "reviews": [
+    "Independent native capture/math/probe/docs review: no remaining blockers",
+    "Parent review and final native integration probe; scope and hard-student flag behavior clarified"
+  ],
+  "probe": {
+    "command": "python tools/probe_activation_diagnostic.py --output NEW_DIRECTORY",
+    "report_receipt": {
+      "sha256": "c1265949466989de8e710d8956e2b893d542e250c387a9a3ee5bd21c87ff135a",
+      "bytes": 53347
+    },
+    "passed": true,
+    "scope": "random four-block hybrid Qwen; rotated decoder; retained original endpoints",
+    "seed": 5090,
+    "dtype": "bfloat16",
+    "threads": 2,
+    "training_config": {
+      "epochs": 2,
+      "batch_size": 1,
+      "window_size": 1,
+      "stride": 1,
+      "learning_rate": 0.005,
+      "lora_learning_rate": 0.001,
+      "weight_decay": 0.0,
+      "grad_clip": 1.0,
+      "seed": 5090,
+      "gradient_checkpointing": true,
+      "reconstruction_loss": "huber",
+      "huber_delta": 1.0,
+      "teacher_prefix": "quantized"
+    },
+    "fit_token_ids": [
+      [
+        [
+          114,
+          151,
+          157,
+          136,
+          32,
+          83,
+          200,
+          148,
+          19,
+          120,
+          161,
+          71,
+          129,
+          28,
+          164,
+          27
+        ]
+      ],
+      [
+        [
+          204,
+          79,
+          168,
+          192,
+          217,
+          80,
+          213,
+          55,
+          178,
+          7,
+          205,
+          181,
+          95,
+          131,
+          49,
+          202
+        ]
+      ]
+    ],
+    "search_token_ids": [
+      [
+        [
+          72,
+          173,
+          219,
+          125,
+          181,
+          92,
+          150,
+          209,
+          79,
+          177,
+          219,
+          231,
+          111,
+          0,
+          0,
+          0
+        ]
+      ],
+      [
+        [
+          129,
+          51,
+          53,
+          178,
+          169,
+          32,
+          15,
+          136,
+          232,
+          198,
+          37,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      [
+        [
+          36,
+          8,
+          131,
+          63,
+          12,
+          150,
+          224,
+          14,
+          49,
+          101,
+          159,
+          78,
+          79,
+          26,
+          178,
+          47
+        ]
+      ]
+    ],
+    "search_masks": [
+      [
+        [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          0,
+          0,
+          0
+        ]
+      ],
+      [
+        [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      [
+        [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ]
+      ]
+    ],
+    "source_unchanged": true,
+    "model_state_and_flags_unchanged": true,
+    "window_zero_targets_exact": true,
+    "windows": [
+      {
+        "start": 0,
+        "end": 1,
+        "reverse_order_replay_exact": true,
+        "state_unchanged_after_every_yield": true,
+        "activation_sha256": [
+          {
+            "xq": "4ec6cda1e8d242f2b9dc1bd9fcf12d622722a4aa258d9241c1213db838aa951d",
+            "x0": "4ec6cda1e8d242f2b9dc1bd9fcf12d622722a4aa258d9241c1213db838aa951d",
+            "tq": "f10ee390b89e666b62721beefc809abecb1562eb8c2d7c9f39dd5bd7079309f0",
+            "t0": "f10ee390b89e666b62721beefc809abecb1562eb8c2d7c9f39dd5bd7079309f0",
+            "y": "c016396ebf33455edb55a6fa6669a457e5142b7b87d434443acfd08b6181c464",
+            "mask": "855a0191cf752d7ef873efc25ee75a279be789c74504269a1cdae1e4612b5a25"
+          },
+          {
+            "xq": "010763c65854b8eb8ebf0f352f3d65cbfc8f1a4f44f54e20444a1c099f5f53b9",
+            "x0": "010763c65854b8eb8ebf0f352f3d65cbfc8f1a4f44f54e20444a1c099f5f53b9",
+            "tq": "3601455b573765a0582146f046b625e875f1ccf8a4727b7c2b71cb21e678f40d",
+            "t0": "3601455b573765a0582146f046b625e875f1ccf8a4727b7c2b71cb21e678f40d",
+            "y": "abdb13d62378f75762e4dcd0324ab46a6d2f22da9f2d47092b1f8109d5a290f0",
+            "mask": "6f1af7e4e3cff07b857b7660231d81a143676c4b689fec685ee167163cada2ef"
+          },
+          {
+            "xq": "7eadcd2c7a56ce3f645418f38789111c0f20141587269c349ab265030cda66f4",
+            "x0": "7eadcd2c7a56ce3f645418f38789111c0f20141587269c349ab265030cda66f4",
+            "tq": "73d575da011ab2b4459c527b333fa8f5139b1f5045eb02c943c6d2669658f128",
+            "t0": "73d575da011ab2b4459c527b333fa8f5139b1f5045eb02c943c6d2669658f128",
+            "y": "17240eafb2ff74d4dd7787508c17b3272859bdaa353d74c01057fcafb1720aa6",
+            "mask": "cb9cb8229f3a322017b0d7644744ea14809f2f738decf88632f232fd5a12bb9c"
+          }
+        ],
+        "pooled_metrics": {
+          "valid_tokens": 40,
+          "valid_elements": 5120,
+          "pairs": {
+            "xq/x0": {
+              "valid_elements": 5120,
+              "norm_status": "nonzero",
+              "activation_rms": 0.019745932124885568,
+              "reference_rms": 0.019745932124885568,
+              "rms_ratio": 1.0,
+              "cosine": 1.0,
+              "mse": 0.0,
+              "relative_rmse": 0.0,
+              "best_nonnegative_scale": 1.0,
+              "scale_is_unique": true,
+              "rescaled_mse": 0.0,
+              "rescaled_relative_rmse": 0.0,
+              "scale_interpretation": "diagnostic multiplier on activation; no model change"
+            },
+            "tq/t0": {
+              "valid_elements": 5120,
+              "norm_status": "nonzero",
+              "activation_rms": 0.02126126699048057,
+              "reference_rms": 0.02126126699048057,
+              "rms_ratio": 1.0,
+              "cosine": 1.0,
+              "mse": 0.0,
+              "relative_rmse": 0.0,
+              "best_nonnegative_scale": 1.0,
+              "scale_is_unique": true,
+              "rescaled_mse": 0.0,
+              "rescaled_relative_rmse": 0.0,
+              "scale_interpretation": "diagnostic multiplier on activation; no model change"
+            },
+            "y/tq": {
+              "valid_elements": 5120,
+              "norm_status": "nonzero",
+              "activation_rms": 0.019854937971483747,
+              "reference_rms": 0.02126126699048057,
+              "rms_ratio": 0.9338548817609745,
+              "cosine": 0.9459002937025699,
+              "mse": 4.7653184396700965e-05,
+              "relative_rmse": 0.3246809608249842,
+              "best_nonnegative_scale": 1.0128985907520032,
+              "scale_is_unique": true,
+              "rescaled_mse": 4.7587596818274695e-05,
+              "rescaled_relative_rmse": 0.3244574461672781,
+              "scale_interpretation": "diagnostic multiplier on activation; no model change"
+            },
+            "y/t0": {
+              "valid_elements": 5120,
+              "norm_status": "nonzero",
+              "activation_rms": 0.019854937971483747,
+              "reference_rms": 0.02126126699048057,
+              "rms_ratio": 0.9338548817609745,
+              "cosine": 0.9459002937025699,
+              "mse": 4.7653184396700965e-05,
+              "relative_rmse": 0.3246809608249842,
+              "best_nonnegative_scale": 1.0128985907520032,
+              "scale_is_unique": true,
+              "rescaled_mse": 4.7587596818274695e-05,
+              "rescaled_relative_rmse": 0.3244574461672781,
+              "scale_interpretation": "diagnostic multiplier on activation; no model change"
+            }
+          },
+          "decomposition": {
+            "identity": "||Y-T0||^2 = ||Y-Tq||^2 + ||Tq-T0||^2 + 2 dot(Y-Tq,Tq-T0)",
+            "sum_terms": {
+              "total_error": 0.24398430411110894,
+              "conditional_error": 0.24398430411110894,
+              "target_gap": 0.0,
+              "cross_term": 0.0
+            },
+            "mean_terms": {
+              "total_error": 4.7653184396700965e-05,
+              "conditional_error": 4.7653184396700965e-05,
+              "target_gap": 0.0,
+              "cross_term": 0.0
+            },
+            "original_target_energy": 2.3144523470873537,
+            "terms_divided_by_original_target_energy": {
+              "total_error": 0.10541772632223494,
+              "conditional_error": 0.10541772632223494,
+              "target_gap": 0.0,
+              "cross_term": 0.0
+            },
+            "terms_divided_by_total_error": {
+              "total_error": 1.0,
+              "conditional_error": 1.0,
+              "target_gap": 0.0,
+              "cross_term": 0.0
+            },
+            "total_error_normalization_status": "defined",
+            "target_gap_over_total_error_rms": 0.0,
+            "closure_residual_sum": 0.0,
+            "relative_closure_residual": 0.0,
+            "interpretation": "The cross term prevents causal attribution of final error to the target gap."
+          }
+        },
+        "record_count": 3,
+        "record_decompositions": [
+          {
+            "record_id": "search-0",
+            "valid_tokens": 13,
+            "decomposition": {
+              "identity": "||Y-T0||^2 = ||Y-Tq||^2 + ||Tq-T0||^2 + 2 dot(Y-Tq,Tq-T0)",
+              "sum_terms": {
+                "total_error": 0.07561459912540158,
+                "conditional_error": 0.07561459912540158,
+                "target_gap": 0.0,
+                "cross_term": 0.0
+              },
+              "mean_terms": {
+                "total_error": 4.5441465820553836e-05,
+                "conditional_error": 4.5441465820553836e-05,
+                "target_gap": 0.0,
+                "cross_term": 0.0
+              },
+              "original_target_energy": 0.7349095700919861,
+              "terms_divided_by_original_target_energy": {
+                "total_error": 0.10288966452829994,
+                "conditional_error": 0.10288966452829994,
+                "target_gap": 0.0,
+                "cross_term": 0.0
+              },
+              "terms_divided_by_total_error": {
+                "total_error": 1.0,
+                "conditional_error": 1.0,
+                "target_gap": 0.0,
+                "cross_term": 0.0
+              },
+              "total_error_normalization_status": "defined",
+              "target_gap_over_total_error_rms": 0.0,
+              "closure_residual_sum": 0.0,
+              "relative_closure_residual": 0.0,
+              "interpretation": "The cross term prevents causal attribution of final error to the target gap."
+            }
+          },
+          {
+            "record_id": "search-1",
+            "valid_tokens": 11,
+            "decomposition": {
+              "identity": "||Y-T0||^2 = ||Y-Tq||^2 + ||Tq-T0||^2 + 2 dot(Y-Tq,Tq-T0)",
+              "sum_terms": {
+                "total_error": 0.06883334677422681,
+                "conditional_error": 0.06883334677422681,
+                "target_gap": 0.0,
+                "cross_term": 0.0
+              },
+              "mean_terms": {
+                "total_error": 4.8887320152149726e-05,
+                "conditional_error": 4.8887320152149726e-05,
+                "target_gap": 0.0,
+                "cross_term": 0.0
+              },
+              "original_target_energy": 0.6333161679795012,
+              "terms_divided_by_original_target_energy": {
+                "total_error": 0.1086871775180304,
+                "conditional_error": 0.1086871775180304,
+                "target_gap": 0.0,
+                "cross_term": 0.0
+              },
+              "terms_divided_by_total_error": {
+                "total_error": 1.0,
+                "conditional_error": 1.0,
+                "target_gap": 0.0,
+                "cross_term": 0.0
+              },
+              "total_error_normalization_status": "defined",
+              "target_gap_over_total_error_rms": 0.0,
+              "closure_residual_sum": 0.0,
+              "relative_closure_residual": 0.0,
+              "interpretation": "The cross term prevents causal attribution of final error to the target gap."
+            }
+          },
+          {
+            "record_id": "search-2",
+            "valid_tokens": 16,
+            "decomposition": {
+              "identity": "||Y-T0||^2 = ||Y-Tq||^2 + ||Tq-T0||^2 + 2 dot(Y-Tq,Tq-T0)",
+              "sum_terms": {
+                "total_error": 0.09953635821148055,
+                "conditional_error": 0.09953635821148055,
+                "target_gap": 0.0,
+                "cross_term": 0.0
+              },
+              "mean_terms": {
+                "total_error": 4.8601737407949486e-05,
+                "conditional_error": 4.8601737407949486e-05,
+                "target_gap": 0.0,
+                "cross_term": 0.0
+              },
+              "original_target_energy": 0.9462266090158664,
+              "terms_divided_by_original_target_energy": {
+                "total_error": 0.10519293926325371,
+                "conditional_error": 0.10519293926325371,
+                "target_gap": 0.0,
+                "cross_term": 0.0
+              },
+              "terms_divided_by_total_error": {
+                "total_error": 1.0,
+                "conditional_error": 1.0,
+                "target_gap": 0.0,
+                "cross_term": 0.0
+              },
+              "total_error_normalization_status": "defined",
+              "target_gap_over_total_error_rms": 0.0,
+              "closure_residual_sum": 0.0,
+              "relative_closure_residual": 0.0,
+              "interpretation": "The cross term prevents causal attribution of final error to the target gap."
+            }
+          }
+        ]
+      },
+      {
+        "start": 3,
+        "end": 4,
+        "reverse_order_replay_exact": true,
+        "state_unchanged_after_every_yield": true,
+        "activation_sha256": [
+          {
+            "xq": "7833d8b243ea7259fca6c0b44a19cb8c1dc41f868583c60e40c147bb03ca6de3",
+            "x0": "3bf3713b36a8f5592620e4239842bb5ea4102829c400e471a24ef4b4ce809927",
+            "tq": "e08e51975bec6fc85784ccf726eaa4ab9e6bc97af8a74c35cd81dc9d6589ce03",
+            "t0": "c497e7d8b2819616df3c431630dea291128cc548c17f74736f050b4349384689",
+            "y": "9ced978db0f81322a879436a29e58317702ab8b60ae4c53446253a43d0b1112e",
+            "mask": "855a0191cf752d7ef873efc25ee75a279be789c74504269a1cdae1e4612b5a25"
+          },
+          {
+            "xq": "645c555d2bcf9cc2434e94ac5e27347c36154e382a8fbadf3131fe5f31076d8c",
+            "x0": "ab898b6e6dfa221e4fa78becf2f5b80ff9b1935756ae7839bb8eaf3519c31bbf",
+            "tq": "fa706f8f34329b43cd2c2bf132e0020251d211cae3adab3451856f23f6e79895",
+            "t0": "2b14093cffbc391c91855b0d0f2d99c99d3bb34b6a2beab2d0a1504a81ecee12",
+            "y": "f3dd289eef8b7dfc59fc02892330009a088a1cd6d6b6838c359a7ab6e608392d",
+            "mask": "6f1af7e4e3cff07b857b7660231d81a143676c4b689fec685ee167163cada2ef"
+          },
+          {
+            "xq": "27030a9cbcff218898937b2a7fa8606dd2659b73ce57ecc888d543385de0fcbe",
+            "x0": "ed65bc9e6a44dbf175243a236df43eded51580e4a48f8eb536cc4d35cb2d0f6d",
+            "tq": "759fcb3d92d963bff4f821d68a10bab9f6bcc9671d53b2cd21f8047e1b3faa85",
+            "t0": "b6d5252684bbc35bf20f2f184db5dfcc551f6e9ac9b3c0a99bd3391a8f3e212a",
+            "y": "0bd777d4b833edb7c3879698798c61ee3699e34779519f45748594f380dd5753",
+            "mask": "cb9cb8229f3a322017b0d7644744ea14809f2f738decf88632f232fd5a12bb9c"
+          }
+        ],
+        "pooled_metrics": {
+          "valid_tokens": 40,
+          "valid_elements": 5120,
+          "pairs": {
+            "xq/x0": {
+              "valid_elements": 5120,
+              "norm_status": "nonzero",
+              "activation_rms": 0.02004999581294261,
+              "reference_rms": 0.024200568858186357,
+              "rms_ratio": 0.8284927486801731,
+              "cosine": 0.8564784608862891,
+              "mse": 0.0001565066734052323,
+              "relative_rmse": 0.5169408536046818,
+              "best_nonnegative_scale": 1.0337790671682987,
+              "scale_is_unique": true,
+              "rescaled_mse": 0.0001560479785419864,
+              "rescaled_relative_rmse": 0.5161827641813058,
+              "scale_interpretation": "diagnostic multiplier on activation; no model change"
+            },
+            "tq/t0": {
+              "valid_elements": 5120,
+              "norm_status": "nonzero",
+              "activation_rms": 0.02664823837022636,
+              "reference_rms": 0.029590441766173026,
+              "rms_ratio": 0.9005691290722766,
+              "cosine": 0.8184187845134986,
+              "mse": 0.00029502217490571245,
+              "relative_rmse": 0.5804647898594485,
+              "best_nonnegative_scale": 0.9087795240733986,
+              "scale_is_unique": true,
+              "rescaled_mse": 0.00028911307032196583,
+              "rescaled_relative_rmse": 0.574622217770465,
+              "scale_interpretation": "diagnostic multiplier on activation; no model change"
+            },
+            "y/tq": {
+              "valid_elements": 5120,
+              "norm_status": "nonzero",
+              "activation_rms": 0.021175607989466664,
+              "reference_rms": 0.02664823837022636,
+              "rms_ratio": 0.7946344405687178,
+              "cosine": 0.8619397740617313,
+              "mse": 0.00018576242461016968,
+              "relative_rmse": 0.5114585357651366,
+              "best_nonnegative_scale": 1.0846997437524142,
+              "scale_is_unique": true,
+              "rescaled_mse": 0.00018254553639305055,
+              "rescaled_relative_rmse": 0.5070106763081146,
+              "scale_interpretation": "diagnostic multiplier on activation; no model change"
+            },
+            "y/t0": {
+              "valid_elements": 5120,
+              "norm_status": "nonzero",
+              "activation_rms": 0.021175607989466664,
+              "reference_rms": 0.029590441766173026,
+              "rms_ratio": 0.7156232460738059,
+              "cosine": 0.7643226761852391,
+              "mse": 0.0003661581734126784,
+              "relative_rmse": 0.6466703032938906,
+              "best_nonnegative_scale": 1.0680517721840614,
+              "scale_is_unique": true,
+              "rescaled_mse": 0.0003640815839017758,
+              "rescaled_relative_rmse": 0.6448339682965176,
+              "scale_interpretation": "diagnostic multiplier on activation; no model change"
+            }
+          },
+          "decomposition": {
+            "identity": "||Y-T0||^2 = ||Y-Tq||^2 + ||Tq-T0||^2 + 2 dot(Y-Tq,Tq-T0)",
+            "sum_terms": {
+              "total_error": 1.8747298478729135,
+              "conditional_error": 0.9511036140040687,
+              "target_gap": 1.5105135355172479,
+              "cross_term": -0.5868873016484031
+            },
+            "mean_terms": {
+              "total_error": 0.0003661581734126784,
+              "conditional_error": 0.00018576242461016968,
+              "target_gap": 0.00029502217490571245,
+              "cross_term": -0.00011462642610320373
+            },
+            "original_target_energy": 4.483042528856458,
+            "terms_divided_by_original_target_energy": {
+              "total_error": 0.4181824811622125,
+              "conditional_error": 0.21215583119767498,
+              "target_gap": 0.3369393722665736,
+              "cross_term": -0.13091272230203607
+            },
+            "terms_divided_by_total_error": {
+              "total_error": 1.0,
+              "conditional_error": 0.5073283572474189,
+              "target_gap": 0.8057233084708664,
+              "cross_term": -0.31305166571828524
+            },
+            "total_error_normalization_status": "defined",
+            "target_gap_over_total_error_rms": 0.8976209157940039,
+            "closure_residual_sum": 0.0,
+            "relative_closure_residual": 0.0,
+            "interpretation": "The cross term prevents causal attribution of final error to the target gap."
+          }
+        },
+        "record_count": 3,
+        "record_decompositions": [
+          {
+            "record_id": "search-0",
+            "valid_tokens": 13,
+            "decomposition": {
+              "identity": "||Y-T0||^2 = ||Y-Tq||^2 + ||Tq-T0||^2 + 2 dot(Y-Tq,Tq-T0)",
+              "sum_terms": {
+                "total_error": 0.6094293793257748,
+                "conditional_error": 0.314489651628719,
+                "target_gap": 0.5337492657999974,
+                "cross_term": -0.2388095381029416
+              },
+              "mean_terms": {
+                "total_error": 0.0003662436173832781,
+                "conditional_error": 0.00018899618487302824,
+                "target_gap": 0.00032076277992788306,
+                "cross_term": -0.00014351534741763317
+              },
+              "original_target_energy": 1.4038835310639115,
+              "terms_divided_by_original_target_energy": {
+                "total_error": 0.43410252050177417,
+                "conditional_error": 0.22401406147302538,
+                "target_gap": 0.3801948338232187,
+                "cross_term": -0.1701063747944699
+              },
+              "terms_divided_by_total_error": {
+                "total_error": 1.0,
+                "conditional_error": 0.5160395318923513,
+                "target_gap": 0.8758180749186986,
+                "cross_term": -0.3918576068110498
+              },
+              "total_error_normalization_status": "defined",
+              "target_gap_over_total_error_rms": 0.9358515239709226,
+              "closure_residual_sum": 0.0,
+              "relative_closure_residual": 0.0,
+              "interpretation": "The cross term prevents causal attribution of final error to the target gap."
+            }
+          },
+          {
+            "record_id": "search-1",
+            "valid_tokens": 11,
+            "decomposition": {
+              "identity": "||Y-T0||^2 = ||Y-Tq||^2 + ||Tq-T0||^2 + 2 dot(Y-Tq,Tq-T0)",
+              "sum_terms": {
+                "total_error": 0.5248747398882188,
+                "conditional_error": 0.2686009209328404,
+                "target_gap": 0.3959332715421624,
+                "cross_term": -0.13965945258678403
+              },
+              "mean_terms": {
+                "total_error": 0.00037278035503424627,
+                "conditional_error": 0.00019076769952616505,
+                "target_gap": 0.0002812026076293767,
+                "cross_term": -9.918995212129548e-05
+              },
+              "original_target_energy": 1.2666520191451127,
+              "terms_divided_by_original_target_energy": {
+                "total_error": 0.41437958646484974,
+                "conditional_error": 0.21205581080913147,
+                "target_gap": 0.31258251323783875,
+                "cross_term": -0.11025873758212047
+              },
+              "terms_divided_by_total_error": {
+                "total_error": 1.0,
+                "conditional_error": 0.5117428988677254,
+                "target_gap": 0.7543385906254192,
+                "cross_term": -0.2660814894931445
+              },
+              "total_error_normalization_status": "defined",
+              "target_gap_over_total_error_rms": 0.868526678131086,
+              "closure_residual_sum": 0.0,
+              "relative_closure_residual": 0.0,
+              "interpretation": "The cross term prevents causal attribution of final error to the target gap."
+            }
+          },
+          {
+            "record_id": "search-2",
+            "valid_tokens": 16,
+            "decomposition": {
+              "identity": "||Y-T0||^2 = ||Y-Tq||^2 + ||Tq-T0||^2 + 2 dot(Y-Tq,Tq-T0)",
+              "sum_terms": {
+                "total_error": 0.74042572865892,
+                "conditional_error": 0.36801304144250935,
+                "target_gap": 0.5808309981750881,
+                "cross_term": -0.20841831095867747
+              },
+              "mean_terms": {
+                "total_error": 0.00036153600032173827,
+                "conditional_error": 0.00017969386789185027,
+                "target_gap": 0.00028360888582767974,
+                "cross_term": -0.00010176675339779173
+              },
+              "original_target_energy": 1.8125069786474342,
+              "terms_divided_by_original_target_energy": {
+                "total_error": 0.4085091739682324,
+                "conditional_error": 0.20304089627127148,
+                "target_gap": 0.3204572478989999,
+                "cross_term": -0.11498897020203895
+              },
+              "terms_divided_by_total_error": {
+                "total_error": 1.0,
+                "conditional_error": 0.4970289756260428,
+                "target_gap": 0.7844554500113139,
+                "cross_term": -0.28148442563735676
+              },
+              "total_error_normalization_status": "defined",
+              "target_gap_over_total_error_rms": 0.8856948966835667,
+              "closure_residual_sum": 0.0,
+              "relative_closure_residual": 0.0,
+              "interpretation": "The cross term prevents causal attribution of final error to the target gap."
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "limitations": [
+    "No pretrained 9B diagnostic, saved-state restoration parity or CUDA memory test in this stage",
+    "Original plain embedding, default RoPE and text-only inputs are required",
+    "Collector explicitly evaluates an all-hard decoder, then restores incoming flags",
+    "Caller must validate frozen source/checkpoint/runtime and disjoint search-data provenance",
+    "Final factors do not reconstruct optimizer moments or the actual last-soft state",
+    "Error decomposition and scalar optimum are diagnostics, not causal attribution or applied corrections",
+    "No inference-speed, quality-recovery or Bonsai-equivalence claim"
+  ],
+  "next_gate": "Complete both frozen 5090 diversity arms; review source/data/state seals and outcomes, then validate restored hard-FP32 parity before a bounded read-only diagnostic on disjoint search-validation records. No integration mid-run or automatic training sweep."
+}
