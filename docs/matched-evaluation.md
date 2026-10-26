@@ -146,13 +146,16 @@ validate stopping only. [Validation record](../validation-evaluation.json).
 
 ## Remaining gates
 
-Before real comparison, verify the actual official Bonsai GGUF hash and tokenizer,
-build and test the Windows/CUDA worker, measure a disjoint short BF16/OpenBonsai/
-Bonsai preflight, and record residual backend drift. Keep the current 5090
-compression experiment unchanged until its completed results are reviewed.
+The [official PTQ1_0 CPU preflight](bonsai-reference-preflight.md) now verifies
+the actual GGUF hash, tokenizer, scoring, state reset and short generation.
+Before real comparison, build and test the Windows/CUDA worker, measure a
+disjoint short BF16/OpenBonsai/Bonsai preflight, and record residual backend drift.
+Keep the current 5090 compression experiment unchanged until its completed
+results are reviewed.
 
 Count actual deployable packages with identical modality scope. Prism's language
 GGUF includes tokenizer metadata; OpenBonsai needs its tokenizer/configuration
 assets counted too. Retained BF16 vision and optional compressed vision are
 separate comparisons. Merely subtracting vision bytes does not create a working
-text-only artifact. No official Bonsai weights were loaded in this CPU preflight.
+text-only artifact. The random-fixture preflight above loaded no official weights;
+the separately recorded official-checkpoint preflight does.
