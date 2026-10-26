@@ -1,0 +1,847 @@
+{
+  "date": "2026-10-26",
+  "base_commit": "126362b28a24281cfb649009e42cd79d19e6e69c",
+  "scope": "CPU software/runtime comparison on random F32 native hybrid Qwen and its GGUF; no pretrained or ternary quality claim",
+  "quality_claim": false,
+  "official_bonsai_weights_loaded": false,
+  "active_5090_experiment_changed": false,
+  "environment": {
+    "python": "3.12.9",
+    "torch": "2.14.1",
+    "transformers": "5.20.2",
+    "platform": "macOS-26.0.1-arm64-arm-64bit",
+    "device": "cpu"
+  },
+  "tests": {
+    "command": "python -m pytest -q",
+    "passed": 1043,
+    "seconds": 20.73
+  },
+  "file_sha256": {
+    "openbonsai/evaluation.py": "3b31b024db2bf56859494e0c5d69ffd13ac78a28b8b6f15134851be1949bfeb5",
+    "openbonsai/eval_backends.py": "1240292a821ad311b8ea2eeff35a9f3ae7b05903164811798c6cde79857fa929",
+    "tests/test_evaluation.py": "ed75aed121c8a46a8e6da85ec1f81988b5c0d8a231a18d44e162a11d03de68fa",
+    "tests/test_eval_backends.py": "73a2dfdd84b990ff5e13001b7355e61abfe27f2a7c9875e8747d4e75c1ce3853",
+    "tests/prism_worker_unit.cpp": "f65b2fff68b91ead2ea29ec80108da0c2580f400664d545e4811400e6fff195f",
+    "tools/build_prism_eval.py": "ecaf1f5d966011ee2b56a0e0d9b55fbc25048aaa4c98155edc46fabb9b76063b",
+    "tools/prepare_eval_fixture.py": "58efdb8fe8f53390f35113d3998a5b6368fc6bead60c73a72f7715aada944e55",
+    "tools/prism_eval_worker.cpp": "39df5d66f46abfe4f212ea0e62b2a85b42f8bb6a464548052f19705557ba195f",
+    "tools/probe_eval_normalization.py": "acc11a72df24282fc0859da260c67cb5e9dbe50db5fa251574348bd3ac8da399",
+    "tools/smoke_prism_eval.py": "85ae1857068a1a6d1d125e21dc11374ad3f3060e035c42834399bd5279fd0f5f"
+  },
+  "worker_build": {
+    "runtime_sha": "c9c34bc9c4042c13a31598ebf43461cd0ad8f00d",
+    "executable_sha256": "1d6c1fb39b3b9203a246d485f51d2fc2ab798d51a714a7cdbd30f87cb920fef9",
+    "worker_source_sha256": "39df5d66f46abfe4f212ea0e62b2a85b42f8bb6a464548052f19705557ba195f",
+    "unit_source_sha256": "f65b2fff68b91ead2ea29ec80108da0c2580f400664d545e4811400e6fff195f",
+    "build_helper_sha256": "ecaf1f5d966011ee2b56a0e0d9b55fbc25048aaa4c98155edc46fabb9b76063b",
+    "prism_license_sha256": "94f29bbed6a22c35b992c5c6ebf0e7c92f13b836b90f36f461c9cf2f0f1d010d",
+    "cuda": false,
+    "cmake_version": "cmake version 4.3.4\n\nCMake suite maintained and supported by Kitware (kitware.com/cmake).",
+    "effective_cmake_cache": {
+      "BUILD_SHARED_LIBS:BOOL": "OFF",
+      "CMAKE_ADDR2LINE:FILEPATH": "CMAKE_ADDR2LINE-NOTFOUND",
+      "CMAKE_AR:FILEPATH": "/usr/bin/ar",
+      "CMAKE_ASM_COMPILER:FILEPATH": "/usr/bin/cc",
+      "CMAKE_ASM_FLAGS:STRING": "",
+      "CMAKE_ASM_FLAGS_DEBUG:STRING": "-g",
+      "CMAKE_ASM_FLAGS_MINSIZEREL:STRING": "-Os -DNDEBUG",
+      "CMAKE_ASM_FLAGS_RELEASE:STRING": "-O3 -DNDEBUG",
+      "CMAKE_ASM_FLAGS_RELWITHDEBINFO:STRING": "-O2 -g -DNDEBUG",
+      "CMAKE_BUILD_TYPE:STRING": "Release",
+      "CMAKE_COLOR_MAKEFILE:BOOL": "ON",
+      "CMAKE_CXX_COMPILER:FILEPATH": "/usr/bin/c++",
+      "CMAKE_CXX_FLAGS:STRING": "",
+      "CMAKE_CXX_FLAGS_DEBUG:STRING": "-g",
+      "CMAKE_CXX_FLAGS_MINSIZEREL:STRING": "-Os -DNDEBUG",
+      "CMAKE_CXX_FLAGS_RELEASE:STRING": "-O3 -DNDEBUG",
+      "CMAKE_CXX_FLAGS_RELWITHDEBINFO:STRING": "-O2 -g -DNDEBUG",
+      "CMAKE_C_COMPILER:FILEPATH": "/usr/bin/cc",
+      "CMAKE_C_FLAGS:STRING": "",
+      "CMAKE_C_FLAGS_DEBUG:STRING": "-g",
+      "CMAKE_C_FLAGS_MINSIZEREL:STRING": "-Os -DNDEBUG",
+      "CMAKE_C_FLAGS_RELEASE:STRING": "-O3 -DNDEBUG",
+      "CMAKE_C_FLAGS_RELWITHDEBINFO:STRING": "-O2 -g -DNDEBUG",
+      "CMAKE_DLLTOOL:FILEPATH": "CMAKE_DLLTOOL-NOTFOUND",
+      "CMAKE_EXE_LINKER_FLAGS:STRING": "-L/opt/homebrew/opt/tcl-tk/lib",
+      "CMAKE_EXE_LINKER_FLAGS_DEBUG:STRING": "",
+      "CMAKE_EXE_LINKER_FLAGS_MINSIZEREL:STRING": "",
+      "CMAKE_EXE_LINKER_FLAGS_RELEASE:STRING": "",
+      "CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO:STRING": "",
+      "CMAKE_EXPORT_COMPILE_COMMANDS:BOOL": "",
+      "CMAKE_FIND_PACKAGE_REDIRECTS_DIR:STATIC": "/Users/barack/Documents/Codex/2026-10-26/i/work/research/prism-eval-build/cmake/CMakeFiles/pkgRedirects",
+      "CMAKE_INSTALL_BINDIR:PATH": "bin",
+      "CMAKE_INSTALL_DATADIR:PATH": "",
+      "CMAKE_INSTALL_DATAROOTDIR:PATH": "share",
+      "CMAKE_INSTALL_DOCDIR:PATH": "",
+      "CMAKE_INSTALL_INCLUDEDIR:PATH": "include",
+      "CMAKE_INSTALL_INFODIR:PATH": "",
+      "CMAKE_INSTALL_LIBDIR:PATH": "lib",
+      "CMAKE_INSTALL_LIBEXECDIR:PATH": "libexec",
+      "CMAKE_INSTALL_LOCALEDIR:PATH": "",
+      "CMAKE_INSTALL_LOCALSTATEDIR:PATH": "var",
+      "CMAKE_INSTALL_MANDIR:PATH": "",
+      "CMAKE_INSTALL_NAME_TOOL:FILEPATH": "/usr/bin/install_name_tool",
+      "CMAKE_INSTALL_OLDINCLUDEDIR:PATH": "/usr/include",
+      "CMAKE_INSTALL_PREFIX:PATH": "/usr/local",
+      "CMAKE_INSTALL_RUNSTATEDIR:PATH": "",
+      "CMAKE_INSTALL_SBINDIR:PATH": "sbin",
+      "CMAKE_INSTALL_SHAREDSTATEDIR:PATH": "com",
+      "CMAKE_INSTALL_SYSCONFDIR:PATH": "etc",
+      "CMAKE_LINKER:FILEPATH": "/usr/bin/ld",
+      "CMAKE_MAKE_PROGRAM:FILEPATH": "/usr/bin/make",
+      "CMAKE_MODULE_LINKER_FLAGS:STRING": "-L/opt/homebrew/opt/tcl-tk/lib",
+      "CMAKE_MODULE_LINKER_FLAGS_DEBUG:STRING": "",
+      "CMAKE_MODULE_LINKER_FLAGS_MINSIZEREL:STRING": "",
+      "CMAKE_MODULE_LINKER_FLAGS_RELEASE:STRING": "",
+      "CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO:STRING": "",
+      "CMAKE_NM:FILEPATH": "/usr/bin/nm",
+      "CMAKE_OBJCOPY:FILEPATH": "CMAKE_OBJCOPY-NOTFOUND",
+      "CMAKE_OBJDUMP:FILEPATH": "/usr/bin/objdump",
+      "CMAKE_OSX_ARCHITECTURES:STRING": "",
+      "CMAKE_OSX_DEPLOYMENT_TARGET:STRING": "",
+      "CMAKE_OSX_SYSROOT:STRING": "",
+      "CMAKE_PROJECT_COMPAT_VERSION:STATIC": "",
+      "CMAKE_PROJECT_DESCRIPTION:STATIC": "",
+      "CMAKE_PROJECT_HOMEPAGE_URL:STATIC": "",
+      "CMAKE_PROJECT_NAME:STATIC": "openbonsai_prism_eval",
+      "CMAKE_PROJECT_SPDX_LICENSE:STATIC": "",
+      "CMAKE_RANLIB:FILEPATH": "/usr/bin/ranlib",
+      "CMAKE_READELF:FILEPATH": "CMAKE_READELF-NOTFOUND",
+      "CMAKE_SHARED_LINKER_FLAGS:STRING": "-L/opt/homebrew/opt/tcl-tk/lib",
+      "CMAKE_SHARED_LINKER_FLAGS_DEBUG:STRING": "",
+      "CMAKE_SHARED_LINKER_FLAGS_MINSIZEREL:STRING": "",
+      "CMAKE_SHARED_LINKER_FLAGS_RELEASE:STRING": "",
+      "CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO:STRING": "",
+      "CMAKE_SKIP_INSTALL_RPATH:BOOL": "NO",
+      "CMAKE_SKIP_RPATH:BOOL": "NO",
+      "CMAKE_STATIC_LINKER_FLAGS:STRING": "",
+      "CMAKE_STATIC_LINKER_FLAGS_DEBUG:STRING": "",
+      "CMAKE_STATIC_LINKER_FLAGS_MINSIZEREL:STRING": "",
+      "CMAKE_STATIC_LINKER_FLAGS_RELEASE:STRING": "",
+      "CMAKE_STATIC_LINKER_FLAGS_RELWITHDEBINFO:STRING": "",
+      "CMAKE_STRIP:FILEPATH": "/usr/bin/strip",
+      "CMAKE_TAPI:FILEPATH": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/tapi",
+      "CMAKE_VERBOSE_MAKEFILE:BOOL": "FALSE",
+      "GGML_ACCELERATE:BOOL": "ON",
+      "GGML_ALL_WARNINGS_3RD_PARTY:BOOL": "OFF",
+      "GGML_AMX_BF16:BOOL": "OFF",
+      "GGML_AMX_INT8:BOOL": "OFF",
+      "GGML_AMX_TILE:BOOL": "OFF",
+      "GGML_AVX:BOOL": "ON",
+      "GGML_AVX2:BOOL": "ON",
+      "GGML_AVX512:BOOL": "OFF",
+      "GGML_AVX512_BF16:BOOL": "OFF",
+      "GGML_AVX512_VBMI:BOOL": "OFF",
+      "GGML_AVX512_VNNI:BOOL": "OFF",
+      "GGML_AVX_VNNI:BOOL": "OFF",
+      "GGML_BACKEND_DIR:PATH": "",
+      "GGML_BACKEND_DL:BOOL": "OFF",
+      "GGML_BIN_INSTALL_DIR:PATH": "bin",
+      "GGML_BLAS:BOOL": "OFF",
+      "GGML_BLAS_VENDOR:STRING": "Apple",
+      "GGML_BMI2:BOOL": "ON",
+      "GGML_BUILD_EXAMPLES:BOOL": "OFF",
+      "GGML_BUILD_TESTS:BOOL": "OFF",
+      "GGML_CANN:UNINITIALIZED": "OFF",
+      "GGML_CCACHE:BOOL": "ON",
+      "GGML_CCACHE_FOUND:FILEPATH": "GGML_CCACHE_FOUND-NOTFOUND",
+      "GGML_CPU:BOOL": "ON",
+      "GGML_CPU_ALL_VARIANTS:BOOL": "OFF",
+      "GGML_CPU_ARM_ARCH:STRING": "",
+      "GGML_CPU_HBM:BOOL": "OFF",
+      "GGML_CPU_KLEIDIAI:BOOL": "OFF",
+      "GGML_CPU_POWERPC_CPUTYPE:STRING": "",
+      "GGML_CPU_REPACK:BOOL": "ON",
+      "GGML_CUDA:BOOL": "OFF",
+      "GGML_CUDA_COMPRESSION_MODE:STRING": "size",
+      "GGML_CUDA_CUTLASS_DIR:PATH": "",
+      "GGML_CUDA_FA:BOOL": "ON",
+      "GGML_CUDA_FA_ALL_QUANTS:BOOL": "OFF",
+      "GGML_CUDA_FA_QUANTS:STRING": "q4_0-q4_0;q8_0-q8_0;f16-f16;bf16-bf16",
+      "GGML_CUDA_FORCE_CUBLAS:BOOL": "OFF",
+      "GGML_CUDA_FORCE_MMQ:BOOL": "OFF",
+      "GGML_CUDA_GRAPHS:BOOL": "ON",
+      "GGML_CUDA_HOPPER_Q1:BOOL": "OFF",
+      "GGML_CUDA_NCCL:BOOL": "ON",
+      "GGML_CUDA_NO_PEER_COPY:BOOL": "OFF",
+      "GGML_CUDA_NO_VMM:BOOL": "OFF",
+      "GGML_CUDA_PEER_MAX_BATCH_SIZE:STRING": "128",
+      "GGML_ET:BOOL": "OFF",
+      "GGML_ET_SYSEMU:BOOL": "OFF",
+      "GGML_F16C:BOOL": "ON",
+      "GGML_FMA:BOOL": "ON",
+      "GGML_GPROF:BOOL": "OFF",
+      "GGML_HEXAGON:BOOL": "OFF",
+      "GGML_HIP:BOOL": "OFF",
+      "GGML_HIP_EXPORT_METRICS:BOOL": "OFF",
+      "GGML_HIP_GRAPHS:BOOL": "ON",
+      "GGML_HIP_MMQ_MFMA:BOOL": "ON",
+      "GGML_HIP_NO_VMM:BOOL": "ON",
+      "GGML_HIP_RCCL:BOOL": "OFF",
+      "GGML_INCLUDE_INSTALL_DIR:PATH": "include",
+      "GGML_LASX:BOOL": "ON",
+      "GGML_LIB_INSTALL_DIR:PATH": "lib",
+      "GGML_LLAMAFILE:BOOL": "ON",
+      "GGML_LSX:BOOL": "ON",
+      "GGML_LTO:BOOL": "OFF",
+      "GGML_METAL:BOOL": "OFF",
+      "GGML_METAL_EMBED_LIBRARY:BOOL": "OFF",
+      "GGML_METAL_MACOSX_VERSION_MIN:STRING": "",
+      "GGML_METAL_NDEBUG:BOOL": "OFF",
+      "GGML_METAL_SHADER_DEBUG:BOOL": "OFF",
+      "GGML_METAL_STD:STRING": "",
+      "GGML_MUSA:BOOL": "OFF",
+      "GGML_MUSA_GRAPHS:BOOL": "OFF",
+      "GGML_MUSA_MUDNN_COPY:BOOL": "OFF",
+      "GGML_NATIVE:BOOL": "OFF",
+      "GGML_OPENCL:BOOL": "OFF",
+      "GGML_OPENCL_EMBED_KERNELS:BOOL": "ON",
+      "GGML_OPENCL_PROFILING:BOOL": "OFF",
+      "GGML_OPENCL_TARGET_VERSION:STRING": "300",
+      "GGML_OPENCL_USE_ADRENO_KERNELS:BOOL": "ON",
+      "GGML_OPENMP:BOOL": "OFF",
+      "GGML_OPENMP_FETCH:BOOL": "OFF",
+      "GGML_OPENVINO:BOOL": "OFF",
+      "GGML_RPC:BOOL": "OFF",
+      "GGML_RVV:BOOL": "ON",
+      "GGML_RV_ZFH:BOOL": "ON",
+      "GGML_RV_ZICBOP:BOOL": "ON",
+      "GGML_RV_ZIHINTPAUSE:BOOL": "ON",
+      "GGML_RV_ZVFBFWMA:BOOL": "OFF",
+      "GGML_RV_ZVFH:BOOL": "ON",
+      "GGML_SANITIZE_ADDRESS:BOOL": "OFF",
+      "GGML_SANITIZE_THREAD:BOOL": "OFF",
+      "GGML_SANITIZE_UNDEFINED:BOOL": "OFF",
+      "GGML_SCCACHE_FOUND:FILEPATH": "GGML_SCCACHE_FOUND-NOTFOUND",
+      "GGML_SCHED_MAX_COPIES:STRING": "4",
+      "GGML_SCHED_NO_REALLOC:BOOL": "OFF",
+      "GGML_SSE42:BOOL": "ON",
+      "GGML_SSSE3:BOOL": "OFF",
+      "GGML_STATIC:BOOL": "OFF",
+      "GGML_SYCL:BOOL": "OFF",
+      "GGML_SYCL_DEVICE_ARCH:STRING": "",
+      "GGML_SYCL_DNN:BOOL": "ON",
+      "GGML_SYCL_F16:BOOL": "OFF",
+      "GGML_SYCL_GRAPH:BOOL": "ON",
+      "GGML_SYCL_HOST_MEM_FALLBACK:BOOL": "ON",
+      "GGML_SYCL_SUPPORT_LEVEL_ZERO_API:BOOL": "ON",
+      "GGML_SYCL_TARGET:STRING": "INTEL",
+      "GGML_VIRTGPU:BOOL": "OFF",
+      "GGML_VIRTGPU_BACKEND:BOOL": "OFF",
+      "GGML_VULKAN:BOOL": "OFF",
+      "GGML_VULKAN_CHECK_RESULTS:BOOL": "OFF",
+      "GGML_VULKAN_DEBUG:BOOL": "OFF",
+      "GGML_VULKAN_MEMORY_DEBUG:BOOL": "OFF",
+      "GGML_VULKAN_RUN_TESTS:BOOL": "OFF",
+      "GGML_VULKAN_SHADERS_GEN_TOOLCHAIN:FILEPATH": "",
+      "GGML_VULKAN_SHADER_DEBUG_INFO:BOOL": "OFF",
+      "GGML_VULKAN_VALIDATE:BOOL": "OFF",
+      "GGML_VXE:BOOL": "OFF",
+      "GGML_WEBGPU:BOOL": "OFF",
+      "GGML_WEBGPU_CPU_PROFILE:BOOL": "OFF",
+      "GGML_WEBGPU_DEBUG:BOOL": "OFF",
+      "GGML_WEBGPU_GPU_PROFILE:BOOL": "OFF",
+      "GGML_WEBGPU_JSPI:BOOL": "ON",
+      "GGML_XTHEADVECTOR:BOOL": "OFF",
+      "GGML_ZDNN:BOOL": "OFF",
+      "GGML_ZENDNN:BOOL": "OFF",
+      "LLAMA_ALL_WARNINGS:BOOL": "ON",
+      "LLAMA_ALL_WARNINGS_3RD_PARTY:BOOL": "OFF",
+      "LLAMA_BIN_INSTALL_DIR:PATH": "bin",
+      "LLAMA_BUILD_APP:BOOL": "OFF",
+      "LLAMA_BUILD_COMMON:BOOL": "OFF",
+      "LLAMA_BUILD_EXAMPLES:BOOL": "OFF",
+      "LLAMA_BUILD_IS_DEV:BOOL": "ON",
+      "LLAMA_BUILD_MTMD:BOOL": "OFF",
+      "LLAMA_BUILD_SERVER:BOOL": "OFF",
+      "LLAMA_BUILD_TESTS:BOOL": "OFF",
+      "LLAMA_BUILD_TOOLS:BOOL": "OFF",
+      "LLAMA_BUILD_UI:BOOL": "OFF",
+      "LLAMA_DSPARK_MARKOV_BLAS:BOOL": "OFF",
+      "LLAMA_DSPARK_MARKOV_CUDA:BOOL": "OFF",
+      "LLAMA_DSPARK_MARKOV_METAL:BOOL": "OFF",
+      "LLAMA_FATAL_WARNINGS:BOOL": "OFF",
+      "LLAMA_INCLUDE_INSTALL_DIR:PATH": "include",
+      "LLAMA_LIB_INSTALL_DIR:PATH": "lib",
+      "LLAMA_LLGUIDANCE:BOOL": "OFF",
+      "LLAMA_OPENSSL:BOOL": "OFF",
+      "LLAMA_SANITIZE_ADDRESS:BOOL": "OFF",
+      "LLAMA_SANITIZE_THREAD:BOOL": "OFF",
+      "LLAMA_SANITIZE_UNDEFINED:BOOL": "OFF",
+      "LLAMA_SUBPROCESS:BOOL": "ON",
+      "LLAMA_TESTS_INSTALL:BOOL": "ON",
+      "LLAMA_TOOLS_INSTALL:BOOL": "OFF",
+      "LLAMA_USE_PREBUILT_UI:BOOL": "ON",
+      "LLAMA_USE_SYSTEM_GGML:BOOL": "OFF",
+      "LLAMA_WASM_MEM64:BOOL": "ON",
+      "CMAKE_ADDR2LINE-ADVANCED:INTERNAL": "1",
+      "CMAKE_AR-ADVANCED:INTERNAL": "1",
+      "CMAKE_ASM_COMPILER-ADVANCED:INTERNAL": "1",
+      "CMAKE_ASM_COMPILER_WORKS:INTERNAL": "1",
+      "CMAKE_ASM_FLAGS-ADVANCED:INTERNAL": "1",
+      "CMAKE_ASM_FLAGS_DEBUG-ADVANCED:INTERNAL": "1",
+      "CMAKE_ASM_FLAGS_MINSIZEREL-ADVANCED:INTERNAL": "1",
+      "CMAKE_ASM_FLAGS_RELEASE-ADVANCED:INTERNAL": "1",
+      "CMAKE_ASM_FLAGS_RELWITHDEBINFO-ADVANCED:INTERNAL": "1",
+      "CMAKE_CACHEFILE_DIR:INTERNAL": "/Users/barack/Documents/Codex/2026-10-26/i/work/research/prism-eval-build/cmake",
+      "CMAKE_CACHE_MAJOR_VERSION:INTERNAL": "4",
+      "CMAKE_CACHE_MINOR_VERSION:INTERNAL": "3",
+      "CMAKE_CACHE_PATCH_VERSION:INTERNAL": "4",
+      "CMAKE_COLOR_MAKEFILE-ADVANCED:INTERNAL": "1",
+      "CMAKE_COMMAND:INTERNAL": "/opt/homebrew/bin/cmake",
+      "CMAKE_CPACK_COMMAND:INTERNAL": "/opt/homebrew/bin/cpack",
+      "CMAKE_CTEST_COMMAND:INTERNAL": "/opt/homebrew/bin/ctest",
+      "CMAKE_CXX_COMPILER-ADVANCED:INTERNAL": "1",
+      "CMAKE_CXX_FLAGS-ADVANCED:INTERNAL": "1",
+      "CMAKE_CXX_FLAGS_DEBUG-ADVANCED:INTERNAL": "1",
+      "CMAKE_CXX_FLAGS_MINSIZEREL-ADVANCED:INTERNAL": "1",
+      "CMAKE_CXX_FLAGS_RELEASE-ADVANCED:INTERNAL": "1",
+      "CMAKE_CXX_FLAGS_RELWITHDEBINFO-ADVANCED:INTERNAL": "1",
+      "CMAKE_C_COMPILER-ADVANCED:INTERNAL": "1",
+      "CMAKE_C_FLAGS-ADVANCED:INTERNAL": "1",
+      "CMAKE_C_FLAGS_DEBUG-ADVANCED:INTERNAL": "1",
+      "CMAKE_C_FLAGS_MINSIZEREL-ADVANCED:INTERNAL": "1",
+      "CMAKE_C_FLAGS_RELEASE-ADVANCED:INTERNAL": "1",
+      "CMAKE_C_FLAGS_RELWITHDEBINFO-ADVANCED:INTERNAL": "1",
+      "CMAKE_DLLTOOL-ADVANCED:INTERNAL": "1",
+      "CMAKE_EDIT_COMMAND:INTERNAL": "/opt/homebrew/bin/ccmake",
+      "CMAKE_EXECUTABLE_FORMAT:INTERNAL": "MACHO",
+      "CMAKE_EXE_LINKER_FLAGS-ADVANCED:INTERNAL": "1",
+      "CMAKE_EXE_LINKER_FLAGS_DEBUG-ADVANCED:INTERNAL": "1",
+      "CMAKE_EXE_LINKER_FLAGS_MINSIZEREL-ADVANCED:INTERNAL": "1",
+      "CMAKE_EXE_LINKER_FLAGS_RELEASE-ADVANCED:INTERNAL": "1",
+      "CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED:INTERNAL": "1",
+      "CMAKE_EXPORT_COMPILE_COMMANDS-ADVANCED:INTERNAL": "1",
+      "CMAKE_EXTRA_GENERATOR:INTERNAL": "",
+      "CMAKE_GENERATOR:INTERNAL": "Unix Makefiles",
+      "CMAKE_GENERATOR_INSTANCE:INTERNAL": "",
+      "CMAKE_GENERATOR_PLATFORM:INTERNAL": "",
+      "CMAKE_GENERATOR_TOOLSET:INTERNAL": "",
+      "CMAKE_HAVE_LIBC_PTHREAD:INTERNAL": "1",
+      "CMAKE_HOME_DIRECTORY:INTERNAL": "/Users/barack/Documents/Codex/2026-10-26/i/work/research/prism-eval-build/worker-project",
+      "CMAKE_INSTALL_BINDIR-ADVANCED:INTERNAL": "1",
+      "CMAKE_INSTALL_DATADIR-ADVANCED:INTERNAL": "1",
+      "CMAKE_INSTALL_DATAROOTDIR-ADVANCED:INTERNAL": "1",
+      "CMAKE_INSTALL_DOCDIR-ADVANCED:INTERNAL": "1",
+      "CMAKE_INSTALL_INCLUDEDIR-ADVANCED:INTERNAL": "1",
+      "CMAKE_INSTALL_INFODIR-ADVANCED:INTERNAL": "1",
+      "CMAKE_INSTALL_LIBDIR-ADVANCED:INTERNAL": "1",
+      "CMAKE_INSTALL_LIBEXECDIR-ADVANCED:INTERNAL": "1",
+      "CMAKE_INSTALL_LOCALEDIR-ADVANCED:INTERNAL": "1",
+      "CMAKE_INSTALL_LOCALSTATEDIR-ADVANCED:INTERNAL": "1",
+      "CMAKE_INSTALL_MANDIR-ADVANCED:INTERNAL": "1",
+      "CMAKE_INSTALL_NAME_TOOL-ADVANCED:INTERNAL": "1",
+      "CMAKE_INSTALL_OLDINCLUDEDIR-ADVANCED:INTERNAL": "1",
+      "CMAKE_INSTALL_RUNSTATEDIR-ADVANCED:INTERNAL": "1",
+      "CMAKE_INSTALL_SBINDIR-ADVANCED:INTERNAL": "1",
+      "CMAKE_INSTALL_SHAREDSTATEDIR-ADVANCED:INTERNAL": "1",
+      "CMAKE_INSTALL_SYSCONFDIR-ADVANCED:INTERNAL": "1",
+      "CMAKE_LINKER-ADVANCED:INTERNAL": "1",
+      "CMAKE_LIST_FILE_NAME:INTERNAL": "CMakeLists.txt",
+      "CMAKE_MAKE_PROGRAM-ADVANCED:INTERNAL": "1",
+      "CMAKE_MODULE_LINKER_FLAGS-ADVANCED:INTERNAL": "1",
+      "CMAKE_MODULE_LINKER_FLAGS_DEBUG-ADVANCED:INTERNAL": "1",
+      "CMAKE_MODULE_LINKER_FLAGS_MINSIZEREL-ADVANCED:INTERNAL": "1",
+      "CMAKE_MODULE_LINKER_FLAGS_RELEASE-ADVANCED:INTERNAL": "1",
+      "CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED:INTERNAL": "1",
+      "CMAKE_NM-ADVANCED:INTERNAL": "1",
+      "CMAKE_NUMBER_OF_MAKEFILES:INTERNAL": "12",
+      "CMAKE_OBJCOPY-ADVANCED:INTERNAL": "1",
+      "CMAKE_OBJDUMP-ADVANCED:INTERNAL": "1",
+      "CMAKE_PLATFORM_INFO_INITIALIZED:INTERNAL": "1",
+      "CMAKE_RANLIB-ADVANCED:INTERNAL": "1",
+      "CMAKE_READELF-ADVANCED:INTERNAL": "1",
+      "CMAKE_ROOT:INTERNAL": "/opt/homebrew/share/cmake",
+      "CMAKE_SHARED_LINKER_FLAGS-ADVANCED:INTERNAL": "1",
+      "CMAKE_SHARED_LINKER_FLAGS_DEBUG-ADVANCED:INTERNAL": "1",
+      "CMAKE_SHARED_LINKER_FLAGS_MINSIZEREL-ADVANCED:INTERNAL": "1",
+      "CMAKE_SHARED_LINKER_FLAGS_RELEASE-ADVANCED:INTERNAL": "1",
+      "CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED:INTERNAL": "1",
+      "CMAKE_SKIP_INSTALL_RPATH-ADVANCED:INTERNAL": "1",
+      "CMAKE_SKIP_RPATH-ADVANCED:INTERNAL": "1",
+      "CMAKE_STATIC_LINKER_FLAGS-ADVANCED:INTERNAL": "1",
+      "CMAKE_STATIC_LINKER_FLAGS_DEBUG-ADVANCED:INTERNAL": "1",
+      "CMAKE_STATIC_LINKER_FLAGS_MINSIZEREL-ADVANCED:INTERNAL": "1",
+      "CMAKE_STATIC_LINKER_FLAGS_RELEASE-ADVANCED:INTERNAL": "1",
+      "CMAKE_STATIC_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED:INTERNAL": "1",
+      "CMAKE_STRIP-ADVANCED:INTERNAL": "1",
+      "CMAKE_TAPI-ADVANCED:INTERNAL": "1",
+      "CMAKE_UNAME:INTERNAL": "/usr/bin/uname",
+      "CMAKE_VERBOSE_MAKEFILE-ADVANCED:INTERNAL": "1",
+      "GGML_AVAILABLE_BACKENDS:INTERNAL": "ggml-cpu",
+      "GGML_COMPILER_SUPPORTS_FP16_FORMAT_I3E:INTERNAL": "",
+      "GGML_CUDA_COMPRESSION_MODE-STRINGS:INTERNAL": "none;speed;balance;size",
+      "GGML_OPENMP_ENABLED:INTERNAL": "OFF"
+    },
+    "unit_result": {
+      "checks": 56,
+      "ok": true,
+      "weights_loaded": false
+    }
+  },
+  "actual_backend_smoke": {
+    "command": "python tools/smoke_prism_eval.py --fixture <random-fixture> --worker <pinned-worker> --prism-source <pinned-clean-source> --output <new-output>",
+    "report_sha256": "c30e61505e7a32c7493e9d77e531cb95def0eebde4a7f557d820f8b96070c777",
+    "report": {
+      "format": "openbonsai.actual-backend-smoke.v1",
+      "quality_claim": false,
+      "pretrained_or_ternary_weights_loaded": false,
+      "fixture_sha256": "f156d356e13695c6467914e24c5b04c1283610d3e91f748599b75e5e52d2fdc7",
+      "scope": "CPU random native hybrid Qwen F32 to GGUF; local tokenizer assets",
+      "limits": {
+        "cross_runtime_target_logprob_absolute": 0.001,
+        "native_full_forward_oracle_absolute": 1e-05
+      },
+      "native": {
+        "backend": "transformers",
+        "protocol": "openbonsai.frozen-evaluation.v1",
+        "reduction": "fp32-logits-fp64-logsumexp-v1",
+        "context_length": 256,
+        "vocab_size": 248320,
+        "tokenizer_vocab_size": 248077,
+        "cache_mode": "full-prefix-reference",
+        "reset_policy": "per-record",
+        "reset_method": "native use_cache=False; no past_key_values",
+        "source_identity": {
+          "kind": "local-files-sha256",
+          "path": "/Users/barack/Documents/Codex/2026-10-26/i/work/openbonsai-rco/../openbonsai-monitor/eval-native-fixture/native-f32",
+          "files": {
+            "chat_template.jinja": {
+              "sha256": "a4aee8afcf2e0711942cf848899be66016f8d14a889ff9ede07bca099c28f715",
+              "bytes": 7756
+            },
+            "config.json": {
+              "sha256": "9d168e08afa4d2c92309ae69183bda761804d7eb254be31b170c2fa8d5147ed7",
+              "bytes": 1109
+            },
+            "generation_config.json": {
+              "sha256": "e284d0d0c522cc5eaec077ab6bbf3e0fa5f42b47009c00a282c84de3ca4cbe18",
+              "bytes": 228
+            },
+            "merges.txt": {
+              "sha256": "a9d356d7bdf1ef4949e3e748e95b8e10ad9d4e2e838eddc38a0a7b6b94d1db8d",
+              "bytes": 3353259
+            },
+            "model.safetensors": {
+              "sha256": "6160bc5b09c518f84fa2ad11b4b45086c751f12479cc34f56a4d505aa0ce197f",
+              "bytes": 256937224
+            },
+            "tokenizer.json": {
+              "sha256": "5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42",
+              "bytes": 12807982
+            },
+            "tokenizer_config.json": {
+              "sha256": "316230d6a809701f4db5ea8f8fc862bc3a6f3229c937c174e674ff3ca0a64ac8",
+              "bytes": 16710
+            },
+            "vocab.json": {
+              "sha256": "ce99b4cb2983d118806ce0a8b777a35b093e2000a503ebde25853284c9dfa003",
+              "bytes": 6722759
+            }
+          },
+          "sha256": "251bd08baa33e9dcc85fe52f938798730b0bd1fef7a55973ec58dd56ef7b8981",
+          "bytes": 279847027,
+          "model_kind": "original"
+        },
+        "tokenizer_identity": {
+          "kind": "local-files-sha256",
+          "path": "/Users/barack/Documents/Codex/2026-10-26/i/work/openbonsai-rco/../openbonsai-monitor/eval-native-fixture/native-f32",
+          "files": {
+            "chat_template.jinja": {
+              "sha256": "a4aee8afcf2e0711942cf848899be66016f8d14a889ff9ede07bca099c28f715",
+              "bytes": 7756
+            },
+            "config.json": {
+              "sha256": "9d168e08afa4d2c92309ae69183bda761804d7eb254be31b170c2fa8d5147ed7",
+              "bytes": 1109
+            },
+            "generation_config.json": {
+              "sha256": "e284d0d0c522cc5eaec077ab6bbf3e0fa5f42b47009c00a282c84de3ca4cbe18",
+              "bytes": 228
+            },
+            "merges.txt": {
+              "sha256": "a9d356d7bdf1ef4949e3e748e95b8e10ad9d4e2e838eddc38a0a7b6b94d1db8d",
+              "bytes": 3353259
+            },
+            "model.safetensors": {
+              "sha256": "6160bc5b09c518f84fa2ad11b4b45086c751f12479cc34f56a4d505aa0ce197f",
+              "bytes": 256937224
+            },
+            "tokenizer.json": {
+              "sha256": "5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42",
+              "bytes": 12807982
+            },
+            "tokenizer_config.json": {
+              "sha256": "316230d6a809701f4db5ea8f8fc862bc3a6f3229c937c174e674ff3ca0a64ac8",
+              "bytes": 16710
+            },
+            "vocab.json": {
+              "sha256": "ce99b4cb2983d118806ce0a8b777a35b093e2000a503ebde25853284c9dfa003",
+              "bytes": 6722759
+            }
+          },
+          "sha256": "251bd08baa33e9dcc85fe52f938798730b0bd1fef7a55973ec58dd56ef7b8981",
+          "bytes": 279847027
+        },
+        "runtime": {
+          "torch": "2.14.1",
+          "transformers": "5.20.2"
+        },
+        "tokenization": {
+          "normalizer": {
+            "type": "NFC"
+          },
+          "decoder": {
+            "type": "ByteLevel",
+            "add_prefix_space": true,
+            "trim_offsets": true,
+            "use_regex": true
+          },
+          "add_special_tokens": false,
+          "parse_special": "explicit per request",
+          "raw_piece_policy": "ByteLevel bytes; ASCII added tokens only"
+        },
+        "settings": {
+          "logits_chunk_size": 16,
+          "logits_dtype": "float32",
+          "reduction_dtype": "float64",
+          "tf32": false,
+          "logits_strategy": "native-hidden-once-head-position-chunks",
+          "dtypes": [
+            "torch.float32"
+          ]
+        }
+      },
+      "prism": {
+        "allocated_context_length": 256,
+        "batch_size": 64,
+        "cache_mode": "full-prefix-reference",
+        "context_length": 256,
+        "cuda_build": false,
+        "flash_attention": false,
+        "gpu_layers": 0,
+        "kv_cache_dtype": "float32",
+        "load_mtp": false,
+        "logits_dtype": "float32",
+        "model_path": "/Users/barack/Documents/Codex/2026-10-26/i/work/openbonsai-rco/../openbonsai-monitor/eval-native-fixture/native-f32.gguf",
+        "native_eog_ids": [
+          248044,
+          248046,
+          248063,
+          248064,
+          248065
+        ],
+        "protocol": "openbonsai.frozen-evaluation.v1",
+        "reduction": "fp32-logits-fp64-logsumexp-v1",
+        "reset_policy": "per-record",
+        "runtime_sha": "c9c34bc9c4042c13a31598ebf43461cd0ad8f00d",
+        "threads": 4,
+        "ubatch_size": 64,
+        "vocab_size": 248320,
+        "backend": "prism",
+        "source_identity": {
+          "path": "/Users/barack/Documents/Codex/2026-10-26/i/work/openbonsai-rco/../openbonsai-monitor/eval-native-fixture/native-f32.gguf",
+          "sha256": "f72fb47e83acb75d55f3e1eebd025cd71e71bea788b62e37235d96dfeea8c4cb",
+          "bytes": 267876608
+        },
+        "tokenizer_identity": {
+          "kind": "embedded-gguf",
+          "model_sha256": "f72fb47e83acb75d55f3e1eebd025cd71e71bea788b62e37235d96dfeea8c4cb"
+        },
+        "runtime": {
+          "path": "/Users/barack/Documents/Codex/2026-10-26/i/work/openbonsai-rco/../research/prism-llama.cpp",
+          "sha": "c9c34bc9c4042c13a31598ebf43461cd0ad8f00d",
+          "tracked_source_clean": true,
+          "executable": {
+            "path": "/Users/barack/Documents/Codex/2026-10-26/i/work/openbonsai-rco/../research/prism-eval-build/cmake/bin/prism-eval-worker",
+            "sha256": "1d6c1fb39b3b9203a246d485f51d2fc2ab798d51a714a7cdbd30f87cb920fef9",
+            "bytes": 4887408
+          }
+        },
+        "argv": [
+          "/Users/barack/Documents/Codex/2026-10-26/i/work/openbonsai-rco/../research/prism-eval-build/cmake/bin/prism-eval-worker",
+          "--model",
+          "/Users/barack/Documents/Codex/2026-10-26/i/work/openbonsai-rco/../openbonsai-monitor/eval-native-fixture/native-f32.gguf",
+          "--context-length",
+          "256",
+          "--threads",
+          "4",
+          "--gpu-layers",
+          "0"
+        ],
+        "stderr": {
+          "path": "/Users/barack/Documents/Codex/2026-10-26/i/work/openbonsai-rco/../openbonsai-monitor/eval-backend-smoke-final/prism.stderr",
+          "max_bytes": 1048576,
+          "truncated": false
+        }
+      },
+      "text_preprocessing": {
+        "reference_normalizer": {
+          "type": "NFC"
+        },
+        "implementation": "pinned reference tokenizer normalizer.normalize_str before freezing rendered bytes",
+        "raw_bytes_preserved": true,
+        "hf_raw_and_normalized_ids_equal": true,
+        "native_gguf_raw_mismatch_negative_control": {
+          "raw_utf8_hex": "65cc81",
+          "native_ids": [
+            933
+          ],
+          "prism_raw_ids": [
+            68,
+            52033
+          ]
+        }
+      },
+      "seconds": {
+        "transformers": 0.2435392918996513,
+        "prism": 0.17577783321030438
+      },
+      "frozen_sha256": "9debec8900d7c3f4fd504b3c732c0bfcb673efb8fffae264ed2dc2175cdf8d2f",
+      "tokenization": {
+        "nonempty_cases": 11,
+        "exact_ids_and_raw_pieces": true,
+        "empty_no_added_token": true
+      },
+      "nll": {
+        "scored_tokens": 176,
+        "native_mean": 12.53201212498065,
+        "prism_mean": 12.532003737649738,
+        "max_target_logprob_difference": 0.00013037745277166835,
+        "mean_target_logprob_difference": 5.609219746393158e-05
+      },
+      "full_forward_oracle": {
+        "target_positions": [
+          1,
+          2,
+          62,
+          63,
+          64,
+          65,
+          66,
+          99
+        ],
+        "native_max_difference": 0.0,
+        "prism_max_difference": 0.0001048279874122926
+      },
+      "state_reset_exact": {
+        "transformers": true,
+        "prism": true
+      },
+      "generation": {
+        "ids": {
+          "transformers": [
+            215069,
+            230083,
+            86145
+          ],
+          "prism": [
+            215069,
+            230083,
+            86145
+          ]
+        },
+        "exact_across_backends": true
+      },
+      "dynamic_eos_stop": {
+        "transformers": {
+          "generated_ids": [
+            215069
+          ],
+          "stop_reason": "eos"
+        },
+        "prism": {
+          "generated_ids": [
+            215069
+          ],
+          "stop_reason": "eos"
+        }
+      },
+      "choice": {
+        "transformers": "B",
+        "prism": "B"
+      },
+      "choice_max_target_logprob_difference": 0.00010315664954774206,
+      "native_eog_ids": [
+        248044,
+        248046,
+        248063,
+        248064,
+        248065
+      ],
+      "evaluation_eos_ids": [
+        248044,
+        248046
+      ],
+      "passed": true
+    }
+  },
+  "normalization_diagnostic": {
+    "command": "python tools/probe_eval_normalization.py --fixture <random-fixture> --worker <pinned-worker> --prism-source <pinned-clean-source> --output <new-output>",
+    "report_sha256": "078b7820dadfa99a49ca1a8dbab6e513c1347fe3a5a4773cac178a77bccb208c",
+    "report": {
+      "format": "openbonsai.normalization-diagnostic.v1",
+      "scope": "CPU random F32 hybrid fixture; two fixed target positions",
+      "diagnostic_only": true,
+      "quality_claim": false,
+      "official_baselines_unchanged": true,
+      "gpu_layers": 0,
+      "threads": 4,
+      "pretrained_or_ternary_weights_loaded": false,
+      "fixture": "/Users/barack/Documents/Codex/2026-10-26/i/work/openbonsai-monitor/eval-native-fixture",
+      "fixture_receipt_sha256": "f156d356e13695c6467914e24c5b04c1283610d3e91f748599b75e5e52d2fdc7",
+      "model_safetensors": {
+        "bytes": 256937224,
+        "sha256": "6160bc5b09c518f84fa2ad11b4b45086c751f12479cc34f56a4d505aa0ce197f"
+      },
+      "model_config": {
+        "bytes": 1109,
+        "sha256": "9d168e08afa4d2c92309ae69183bda761804d7eb254be31b170c2fa8d5147ed7"
+      },
+      "model_gguf": {
+        "bytes": 267876608,
+        "sha256": "f72fb47e83acb75d55f3e1eebd025cd71e71bea788b62e37235d96dfeea8c4cb"
+      },
+      "script_sha256": "acc11a72df24282fc0859da260c67cb5e9dbe50db5fa251574348bd3ac8da399",
+      "torch_version": "2.14.1",
+      "transformers_version": "5.20.2",
+      "hf_source_path": "/Users/barack/Documents/Codex/2026-10-26/i/work/scaleq-env/lib/python3.12/site-packages/transformers/models/qwen3_5/modeling_qwen3_5.py",
+      "hf_source_sha256_unchanged": "b4b17fe08d8d54da34a0fce78639666279ae7fd0a9e4ec06fce6602774707ca3",
+      "hf_original_l2norm_source": "def l2norm(x: torch.FloatTensor, dim: int = -1, eps: float = 1e-6):\n    \"\"\"This function is intended to align with the l2norm implementation in the FLA library.\"\"\"\n    inv_norm = torch.rsqrt((x * x).sum(dim=dim, keepdim=True) + eps)\n    return x * inv_norm\n",
+      "attention_implementation": "eager",
+      "input_ids": [
+        10,
+        20,
+        30,
+        40,
+        50
+      ],
+      "score_positions": [
+        1,
+        4
+      ],
+      "reduction": "fp32-logits-fp64-logsumexp-v1",
+      "prism": {
+        "allocated_context_length": 256,
+        "batch_size": 64,
+        "cache_mode": "full-prefix-reference",
+        "context_length": 256,
+        "cuda_build": false,
+        "flash_attention": false,
+        "gpu_layers": 0,
+        "kv_cache_dtype": "float32",
+        "load_mtp": false,
+        "logits_dtype": "float32",
+        "model_path": "/Users/barack/Documents/Codex/2026-10-26/i/work/openbonsai-monitor/eval-native-fixture/native-f32.gguf",
+        "native_eog_ids": [
+          248044,
+          248046,
+          248063,
+          248064,
+          248065
+        ],
+        "protocol": "openbonsai.frozen-evaluation.v1",
+        "reduction": "fp32-logits-fp64-logsumexp-v1",
+        "reset_policy": "per-record",
+        "runtime_sha": "c9c34bc9c4042c13a31598ebf43461cd0ad8f00d",
+        "threads": 4,
+        "ubatch_size": 64,
+        "vocab_size": 248320,
+        "backend": "prism",
+        "source_identity": {
+          "path": "/Users/barack/Documents/Codex/2026-10-26/i/work/openbonsai-monitor/eval-native-fixture/native-f32.gguf",
+          "sha256": "f72fb47e83acb75d55f3e1eebd025cd71e71bea788b62e37235d96dfeea8c4cb",
+          "bytes": 267876608
+        },
+        "tokenizer_identity": {
+          "kind": "embedded-gguf",
+          "model_sha256": "f72fb47e83acb75d55f3e1eebd025cd71e71bea788b62e37235d96dfeea8c4cb"
+        },
+        "runtime": {
+          "path": "/Users/barack/Documents/Codex/2026-10-26/i/work/research/prism-llama.cpp",
+          "sha": "c9c34bc9c4042c13a31598ebf43461cd0ad8f00d",
+          "tracked_source_clean": true,
+          "executable": {
+            "path": "/Users/barack/Documents/Codex/2026-10-26/i/work/research/prism-eval-build/cmake/bin/prism-eval-worker",
+            "sha256": "1d6c1fb39b3b9203a246d485f51d2fc2ab798d51a714a7cdbd30f87cb920fef9",
+            "bytes": 4887408
+          }
+        },
+        "argv": [
+          "/Users/barack/Documents/Codex/2026-10-26/i/work/research/prism-eval-build/cmake/bin/prism-eval-worker",
+          "--model",
+          "/Users/barack/Documents/Codex/2026-10-26/i/work/openbonsai-monitor/eval-native-fixture/native-f32.gguf",
+          "--context-length",
+          "256",
+          "--threads",
+          "4",
+          "--gpu-layers",
+          "0"
+        ],
+        "stderr": {
+          "path": "/Users/barack/Documents/Codex/2026-10-26/i/work/openbonsai-monitor/eval-normalization-reproducible/prism.stderr",
+          "max_bytes": 1048576,
+          "truncated": false
+        }
+      },
+      "prism_result_measured_this_run": {
+        "count": 2,
+        "nll_sum": 25.018837906957508,
+        "score_positions": [
+          1,
+          4
+        ],
+        "target_logprobs": [
+          -12.637735088513848,
+          -12.381102818443662
+        ]
+      },
+      "unmodified_native_scores": [
+        -12.637931411944772,
+        -12.381102464700664
+      ],
+      "unmodified_native_signed_delta": [
+        -0.00019632343092368387,
+        3.537429975608575e-07
+      ],
+      "diagnostic_clamp_scores": [
+        -12.637735088566773,
+        -12.381102690226342
+      ],
+      "diagnostic_clamp_signed_delta": [
+        -5.292477567309106e-11,
+        1.2821731942835868e-07
+      ],
+      "max_absolute_drift_before": 0.00019632343092368387,
+      "max_absolute_drift_after": 1.2821731942835868e-07,
+      "reduction_factor": 1531.1771592088182,
+      "restored_native_scores": [
+        -12.637931411944772,
+        -12.381102464700664
+      ],
+      "restored_function_identity": true,
+      "formulas": {
+        "official_hf": "x * rsqrt(sum(x*x) + 1e-6)",
+        "official_prism_cpu": "x / max(sqrt(sum(x*x)), rms_norm_eps)",
+        "diagnostic_hf": "x / max(sqrt(sum(x*x)), 1e-6); native F32 sum retained"
+      },
+      "sources": [
+        "https://github.com/PrismML-Eng/llama.cpp/blob/c9c34bc9c4042c13a31598ebf43461cd0ad8f00d/src/models/qwen35.cpp#L551-L560",
+        "https://github.com/PrismML-Eng/llama.cpp/blob/c9c34bc9c4042c13a31598ebf43461cd0ad8f00d/ggml/src/ggml-cpu/ops.cpp#L4177-L4223"
+      ],
+      "interpretation": "The temporary diagnostic is NOT an official baseline or quality improvement. Keep official HF and Prism unmodified and report their measured backend discrepancy. These two tiny-fixture positions cannot establish pretrained 9B or ternary equivalence."
+    }
+  },
+  "independent_reviews": {
+    "manifest": "raw source overlap and revision identity tightened; no remaining blockers",
+    "backends": "portable bounded request/response transport, stable diagnostic metadata and unsupported non-ASCII added-token rejection fixed; no remaining blockers",
+    "smoke_docs": "choice score/selection gate and cleanup-on-report-error fixed; actual final smoke passed"
+  },
+  "remaining_evidence": [
+    "Windows/CUDA worker build and actual 5090 preflight",
+    "Actual official Bonsai GGUF/tokenizer verification and matched quality results",
+    "BF16/pretrained backend numerical drift and throughput/VRAM",
+    "Fresh held-out useful OpenBonsai quality, broad ternary coverage and complete deployable size"
+  ]
+}
