@@ -115,22 +115,30 @@ validation ran alongside the test suite and is not a throughput comparison.
 See [the validation record](../validation-teacher-target.json)
 for the tested source hashes and results.
 
-## Next pretrained test, only after the active pair finishes
+## Selected pretrained control after the completed diagnostic
 
-1. Review both completed calibration-diversity arms first. Preserve their
-   artifacts, local patches and evaluation protocol.
-2. On a common frozen compressed prefix, measure target disagreement and both
-   hard reconstruction errors at a later window. Window 0 with retained original
-   embeddings cannot distinguish these modes. Use calibration/search-validation
-   records, not benchmark answers.
-3. If disagreement is material, run a bounded paired calibration of that same
-   later window. Change target provenance alone: identical original checkpoint,
-   prefix, records, signs, initialization, updates, annealing, learning rates,
-   loss, tensor coverage and evaluation. First preflight memory and correctness.
-4. Compare both target errors on disjoint records and the assembled model's
-   behavior. Better training loss alone cannot justify a full rerun. Endpoint
-   coverage and the complete approximately 2 GB language size target remain
-   separate requirements.
+Both calibration-diversity arms completed without useful generation. The
+[read-only diagnostic](activation-diagnostic.md) restored the final128 FP32
+research state exactly and found a material target discrepancy on all 16 later-
+window search records. Its negative-control window had identical teacher
+outputs. This supports a target-provenance experiment, not a quality remedy.
+
+The selected control gives both arms 128 additional updates at window `[16,17)`
+from the same saved final128 window state, with fresh optimizers and identical
+restarted schedules. The hard prefix/suffix, source, rotations, fitting records,
+order, precision, loss and learning rates remain fixed. Only the target changes;
+the student's quantized-prefix input and native kwargs are common. This is a
+warm-start repair test, not resumed original optimization or a full-model rerun.
+
+Both final hard arms must be compared against the **common original target**
+on the same 16 disjoint search records, then with identical assembled NLL, ARC
+and generation settings. The target gap itself stays fixed; its ratio to total
+error is not a promotion criterion. A compact save/fresh-process reload and
+selected-window packing check do not establish a standalone deployable artifact.
+The execution plan allows 256 scientific updates plus four discarded resource
+preflight updates, within one aggregate 60-minute model-process cap. No results
+are claimed yet. Endpoint coverage and the approximately 2 GB language-model
+size target remain separate requirements.
 
 The optimizer audit found no extra group-count division in the masked loss.
 Default-scale synthetic factor gradients were well above Adam's epsilon;

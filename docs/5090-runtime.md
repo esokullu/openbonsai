@@ -102,23 +102,85 @@ reload logit difference. The new runtime-options manifest adds 109 bytes per
 tiny fixture artifact. This reconciled branch has not itself rerun the 9B
 experiment; its CPU validation and the sealed remote measurements are distinct.
 
-## Evidence guiding the next experiment
+## Completed calibration-diversity comparison
 
-The original source contains exactly 16 handwritten prompts. A proposed
-same-source 128-sample control correctly stopped before GPU work because no
-larger pool exists. The replacement is a preregistered **rotated 16×8 versus
-128×1** pair from one pinned UltraChat training source, using fresh original-BF16
-continuations, nested records, equal update counts and matched valid-token
-exposure. It tests diversity before changing the optimization schedule. The
-previous handwritten result is historical context, not its control arm.
+The handwritten source above contained only 16 prompts. Its proposed same-source
+128-sample expansion stopped before GPU work because a larger pool did not
+exist. A separate, preregistered rotated pair then used nested 16- and 128-record
+sets from UltraChat `train_sft` revision
+`8049631c405ae6576f93f445c6b8166f76f5505a`, with original-BF16 continuations.
+It retained the same model revision, 200 decoder projections, rotation and
+128-update window recipe. Valid-token exposure was 59,856 versus 59,855 per
+window: 16 records repeated eight times versus 128 records once. It tests that
+breadth/repetition choice, not more optimization updates or the effect of
+UltraChat versus handwritten prompts in isolation.
+
+| Outcome | Rotated 16×8 | Rotated 128×1 |
+|---|---:|---:|
+| Hard FP32-scale NLL | 8.499409802891023 | 9.121630685214768 |
+| Fresh packed NLL (reported to six decimals) | 8.498620 | 9.123808 |
+| ARC correct | 8/20 | 8/20 |
+| ARC predictions | A on all 20 | A on all 20 |
+| Useful generations | 0/4 | 0/4 |
+| Complete deployable directory bytes | 6,596,784,699 | 6,596,830,115 |
+| Training seconds | 1,303.809 | 3,965.794 |
+
+The 16×8 model produced two empty answers and two fragments; the 128×1 model
+emitted immediate EOS on all four prompts. These differ from the older
+experiment's looping failure. Eight of the 20 ARC answers are A, so 8/20 is not
+evidence of useful question answering. The same repeatedly used development
+protocol scores 2,048 NLL targets, 20 ARC items and four greedy non-thinking
+generations capped at 128 tokens. Original BF16 NLL 2.4237768106 and ARC 19/20
+were reused with authenticated source/probe/protocol bindings, not newly scored
+on an untouched test set. Neither compressed arm recovered useful quality.
+
+Both artifacts passed exact fresh-process parity against their **exported**
+references: 200 candidate payloads and 564 retained tensors. This does not mean
+FP32 calibration weights are unchanged by export. The 128×1 fixed-probe maximum
+logit difference between the FP32 wrapper and packed reference was 0.109375;
+FP16 scale conversion and the runtime's row-GEMM layout were measured separately.
+The severe quality loss already exists before either export or packing.
+
+The directory totals include tokenizer/configuration files and vision. Each
+retains 4,068,474,880 bytes in BF16 embedding/head tensors. Vision **files** occupy
+912,058,304 bytes, including headers; the older table's 912,021,104 figure counts
+vision **tensor payloads**. Vision is already included in the totals and must
+not be added again. Equivalent represented-scope tensor bytes are 6,576,199,974
+and 6,576,245,389, versus 18,819,627,488 original BF16-loaded persistent tensor
+bytes. The latter is not an original deployable-folder measurement.
+
+Peak training allocated memory was 20.221 and 20.219 GiB. The 128×1 training
+phase includes 2,604.822 seconds caching and 935.228 seconds optimization, so
+additional distinct records increased more than the optimizer work. Evaluation
+used a separate 13,824,425,984-byte decoded BF16 projection cache, excluded from
+artifact storage. Shorter failed generations are not equal-work speed evidence.
+These timings and sizes do not establish a useful approximately 2 GB model.
+
+The sealed run is `D:/openbonsai/runs/2026-10-26-5090-ultrachat-attempt2`.
+Its final inventory contains 2,034 files / 16,192,227,790 research bytes,
+SHA256 `d7ae0ccf66b38f223366beb105beba32d651e5c2c1be166c21624eac7885bf8a`.
+This includes two artifacts and research evidence, not one deployment. The
+frozen runtime archive hash is
+`0a90d78f775d2c1e879c286646b4d545ec286231f97687e4bb99ea4f961f61ce`;
+its source/model/data identities and earlier failed attempt remain preserved.
+These results come from the reviewed remote receipts, not a rerun of this branch.
+
+## Evidence guiding the selected next control
+
+A subsequent [activation diagnostic](activation-diagnostic.md) restored the
+final128 FP32 research state and measured fixed windows 0 and 16 on 16 additional
+disjoint search records. All later-window records showed material disagreement
+between original-prefix and conditional teacher outputs, while original/bypass/
+hard restoration, state preservation and the window-0 negative control passed.
+It supports one matched, warm-start window-16 target-provenance control; no
+quality result from that control is available yet.
 
 A separate initializer audit reproduces the neutral CAT-Q hard mapping. For
-Gaussian weights, its expected hard/source RMS is about .66274; observed
-shrinkage alone does not establish a missing-normalization bug. The short
-128-update schedule has 102 soft and 26 hard updates, with only 4.25% of the
-cumulative decayed learning rate in the hard phase. Those facts motivate a
-later bounded optimization-budget diagnostic if learning remains near
-initialization; they do not authorize changing the current pair mid-run.
+Gaussian weights, expected hard/source RMS is about .66274; shrinkage alone
+does not establish a missing-normalization bug. The 128-update schedule has
+102 soft and 26 hard updates, with only 4.25% of the cumulative decayed learning
+rate in the hard phase. Neither observation proves a quality remedy. The next
+control keeps the schedule and optimizer fixed while changing only its target.
 
 Embedding/head calibration and a matched Prism inference evaluation remain
 separate prerequisites. RCO is preserved for limited exceptions and has no

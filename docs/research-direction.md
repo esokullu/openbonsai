@@ -25,14 +25,22 @@ particular, the released inference implementation is not a compression recipe.
 The first paired 9B decoder experiment has completed: rotations improved the
 development metrics, but both compressed conditions failed useful generation.
 The preserved results and imported runtime changes are recorded in
-[the 5090 review](5090-runtime.md). The next controlled comparison is a fresh
-rotated 16×8 versus 128×1 pair from one pinned prompt source, with matched updates
-and valid-token exposure. It tests data diversity before changing the schedule
-or starting endpoint/RCO work on the GPU. The stages below retain their original
-gates; none of the software tests establishes successful quality recovery.
+[the 5090 review](5090-runtime.md). The subsequent rotated 16×8 versus 128×1
+UltraChat pair also failed useful generation with matched updates and nearly
+equal valid-token exposure. A completed [activation diagnostic](activation-diagnostic.md)
+then found a material original-versus-conditional teacher discrepancy at fixed
+window 16 on all 16 search records. The next selected control changes teacher
+target provenance alone in that window, starting both arms from the identical
+saved final128 state. Its results remain pending; no full-model, endpoint or RCO
+sweep follows automatically. The stages below retain their original gates;
+software correctness and this diagnostic do not establish quality recovery.
 
-1. Finish the already running 5090 baseline unchanged, including generation,
-   FP16 export and independent reload. Freeze its source/config/data/artifacts.
+The following sequence preserves the original stage plan and its decision
+boundaries. The completed decoder experiments exercise these stages on bounded
+development data; they do not satisfy the final quality and size requirements.
+
+1. Preserve each completed 5090 baseline unchanged, including generation,
+   FP16 export, independent reload and its frozen source/config/data/artifacts.
    Review results before starting any next experiment or editing its checkout.
 2. Validate rotation algebra, native hybrid-model computation, soft/hard
    gradients, original teacher bypass and transform-aware export on tiny
