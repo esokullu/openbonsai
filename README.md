@@ -10,7 +10,18 @@ The intended first target is `Qwen/Qwen3.5-9B`. No real 9B weights were download
 
 Prism ML's Ternary Bonsai 2 family already includes Qwen3.5-based **2B, 4B, and 9B** models, with publicly available Apache 2.0 weights. [Prism's release announcement](https://prismml.com/news/bonsai-2-family). We want developers to be able to apply ternary compression to their own fine-tuned models. The official [9B release](https://huggingface.co/prism-ml/Ternary-Bonsai-2-9B-mlx-2bit) and [demo repository](https://github.com/PrismML-Eng/Bonsai-demo) reviewed on October 26, 2026 provide weights and inference tooling, but do not include a reproducible Bonsai 2 training/compression pipeline for that workflow.
 
-**Our goal is to make fine-tunable ternary models available to everyone**, through open, reproducible training and compression tools. OpenBonsai is an initial step toward that goal: the current prototype calibrates ternary factors around frozen Qwen3.5 weights. It does not yet implement end-to-end task fine-tuning, and its packed checkpoints cannot resume training.
+**Our goal is to let everyone turn their own fine-tuned BF16 models into compact ternary models**, through an open, reproducible compression pipeline. Fine-tuning happens first, in BF16, using the developer's preferred training tools. OpenBonsai then calibrates ternary factors around that customized checkpoint's frozen weights. This workflow does not require fine-tuning the packed ternary model directly.
+
+## Intended workflow
+
+1. Fine-tune the BF16 model for your task. If using a mergeable adapter such as LoRA, merge it into a complete BF16 checkpoint before compression.
+2. Generate AYOT calibration traces with **that fine-tuned checkpoint**, using prompts representative of the intended tasks. Preserve its tokenizer and chat template.
+3. Run OpenBonsai using the same checkpoint and revision as both the weight source and the reconstruction reference. In this workflow, "original model" means the unquantized, fine-tuned checkpoint.
+4. Compare the compressed model with the fine-tuned BF16 baseline on held-out task and general-quality evaluations before deployment.
+
+Use the same exact custom model ID or local checkpoint path for `--model`, with `--dtype bfloat16`, in both `prepare` and `train`; an adapter-only directory is not a complete model. Keep local checkpoint and tokenizer files unchanged between the two commands. Each new fine-tuned checkpoint needs its own calibration and compression run. The current adapter targets native dense Qwen3.5, and compression of a real customized 9B checkpoint remains unvalidated.
+
+The compact model retains its parameter count; the storage reduction comes from ternary weight representation. Quality preservation must be measured. BF16 task fine-tuning is external to this package, and packed checkpoints do not contain the original weights or optimizer state needed to resume compression training.
 
 ## What works
 
