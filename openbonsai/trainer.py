@@ -11,6 +11,7 @@ from math import ceil, isfinite
 import random
 from pathlib import Path
 import tempfile
+import time
 from typing import Any
 
 import torch
@@ -96,6 +97,13 @@ def _tree_to(value: Any, device):
 
 def _device(model):
     return next(model.parameters()).device
+
+
+def _phase_time(device):
+    """Complete queued GPU work only at reporting phase boundaries."""
+    if torch.device(device).type == "cuda":
+        torch.cuda.synchronize(device)
+    return time.perf_counter()
 
 
 def _hidden(output):
@@ -236,6 +244,8 @@ def train(model, samples, config: TrainingConfig, progress_callback=None, cache_
     incorrectly batching multi-axis rotary tensors and hybrid attention masks.
     Earlier frozen windows remain hard-quantized; overlapping windows warm-start
     factors and restart their soft-to-hard schedule. Original weights never train.
+    Phase times include cache I/O and progress callbacks; their aggregate
+    excludes initial model/configuration setup.
     """
     config.validate()
     if not samples:
@@ -284,6 +294,7 @@ def train(model, samples, config: TrainingConfig, progress_callback=None, cache_
     if cache_directory is not None:
         Path(cache_directory).mkdir(parents=True, exist_ok=True)
     for window_id, (start, end) in enumerate(build_windows(len(layers), config.window_size, config.stride)):
+        window_started = _phase_time(device)
         active = [module for layer in layers[start:end] for module in layer.modules()
                   if module in all_modules]
         if not active:
@@ -293,7 +304,9 @@ def train(model, samples, config: TrainingConfig, progress_callback=None, cache_
         cache_owner = (tempfile.TemporaryDirectory(prefix=f"window-{window_id}-", dir=cache_directory)
                        if cache_directory is not None else None)
         records = cache_window(model, samples, start, end, cache_owner.name if cache_owner else None)
+        cache_finished = _phase_time(device)
         before = window_mse(layers, records, start, end, device)
+        evaluation_before_finished = _phase_time(device)
         parameters = []
         for module in active:
             module.set_progress(0.0)
@@ -342,6 +355,7 @@ def train(model, samples, config: TrainingConfig, progress_callback=None, cache_
                     progress_callback({"window": window_id, "layers": [start, end], "epoch": epoch + 1,
                                        "step": step, "total_steps": total_steps, "loss": value,
                                        "grad_norm": float(norm), **loss_metadata})
+        optimization_finished = _phase_time(device)
         for module in active:
             for parameter in module.trainable_parameters():
                 parameter.requires_grad_(False)
@@ -349,9 +363,20 @@ def train(model, samples, config: TrainingConfig, progress_callback=None, cache_
             module.clear_soft_snapshot()
             module.set_progress(1.0)
         after = window_mse(layers, records, start, end, device)
-        report["windows"].append({"start": start, "end": end, "hard_mse_before": before,
-                                  "hard_mse_after": after, "steps": step, "losses": losses, **loss_metadata})
+        evaluation_after_finished = _phase_time(device)
         del records, optimizer
         if cache_owner is not None:
             cache_owner.cleanup()
+        window_finished = time.perf_counter()
+        timing = {"cache": cache_finished - window_started,
+                  "evaluation_before": evaluation_before_finished - cache_finished,
+                  "optimization": optimization_finished - evaluation_before_finished,
+                  "evaluation_after": evaluation_after_finished - optimization_finished,
+                  "cleanup": window_finished - evaluation_after_finished,
+                  "total": window_finished - window_started}
+        report["windows"].append({"start": start, "end": end, "hard_mse_before": before,
+                                  "hard_mse_after": after, "steps": step, "losses": losses,
+                                  "timing_seconds": timing, **loss_metadata})
+    report["timing_seconds"] = {name: sum(window["timing_seconds"][name] for window in report["windows"])
+                                for name in report["windows"][0]["timing_seconds"]}
     return report

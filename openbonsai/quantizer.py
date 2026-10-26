@@ -19,11 +19,16 @@ from typing import Any
 import torch
 from torch import Tensor, nn
 from torch.nn import functional as F
+from torch.utils.checkpoint import checkpoint
 
 from .packing import (
     BITCOS_FORMAT, FORMAT as TERNARY_FORMAT, pack_grouped_weight,
     unpack_bitcos_codes, unpack_ternary_codes, validate_packed_state,
 )
+
+
+# Bound differentiable FP32 scratch independently of full projection size.
+_GROUP_CHUNK_ELEMENTS = 8 << 20
 
 
 def soft_ternary(z: Tensor, threshold: Tensor | float, sharpness: float) -> Tensor:
@@ -60,7 +65,7 @@ class TernaryLinear(nn.Module):
     def __init__(
         self, linear: nn.Linear, group_size: int = 128, *, soft_fraction: float = 0.8,
         max_sharpness: float = 30.0, hard_phase: str = "frozen_jacobian",
-        lora_rank: int = 64, factor_mapping: str = "exp",
+        lora_rank: int = 64, factor_mapping: str = "exp", copy_weight: bool = True,
     ) -> None:
         super().__init__()
         if not isinstance(linear, nn.Linear):
@@ -77,7 +82,9 @@ class TernaryLinear(nn.Module):
             raise ValueError("hard_phase must be frozen_jacobian or soft_surrogate")
         if factor_mapping not in ("exp", "sigmoid"):
             raise ValueError("factor_mapping must be exp or sigmoid")
-        if not linear.weight.is_floating_point() or not bool(torch.isfinite(linear.weight).all()):
+        if not isinstance(copy_weight, bool):
+            raise TypeError("copy_weight must be a bool")
+        if not linear.weight.is_floating_point():
             raise ValueError("source weights must be finite floating point values")
         if linear.bias is not None and not bool(torch.isfinite(linear.bias).all()):
             raise ValueError("source bias must be finite")
@@ -91,8 +98,9 @@ class TernaryLinear(nn.Module):
         self.soft_fraction, self.max_sharpness, self.hard_phase = soft_fraction, max_sharpness, hard_phase
         self.quant_enabled = True
         self.progress = 0.0
-        self.register_buffer("weight", linear.weight.detach().clone())
-        self.register_buffer("bias", None if linear.bias is None else linear.bias.detach().clone())
+        self.register_buffer("weight", linear.weight.detach().clone() if copy_weight else linear.weight.detach())
+        self.register_buffer("bias", None if linear.bias is None else
+                             (linear.bias.detach().clone() if copy_weight else linear.bias.detach()))
         if lora_rank:
             self.lora_A = nn.Parameter(torch.empty(lora_rank, self.in_features, device=linear.weight.device, dtype=torch.float32))
             self.lora_B = nn.Parameter(torch.zeros(self.out_features, lora_rank, device=linear.weight.device, dtype=torch.float32))
@@ -100,7 +108,7 @@ class TernaryLinear(nn.Module):
         else:
             self.register_parameter("lora_A", None)
             self.register_parameter("lora_B", None)
-        mean, alpha = self._statistics(self._group(self.weight.float()))
+        mean, alpha = self._initial_statistics()
         self.register_buffer("mu0", mean)
         self.register_buffer("alpha0", alpha)
         self.raw_mu = nn.Parameter(torch.zeros_like(mean))
@@ -141,6 +149,112 @@ class TernaryLinear(nn.Module):
         if self.padded_numel != self.numel:
             flat = F.pad(flat, (0, self.padded_numel - self.numel))
         return flat.reshape(self.num_groups, self.group_size)
+
+    def _group_ranges(self):
+        groups_per_chunk = max(1, _GROUP_CHUNK_ELEMENTS // self.group_size)
+        for start in range(0, self.num_groups, groups_per_chunk):
+            yield start, min(start + groups_per_chunk, self.num_groups)
+
+    def _effective_chunk(self, start: int, end: int, lora_A, lora_B) -> Tensor:
+        """Differentiable effective weights for complete flattened groups.
+
+        A group can cross a row. Compute only its enclosing rows of B@A,
+        then trim them; this bounds scratch by a chunk plus two source rows.
+        The final group is zero padded only after adding the correction.
+        """
+        first, last = start * self.group_size, min(end * self.group_size, self.numel)
+        first_row = first // self.in_features
+        last_row = (last + self.in_features - 1) // self.in_features
+        offset = first - first_row * self.in_features
+        # Slice rows before flattening so even a noncontiguous source cannot
+        # cause reshape() to copy the entire frozen matrix for each chunk.
+        values = self.weight[first_row:last_row].reshape(-1)[offset:offset + last - first].float()
+        if lora_A is not None:
+            correction = (lora_B[first_row:last_row] @ lora_A) / self.lora_rank
+            values = values + correction.flatten()[offset:offset + last - first]
+        padding = (end - start) * self.group_size - values.numel()
+        if padding:
+            values = F.pad(values, (0, padding))
+        return values.reshape(end - start, self.group_size)
+
+    def _chunk_statistics(self, grouped: Tensor, end: int) -> tuple[Tensor, Tensor]:
+        counts = grouped.new_full((grouped.shape[0], 1), self.group_size)
+        last_count = self.numel - (self.num_groups - 1) * self.group_size if end == self.num_groups else self.group_size
+        counts[-1] = last_count
+        mean = grouped.sum(dim=1, keepdim=True) / counts
+        absolute = (grouped - mean).abs()
+        alpha = absolute.mean(dim=1, keepdim=True)
+        if last_count != self.group_size:
+            alpha = torch.cat((alpha[:-1], absolute[-1, :last_count].mean().reshape(1, 1)))
+        return mean, alpha + 1e-6 if self.factor_mapping == "sigmoid" else alpha.clamp_min(1e-8)
+
+    @torch.no_grad()
+    def _initial_statistics(self) -> tuple[Tensor, Tensor]:
+        mean = torch.empty((self.num_groups, 1), device=self.weight.device, dtype=torch.float32)
+        alpha = torch.empty_like(mean)
+        for start, end in self._group_ranges():
+            grouped = self._effective_chunk(start, end, None, None)
+            if not bool(torch.isfinite(grouped).all()):
+                raise ValueError("source weights must be finite floating point values")
+            mean[start:end], alpha[start:end] = self._chunk_statistics(grouped, end)
+        return mean, alpha
+
+    def _mapped_chunk(self, start, end, parameters):
+        raw_mu, raw_scale, raw_threshold, lora_A, lora_B = parameters
+        grouped = self._effective_chunk(start, end, lora_A, lora_B)
+        statistics = (self._chunk_statistics(grouped, end) if self.lora_rank else
+                      (self.mu0[start:end], self.alpha0[start:end]))
+        mu, alpha, threshold = self._factors(raw_mu[start:end], raw_scale[start:end],
+                                            raw_threshold[start:end], statistics=statistics)
+        return grouped, mu, alpha, threshold
+
+    def _hard_chunk(self, start, end, parameters):
+        grouped, mu, alpha, threshold = self._mapped_chunk(start, end, parameters)
+        codes = hard_ternary((grouped - mu) / alpha, threshold)
+        if end == self.num_groups and self.padded_numel > self.numel:
+            codes = codes.clone()
+            codes[-1, self.numel % self.group_size:] = 0
+        return codes, alpha
+
+    def _reconstruct_chunk(self, start, end, sharpness, hard, *parameters):
+        if sharpness is None:
+            codes, alpha = self._hard_chunk(start, end, parameters)
+            values = codes * alpha
+        else:
+            surrogate_parameters = parameters[5:] if hard else parameters
+            grouped, mu, alpha, threshold = self._mapped_chunk(start, end, surrogate_parameters)
+            surrogate = alpha * soft_ternary((grouped - mu) / alpha, threshold, sharpness)
+            if hard:
+                with torch.no_grad():
+                    codes, current_alpha = self._hard_chunk(start, end, parameters[:5])
+                    values = codes * current_alpha
+                values = values + (surrogate - surrogate.detach())
+            else:
+                values = surrogate
+        count = min((end - start) * self.group_size, self.numel - start * self.group_size)
+        return values.flatten()[:count].to(self.weight.dtype)
+
+    def _bounded_weight(self, sharpness, hard, parameters):
+        differentiable = torch.is_grad_enabled() and any(p is not None and p.requires_grad for p in parameters)
+        chunks = []
+        output = None if differentiable else torch.empty_like(self.weight).reshape(-1)
+        for start, end in self._group_ranges():
+            # Bind loop indices now: checkpoint calls this same pure function
+            # again during backward, after the Python loop has finished.
+            def reconstruct(*values, start=start, end=end):
+                return self._reconstruct_chunk(start, end, sharpness, hard, *values)
+            if differentiable:
+                chunk = checkpoint(reconstruct, *parameters, use_reentrant=False, preserve_rng_state=False)
+                chunks.append(chunk)
+            else:
+                chunk = reconstruct(*parameters)
+                first = start * self.group_size
+                output[first:first + chunk.numel()] = chunk
+        # Only source-dtype outputs are concatenated. No full FP32 effective
+        # matrix, statistics graph, tanh activations, or Jacobian is retained.
+        if differentiable:
+            output = chunks[0] if len(chunks) == 1 else torch.cat(chunks)
+        return output.reshape_as(self.weight)
 
     def _grouped_weight(self) -> Tensor:
         return self._effective_grouped(self.lora_A, self.lora_B)
@@ -230,8 +344,7 @@ class TernaryLinear(nn.Module):
 
     def hard_weight(self) -> Tensor:
         """Exact hard ternary reconstruction, without mean addback."""
-        codes, alpha = self._hard_codes_and_scales()
-        return (codes * alpha).flatten()[:self.numel].reshape_as(self.weight).to(self.weight.dtype)
+        return self._bounded_weight(None, True, (*self.factor_parameters(), self.lora_A, self.lora_B))
 
     def _capture_soft_snapshot(self, sharpness: float) -> None:
         # Record the forward point, before its optimizer update. Dense weights
@@ -243,6 +356,9 @@ class TernaryLinear(nn.Module):
         self._hard_snapshot_sharpness = sharpness
 
     def _frozen_jacobian_surrogate(self) -> Tensor:
+        return self._soft_at(self._hard_snapshot_sharpness, *self._frozen_jacobian_parameters())
+
+    def _frozen_jacobian_parameters(self):
         if self._hard_snapshot_sharpness is None:
             raise RuntimeError(
                 "Hard-stage training requires a preceding soft forward to capture its derivative; "
@@ -254,7 +370,7 @@ class TernaryLinear(nn.Module):
         current = (*self.factor_parameters(), self.lora_A, self.lora_B)
         proxies = tuple(None if value is None else getattr(self, name) + (value - value.detach())
                         for name, value in zip(self._snapshot_names(), current))
-        return self._soft_at(self._hard_snapshot_sharpness, *proxies)
+        return proxies
 
     def quantized_weight(self) -> Tensor:
         if self.progress == 0:
@@ -267,18 +383,14 @@ class TernaryLinear(nn.Module):
             if (self.hard_phase == "frozen_jacobian" and torch.is_grad_enabled()
                     and any(p.requires_grad for p in self.trainable_parameters())):
                 self._capture_soft_snapshot(sharpness)
-            grouped = self._soft_grouped(sharpness)
+            return self._bounded_weight(sharpness, False, (*self.factor_parameters(), self.lora_A, self.lora_B))
         else:
             if not torch.is_grad_enabled() or not any(p.requires_grad for p in self.trainable_parameters()):
                 return self.hard_weight()
-            with torch.no_grad():
-                codes, alpha = self._hard_codes_and_scales()
-                hard = codes * alpha
-            del codes, alpha
-            surrogate = (self._frozen_jacobian_surrogate() if self.hard_phase == "frozen_jacobian"
-                         else self._soft_grouped(self.max_sharpness))
-            grouped = hard + (surrogate - surrogate.detach())
-        return grouped.flatten()[:self.numel].reshape_as(self.weight).to(self.weight.dtype)
+            current = (*self.factor_parameters(), self.lora_A, self.lora_B)
+            surrogate = self._frozen_jacobian_parameters() if self.hard_phase == "frozen_jacobian" else current
+            sharpness = self._hard_snapshot_sharpness if self.hard_phase == "frozen_jacobian" else self.max_sharpness
+            return self._bounded_weight(sharpness, True, (*current, *surrogate))
 
     def forward(self, x: Tensor) -> Tensor:
         return F.linear(x, self.quantized_weight() if self.quant_enabled else self.weight, self.bias)
@@ -288,15 +400,41 @@ class TernaryLinear(nn.Module):
         """Export only hard codes/scales/bias, without dense training buffers."""
         if not all(bool(torch.isfinite(p).all()) for p in self.trainable_parameters()):
             raise ValueError("cannot pack nonfinite quantizer factors")
-        grouped = self._grouped_weight()
-        statistics = self._statistics(grouped) if self.lora_rank else None
-        mu, alpha, threshold = self._factors(*self.factor_parameters(), statistics=statistics)
-        if (not all(bool(torch.isfinite(t).all()) for t in (mu, alpha, threshold))
-                or bool((alpha <= 0).any()) or bool((threshold <= 0).any())):
-            raise ValueError("cannot pack invalid mapped quantizer factors")
-        codes, alpha = self._hard_codes_and_scales(grouped)
+        parameters = (*self.factor_parameters(), self.lora_A, self.lora_B)
+        codes = torch.empty(self.padded_numel, dtype=torch.int8, device="cpu")
+        alpha = torch.empty(self.num_groups, dtype=torch.float32, device="cpu")
+        for start, end in self._group_ranges():
+            grouped, mu, chunk_alpha, threshold = self._mapped_chunk(start, end, parameters)
+            if (not all(bool(torch.isfinite(t).all()) for t in (mu, chunk_alpha, threshold))
+                    or bool((chunk_alpha <= 0).any()) or bool((threshold <= 0).any())):
+                raise ValueError("cannot pack invalid mapped quantizer factors")
+            chunk_codes = hard_ternary((grouped - mu) / chunk_alpha, threshold)
+            codes[start * self.group_size:end * self.group_size] = chunk_codes.flatten().to(device="cpu", dtype=torch.int8)
+            alpha[start:end] = chunk_alpha.flatten().cpu()
+        codes[self.numel:] = 0
         return pack_grouped_weight(codes, alpha, shape=list(self.weight.shape),
                                    group_size=self.group_size, bias=self.bias, packing=packing)
+
+    @torch.no_grad()
+    def audit_weight_statistics(self) -> dict[str, Any]:
+        """Boundary-only reductions without materializing dense FP32 weights."""
+        parameters = (*self.factor_parameters(), self.lora_A, self.lora_B)
+        energy = torch.zeros(3, device=self.weight.device, dtype=torch.float64)
+        counts = torch.zeros(3, device=self.weight.device, dtype=torch.int64)
+        for start, end in self._group_ranges():
+            grouped, mu, alpha, threshold = self._mapped_chunk(start, end, parameters)
+            count = min((end - start) * self.group_size, self.numel - start * self.group_size)
+            effective = grouped.flatten()[:count]
+            codes = hard_ternary((grouped - mu) / alpha, threshold)
+            hard = (codes * alpha).flatten()[:count]
+            original = self._effective_chunk(start, end, None, None).flatten()[:count]
+            for index, values in enumerate((original, effective, hard)):
+                energy[index] += values.square().sum(dtype=torch.float64)
+            valid_codes = codes.flatten()[:count]
+            counts += torch.stack(tuple((valid_codes == code).sum() for code in (-1, 0, 1)))
+        rms = (energy / self.numel).sqrt().tolist()
+        return dict(zip(("original_rms", "effective_rms", "hard_rms"), rms),
+                    numel=self.numel, code_counts=dict(zip(("negative", "zero", "positive"), counts.tolist())))
 
     @classmethod
     def from_packed_state(
@@ -342,12 +480,46 @@ class PackedTernaryLinear(nn.Module):
 
     @property
     def weight(self) -> Tensor:
-        codes = self._unpack_codes().to(self._compute_reference.dtype)
-        grouped = codes.reshape(self.num_groups, self.group_size) * self.scales.to(self._compute_reference.dtype)[:, None]
-        return grouped.flatten()[:self.numel].reshape(self.out_features, self.in_features)
+        return self._dequantized_weight(self._compute_reference.dtype)
+
+    @staticmethod
+    def _bit_range(stream: Tensor, first: int, last: int) -> Tensor:
+        selected = stream[first // 8:(last + 7) // 8]
+        bits = torch.stack(tuple((selected >> shift) & 1 for shift in range(8)), dim=1).flatten()
+        return bits[first % 8:first % 8 + last - first]
+
+    def _code_chunks(self):
+        groups_per_chunk = max(1, _GROUP_CHUNK_ELEMENTS // self.group_size)
+        sign_offset = 0
+        for start in range(0, self.num_groups, groups_per_chunk):
+            end = min(start + groups_per_chunk, self.num_groups)
+            first, last = start * self.group_size, end * self.group_size
+            if self.packing_format == TERNARY_FORMAT:
+                selected = self.codes[first // 4:(last + 3) // 4]
+                values = unpack_ternary_codes(selected, selected.numel() * 4)
+                codes = values[first % 4:first % 4 + last - first]
+            elif self.packing_format == BITCOS_FORMAT:
+                presence = self._bit_range(self.presence, first, last)
+                count = int(presence.sum().item())
+                signs = self._bit_range(self.signs, sign_offset, sign_offset + count)
+                codes = torch.zeros(last - first, dtype=torch.int8, device=presence.device)
+                codes[presence.bool()] = 1 - 2 * signs.to(torch.int8)
+                sign_offset += count
+            else:
+                raise ValueError(f"Unsupported packed format: {self.packing_format!r}")
+            yield start, end, codes.reshape(end - start, self.group_size)
+
+    def _dequantized_weight(self, dtype: torch.dtype) -> Tensor:
+        output = torch.empty(self.numel, dtype=dtype, device=self.scales.device)
+        for start, end, codes in self._code_chunks():
+            compute_dtype = self._compute_reference.dtype
+            values = (codes.to(compute_dtype) * self.scales[start:end].to(compute_dtype)[:, None]).flatten()
+            first, last = start * self.group_size, min(end * self.group_size, self.numel)
+            output[first:last] = values[:last - first]
+        return output.reshape(self.out_features, self.in_features)
 
     def forward(self, x: Tensor) -> Tensor:
-        weight = self.weight.to(dtype=x.dtype)
+        weight = self._dequantized_weight(x.dtype)
         bias = None if self.bias is None else self.bias.to(dtype=x.dtype)
         return F.linear(x, weight, bias)
 

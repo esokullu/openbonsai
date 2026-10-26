@@ -17,6 +17,7 @@ import tempfile
 import torch
 from torch import nn
 from safetensors.torch import load_file
+from accelerate import init_empty_weights
 from transformers import GenerationConfig
 from transformers.initialization import no_init_weights
 
@@ -26,7 +27,7 @@ from .export import (_all_tensors, _artifact_file, _check_tensor, _copy_checked_
                      _destination, _digest, _json_bytes, _publish, _tensor_description,
                      _torch_dtype, _under_module, _write_tensor_file)
 from .mixed_formats import (MixedLinear, MixedEmbedding, candidate_nbytes,
-                            save_candidate, decode_candidate)
+                            save_candidate, load_candidate)
 
 FORMAT = "openbonsai.mixed.qwen35.v1"
 
@@ -85,13 +86,20 @@ class MixedExportPlan:
         self.close()
 
 
-def prepare_mixed_export(model, module_names, *, metadata, tokenizer_dir=None, work_dir=None):
+def prepare_mixed_export(model, module_names, *, metadata, tokenizer_dir=None, work_dir=None,
+                         row_chunk_size=64, cache_decoded_weights=False):
     """Freeze all common deployment bytes before allocation (no candidate fitting).
 
     ``metadata`` must identify the original checkpoint/revision or local content
     hash, including any intended BF16 fine-tuning. Research results belong outside
     the artifact: adding them later would change the predeclared size budget.
+    ``cache_decoded_weights`` records an inference-only MixedLinear cache policy;
+    no decoded cache tensors are included in the artifact or its byte budget.
     """
+    if type(row_chunk_size) is not int or row_chunk_size <= 0:
+        raise ValueError("row_chunk_size must be a positive integer")
+    if type(cache_decoded_weights) is not bool:
+        raise ValueError("cache_decoded_weights must be a bool")
     names = sorted(module_names)
     if not names or len(names) != len(set(names)) or any(not n or not all(n.split('.')) for n in names):
         raise ValueError("Expected unique nonempty candidate module names")
@@ -123,6 +131,8 @@ def prepare_mixed_export(model, module_names, *, metadata, tokenizer_dir=None, w
     manifest = {"format": FORMAT, "metadata": copy.deepcopy(metadata), "modules": modules,
                 "files": {}, "retained_tensors": {}, "tokenizer_files": [],
                 "runtime": "reference floating-point reconstruction; no low-bit kernel",
+                "runtime_options": {"row_chunk_size": _count(row_chunk_size),
+                                    "cache_decoded_weights": cache_decoded_weights},
                 "storage": {key: _count(0) for key in (
                     "fixed_bytes", "candidate_bytes", "artifact_bytes", "manifest_bytes",
                     "vision_file_bytes", "retained_tensor_bytes", "tokenizer_bytes")}}
@@ -215,8 +225,12 @@ def save_mixed(plan, assignment, path, *, budget_bytes):
     return manifest
 
 
-def load_mixed(path, device='cpu'):
-    """Offline load of complete native Qwen3.5, validating all retained state."""
+def load_mixed(path, device='cpu', *, row_chunk_size=None, cache_decoded_weights=None):
+    """Offline load of complete native Qwen3.5, validating all retained state.
+
+    None restores the artifact's cache policy (older artifacts default to off).
+    False permits timing cold load separately from explicit per-module warming.
+    """
     root = Path(path).absolute()
     manifest_path = root / 'manifest.json'
     if manifest_path.is_symlink():
@@ -224,6 +238,22 @@ def load_mixed(path, device='cpu'):
     manifest = json.loads(manifest_path.read_text())
     if manifest.get('format') != FORMAT:
         raise ValueError("Unsupported mixed artifact format")
+    options = manifest.get('runtime_options', {'row_chunk_size': _count(64)})
+    if (not isinstance(options, dict) or 'row_chunk_size' not in options
+            or set(options) - {'row_chunk_size', 'cache_decoded_weights'}):
+        raise ValueError("Invalid mixed runtime options")
+    stored_cache = options.get('cache_decoded_weights', False)
+    if type(stored_cache) is not bool:
+        raise ValueError("cache_decoded_weights must be a bool")
+    cache_decoded_weights = stored_cache if cache_decoded_weights is None else cache_decoded_weights
+    if type(cache_decoded_weights) is not bool:
+        raise ValueError("cache_decoded_weights must be a bool")
+    stored_chunk = _parse_count(options['row_chunk_size'])
+    if stored_chunk <= 0:
+        raise ValueError("row_chunk_size must be a positive integer")
+    row_chunk_size = stored_chunk if row_chunk_size is None else row_chunk_size
+    if type(row_chunk_size) is not int or row_chunk_size <= 0:
+        raise ValueError("row_chunk_size must be a positive integer")
     _json_bytes(manifest)
     modules, files, retained = (manifest[k] for k in ('modules', 'files', 'retained_tensors'))
     if not modules or not {'config.json', 'generation_config.json'}.issubset(files):
@@ -237,11 +267,8 @@ def load_mixed(path, device='cpu'):
             raise ValueError("Duplicate candidate file or invalid module path")
         used.add(filename)
         file = _artifact_file(root, filename, {'bytes': _parse_count(info['bytes']), 'sha256': info['sha256']})
-        candidate = decode_candidate(file.read_bytes())
-        if list(candidate.shape) != info['shape'] or candidate.module_kind != info['kind']:
-            raise ValueError("Candidate shape/kind differs from manifest")
-        _check_source(candidate, info)
-        candidates[name] = candidate
+        # Keep paths, then decode and transfer each candidate's storage once.
+        candidates[name] = file
     # Refuse unaccounted deployment files and all symlinks, not only listed paths.
     entries = list(root.rglob('*'))
     if any(p.is_symlink() for p in entries) or {p.relative_to(root).as_posix() for p in entries if p.is_file()} != used:
@@ -256,17 +283,25 @@ def load_mixed(path, device='cpu'):
     if set(manifest['tokenizer_files']) != {x for x in files if x.startswith('tokenizer/')}:
         raise ValueError("Tokenizer file accounting mismatch")
     config = config_from_dict(json.loads(checked['config.json'].read_text()))
-    with no_init_weights():
+    with no_init_weights(), init_empty_weights(include_buffers=False):
         model = model_from_config(config)
     model.generation_config = GenerationConfig.from_dict(json.loads(checked['generation_config.json'].read_text()))
-    for name, candidate in candidates.items():
+    for name, candidate_file in candidates.items():
+        candidate = load_candidate(candidate_file)
+        info = modules[name]
+        if list(candidate.shape) != info['shape'] or candidate.module_kind != info['kind']:
+            raise ValueError("Candidate shape/kind differs from manifest")
+        _check_source(candidate, info)
         native = model.get_submodule(name)
         if list(native.weight.shape) != list(candidate.shape) or _module_kind(native) != candidate.module_kind:
             raise ValueError(f"Native candidate contract mismatch: {name}")
         if (getattr(native, 'bias', None) is None) != (candidate.tensors.get('bias') is None):
             raise ValueError(f"Native candidate bias presence mismatch: {name}")
         cls = MixedLinear if candidate.module_kind == 'linear' else MixedEmbedding
-        model.set_submodule(name, cls(candidate, dtype=_torch_dtype(modules[name]['compute_dtype'])))
+        options = {'padding_idx': native.padding_idx} if candidate.module_kind == 'embedding' else {}
+        model.set_submodule(name, cls(candidate, dtype=_torch_dtype(info['compute_dtype']),
+                                     row_chunk_size=row_chunk_size, copy_payload=False, **options))
+        del candidate, native
     expected = {n: (t, k, p) for n, t, k, p in _all_tensors(model) if not _under_module(n, modules)}
     if set(expected) != set(retained):
         raise ValueError("Mixed retained state is incomplete")
@@ -301,4 +336,9 @@ def load_mixed(path, device='cpu'):
         raise ValueError("Retained/vision/tokenizer byte accounting mismatch")
     model.to(device)
     model.requires_grad_(False)
+    if cache_decoded_weights:
+        for name in modules:
+            module = model.get_submodule(name)
+            if isinstance(module, MixedLinear):
+                module.prepare_decoded_weight_cache()
     return model.eval()

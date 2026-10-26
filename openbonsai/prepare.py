@@ -19,6 +19,16 @@ from .calibration import _positive_integer, _token_ids
 CAUSAL_MODEL_TYPES = frozenset({"qwen3_5_text", "qwen3", "qwen2", "llama"})
 
 
+def generation_eos_ids(tokenizer: Any, model: Any) -> list[int]:
+    """Honor both model sequence-end and tokenizer assistant-turn-end tokens."""
+    configured = getattr(getattr(model, "generation_config", None), "eos_token_id", None)
+    values = list(configured) if isinstance(configured, (list, tuple)) else ([] if configured is None else [configured])
+    tokenizer_eos = getattr(tokenizer, "eos_token_id", None)
+    if tokenizer_eos is not None:
+        values.append(tokenizer_eos)
+    return list(dict.fromkeys(values))
+
+
 def read_prompts(path: str | Path, max_samples: int | None = None) -> list[str]:
     """Read user-supplied JSONL objects with a text ``prompt`` or ``question``."""
     if max_samples is not None:
@@ -104,6 +114,9 @@ def generate_record(
     pad_id = getattr(tokenizer, "pad_token_id", None)
     if pad_id is not None:
         kwargs["pad_token_id"] = pad_id
+    eos_ids = generation_eos_ids(tokenizer, model)
+    if eos_ids:
+        kwargs["eos_token_id"] = eos_ids
     with torch.inference_mode():
         output = model.generate(input_ids=input_ids, attention_mask=torch.ones_like(input_ids), **kwargs)
     ids = _token_ids(output[0].detach().cpu().tolist(), "model generation")
@@ -112,10 +125,6 @@ def generate_record(
     generated_ids = ids[len(prompt_ids):]
     if not generated_ids:
         raise ValueError("Model generated no continuation tokens")
-    eos = getattr(getattr(model, "generation_config", None), "eos_token_id", None)
-    if eos is None:
-        eos = getattr(tokenizer, "eos_token_id", None)
-    eos_ids = eos if isinstance(eos, (list, tuple)) else ([] if eos is None else [eos])
     return {
         "model_id": model_id,
         "input_ids": ids,
@@ -123,6 +132,7 @@ def generate_record(
         "prompt_token_count": len(prompt_ids),
         "generated_token_count": len(generated_ids),
         "enable_thinking": enable_thinking,
+        "eos_token_ids": eos_ids,
         "hit_generation_limit": len(generated_ids) >= max_new_tokens and generated_ids[-1] not in eos_ids,
         "prompt": prompt,
         "formatted_prompt": tokenizer.decode(prompt_ids, skip_special_tokens=False),
@@ -221,6 +231,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "loaded_dtype": str(model.dtype),
         "seed": args.seed,
         "enable_thinking": args.enable_thinking,
+        "eos_token_ids": generation_eos_ids(tokenizer, model),
         "do_sample": args.do_sample,
         "temperature": args.temperature if args.do_sample else None,
         "top_p": args.top_p if args.do_sample else None,

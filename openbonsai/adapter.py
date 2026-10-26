@@ -74,12 +74,13 @@ def replace_projections(model, group_size=128, aggressive_gates=False, *, lora_r
             if not isinstance(module, nn.Linear):
                 raise TypeError(f"Expected nn.Linear at layer {index}.{relative_name}")
             candidates.append(f"{prefix}.layers.{index}.{relative_name}")
-    # Keep only paths: holding the old Linear objects in a candidate list would
-    # retain every original GPU weight while the quantizers clone them all.
+    # Transfer each frozen source storage to its replacement; keeping source
+    # modules or cloning all projections would double their conversion memory.
     for name in candidates:
         source = model.get_submodule(name)
         replacement = TernaryLinear.from_linear(source, group_size=group_size,
-                                                lora_rank=lora_rank, factor_mapping=factor_mapping)
+                                                lora_rank=lora_rank, factor_mapping=factor_mapping,
+                                                copy_weight=False)
         model.set_submodule(name, replacement)
         del source, replacement
     return candidates

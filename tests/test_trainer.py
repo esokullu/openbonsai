@@ -117,6 +117,11 @@ def test_train_factors_and_corrections_with_overlap(model, tmp_path, checkpointi
                  stride=2, gradient_checkpointing=checkpointing), cache_directory=tmp_path)
     assert [(w["start"], w["end"]) for w in report["windows"]] == [(0, 3), (2, 4)]
     assert all(math.isfinite(loss) for w in report["windows"] for loss in w["losses"])
+    for window in report["windows"]:
+        timing = window["timing_seconds"]
+        assert all(math.isfinite(value) and value >= 0 for value in timing.values())
+        assert math.isclose(timing["total"], sum(value for name, value in timing.items() if name != "total"))
+    assert report["timing_seconds"]["total"] == sum(w["timing_seconds"]["total"] for w in report["windows"])
     assert all(torch.equal(dict(model.named_buffers())[name], value) for name, value in base.items())
     assert any(not torch.equal(dict(model.named_parameters())[name], value) for name, value in factors.items())
     for suffix in ("lora_A", "lora_B"):

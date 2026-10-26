@@ -219,6 +219,7 @@ def test_prepare_with_real_fast_tokenizer_preserves_tokens_and_provenance(tmp_pa
             assert attention_mask.tolist() == [[1, 1, 1, 1]]
             assert not torch.is_grad_enabled()
             assert kwargs["max_new_tokens"] == 4
+            assert kwargs["eos_token_id"] == [8]
             return torch.cat((input_ids, torch.tensor([[5, 6, 7, 8]])), dim=1)
 
     calls = []
@@ -253,6 +254,7 @@ def test_prepare_with_real_fast_tokenizer_preserves_tokens_and_provenance(tmp_pa
     assert not record["hit_generation_limit"]
     assert manifest["total_tokens"] == 8
     assert manifest["generated_tokens"] == 4
+    assert manifest["eos_token_ids"] == record["eos_token_ids"] == [8]
     assert [kind for kind, _, _ in calls] == ["config", "tokenizer", "model"]
     for kind, model_id, kwargs in calls:
         assert model_id == "offline-target"
@@ -268,6 +270,16 @@ def test_generation_limit_and_explicit_sampling():
     assert record["hit_generation_limit"]
     assert model.kwargs["temperature"] == 0.6
     assert model.kwargs["top_p"] == 0.95
+
+
+@pytest.mark.parametrize("configured,expected", [(8, [8, 9]), ([8, 9, 8], [8, 9]), (None, [9])])
+def test_generation_stops_at_model_or_tokenizer_eos(configured, expected):
+    model = FakeModel([4, 5, 9])
+    model.generation_config = SimpleNamespace(eos_token_id=configured)
+    record = generate_record(FakeTokenizer(), model, "question", model_id="target", device="cpu", max_new_tokens=3)
+    assert model.kwargs["eos_token_id"] == expected
+    assert record["eos_token_ids"] == expected
+    assert not record["hit_generation_limit"]
 
 
 def test_prompt_limit_rejects_instead_of_truncating():

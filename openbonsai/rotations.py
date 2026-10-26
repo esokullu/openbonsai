@@ -2,20 +2,23 @@
 
 No transform is commuted through a nonlinearity, gate, recurrent state or norm.
 The original BF16 buffer is retained once; rotated FP32 weights are recomputed
-on demand. This reference path needs a CUDA memory preflight before 9B use.
+in complete-row, complete-group chunks, before the low-rank correction.
 It is an independent calibration experiment, not Prism's training recipe.
 """
 from __future__ import annotations
 
 import hashlib
+import math
 
 import torch
 from torch import nn
 from torch.nn import functional as F
+from torch.utils.checkpoint import checkpoint
 
 from .adapter import _PROJECTIONS, _RECURRENT_GATES, _text_module
-from .hadamard import rotate, inverse_rotate
-from .mixed_formats import ternary_candidate, with_rotation
+from .hadamard import rotate, inverse_rotate, validate_rotation
+from .mixed_formats import ternary_candidate
+from . import quantizer as _quantizer
 from .quantizer import TernaryLinear
 
 
@@ -38,21 +41,74 @@ class RotatedTernaryLinear(TernaryLinear):
     """
     def __init__(self, linear, group_size=128, *, signs, block_size=4096, **kwargs):
         # Validate dimensions before allocating the quantizer state.
-        rotate(torch.zeros(1, linear.in_features), signs, block_size)
+        validate_rotation(signs, block_size, linear.in_features)
+        # The parent calls _initial_statistics after nn.Module and the frozen
+        # source buffers exist. Install the rotation there so even rank-zero
+        # initial statistics are computed in rotated coordinates, exactly once.
+        self._initial_rotation = (signs, block_size)
         super().__init__(linear, group_size, **kwargs)
-        self.register_buffer('rotation_signs', signs.detach().to(device=self.weight.device, dtype=torch.int8).clone())
-        self.block_size = block_size
         self.rotation_only = False
-        with torch.no_grad():
-            mean, scale = self._statistics(self._group(rotate(self.weight.float(), self.rotation_signs, block_size)))
-            self.mu0.copy_(mean)
-            self.alpha0.copy_(scale)
+
+    def _initial_statistics(self):
+        if hasattr(self, '_initial_rotation'):
+            signs, self.block_size = self._initial_rotation
+            self.register_buffer('rotation_signs', signs.detach().to(device=self.weight.device, dtype=torch.int8).clone())
+            del self._initial_rotation
+        return super()._initial_statistics()
+
+    def _row_ranges(self):
+        # A chunk boundary must simultaneously end a row and a flattened group.
+        # For example, width=24/group=16 requires an even number of rows.
+        row_multiple = self.group_size // math.gcd(self.group_size, self.in_features)
+        rows = max(row_multiple, (_quantizer._GROUP_CHUNK_ELEMENTS // self.in_features // row_multiple) * row_multiple)
+        for first in range(0, self.out_features, rows):
+            yield first, min(first + rows, self.out_features)
+
+    def _group_ranges(self):
+        for first, last in self._row_ranges():
+            yield first * self.in_features // self.group_size, math.ceil(last * self.in_features / self.group_size)
+
+    def _effective_chunk(self, start, end, lora_A, lora_B):
+        first = start * self.group_size
+        last = min(end * self.group_size, self.numel)
+        if first % self.in_features or last % self.in_features:
+            raise ValueError('Rotated quantization chunks must contain complete source rows')
+        first_row, last_row = first // self.in_features, last // self.in_features
+        # Transform frozen BF16 source rows in FP32, then add the correction
+        # learned in rotated coordinates. Never rotate a truncated row/group,
+        # or round the transformed weight back to BF16 before statistics.
+        values = rotate(self.weight[first_row:last_row].float(), self.rotation_signs, self.block_size)
+        if lora_A is not None:
+            values = values + (lora_B[first_row:last_row] @ lora_A) / self.lora_rank
+        values = values.reshape(-1)
+        padding = (end - start) * self.group_size - values.numel()
+        if padding:
+            values = F.pad(values, (0, padding))
+        return values.reshape(end - start, self.group_size)
 
     def _effective_grouped(self, lora_A, lora_B):
+        # Explicit dense reference helper only. Training/inference/export use
+        # _effective_chunk through the bounded parent implementation.
         weight = rotate(self.weight.float(), self.rotation_signs, self.block_size)
         if self.lora_rank:
             weight = weight + (lora_B @ lora_A) / self.lora_rank
         return self._group(weight)
+
+    def _float_rotated_linear(self, x):
+        work_dtype = torch.float64 if x.dtype == torch.float64 else torch.float32
+        rotated_x = rotate(x.to(work_dtype), self.rotation_signs, self.block_size)
+        outputs = []
+        for first, last in self._row_ranges():
+            def apply_rows(inputs, first=first, last=last):
+                rotated_weight = rotate(self.weight[first:last].to(work_dtype), self.rotation_signs, self.block_size)
+                bias = None if self.bias is None else self.bias[first:last].to(work_dtype)
+                return F.linear(inputs, rotated_weight, bias)
+            if torch.is_grad_enabled() and rotated_x.requires_grad:
+                result = checkpoint(apply_rows, rotated_x, use_reentrant=False, preserve_rng_state=False)
+            else:
+                result = apply_rows(rotated_x)
+            outputs.append(result)
+        return torch.cat(outputs, dim=-1).to(x.dtype)
 
     def forward(self, x):
         if not self.quant_enabled or self.progress == 0:
@@ -60,16 +116,13 @@ class RotatedTernaryLinear(TernaryLinear):
         if self.rotation_only:
             # FP32 transforms/linear isolate mathematical placement from BF16
             # activation/storage rounding; output still uses native dtype.
-            work_dtype = torch.float64 if x.dtype == torch.float64 else torch.float32
-            return F.linear(rotate(x.to(work_dtype), self.rotation_signs, self.block_size),
-                            rotate(self.weight.to(work_dtype), self.rotation_signs, self.block_size),
-                            None if self.bias is None else self.bias.to(work_dtype)).to(x.dtype)
+            return self._float_rotated_linear(x)
         return F.linear(rotate(x, self.rotation_signs, self.block_size), self.quantized_weight(), self.bias)
 
     def mixed_candidate(self, *, packing='auto', provenance=None):
-        candidate = ternary_candidate(super().packed_state(packing='2bit'), packing=packing,
-                                      provenance=provenance)
-        return with_rotation(candidate, self.rotation_signs, self.block_size)
+        return ternary_candidate(super().packed_state(packing='2bit'), packing=packing,
+                                 provenance=provenance, rotation_signs=self.rotation_signs,
+                                 rotation_block_size=self.block_size)
 
     def packed_state(self, **kwargs):
         raise ValueError('Rotated weights require mixed_candidate/save_mixed; legacy export would drop the rotation')
@@ -98,15 +151,18 @@ class RotatedTernaryEmbedding(RotatedTernaryLinear):
             return F.embedding(ids, self.weight, self.padding_idx)
         if self.rotation_only:
             dtype = torch.float64 if self.weight.dtype == torch.float64 else torch.float32
-            rows = F.embedding(ids, rotate(self.weight.to(dtype), self.rotation_signs, self.block_size), self.padding_idx)
-            return inverse_rotate(rows, self.rotation_signs, self.block_size).to(self.weight.dtype)
+            # Row lookup commutes with a feature-only rotation. Gather original
+            # rows first: no full vocabulary-sized floating transform is needed.
+            rows = F.embedding(ids, self.weight, self.padding_idx).to(dtype)
+            rotated = rotate(rows, self.rotation_signs, self.block_size)
+            return inverse_rotate(rotated, self.rotation_signs, self.block_size).to(self.weight.dtype)
         rows = F.embedding(ids, self.quantized_weight(), self.padding_idx)
         return inverse_rotate(rows, self.rotation_signs, self.block_size)
 
     def mixed_candidate(self, *, packing='auto', provenance=None):
-        candidate = ternary_candidate(TernaryLinear.packed_state(self, packing='2bit'), module_kind='embedding',
-                                      packing=packing, provenance=provenance)
-        return with_rotation(candidate, self.rotation_signs, self.block_size)
+        return ternary_candidate(TernaryLinear.packed_state(self, packing='2bit'), module_kind='embedding',
+                                 packing=packing, provenance=provenance, rotation_signs=self.rotation_signs,
+                                 rotation_block_size=self.block_size)
 
 
 def rotation_targets(model, *, endpoints=False, aggressive_gates=False):
@@ -140,7 +196,8 @@ def replace_rotated_projections(model, *, group_size=128, block_size=4096, seed=
         module = model.get_submodule(name)
         cls = RotatedTernaryEmbedding if isinstance(module, nn.Embedding) else RotatedTernaryLinear
         replacement = cls(module, group_size, signs=fixed_signs(module.weight.shape[1], seed=seed, name=name),
-                          block_size=block_size, lora_rank=lora_rank, factor_mapping=factor_mapping)
+                          block_size=block_size, lora_rank=lora_rank, factor_mapping=factor_mapping,
+                          copy_weight=False)
         if name == 'lm_head':
             replacement.calibration_scope = 'endpoint'
         model.set_submodule(name, replacement)

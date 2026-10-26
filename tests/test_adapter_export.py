@@ -19,6 +19,15 @@ from openbonsai.packing import BITCOS_FORMAT, FORMAT as GROUPED_FORMAT, unpack_g
 from openbonsai.quantizer import PackedTernaryLinear, TernaryLinear
 
 
+def _symlink_or_skip(link, target, *, target_is_directory=False):
+    try:
+        link.symlink_to(target, target_is_directory=target_is_directory)
+    except OSError as exc:
+        if getattr(exc, "winerror", None) == 1314:
+            pytest.skip("Windows symlink privilege is unavailable on this host")
+        raise
+
+
 def logits(model):
     with torch.no_grad():
         return model(input_ids=torch.tensor([[3, 4, 5, 6, 7]]), use_cache=False).logits
@@ -130,6 +139,16 @@ def test_projection_conversion_releases_each_original_before_the_next(monkeypatc
     monkeypatch.setattr(TernaryLinear, "from_linear", checking_from_linear)
     assert len(replace_projections(model)) == 25
     assert all(reference() is None for reference in originals)
+
+
+@pytest.mark.parametrize("rank,mapping", [(64, "exp"), (4, "sigmoid"), (0, "sigmoid")])
+def test_projection_storage_transfer_preserves_rank_and_factor_mapping(rank, mapping):
+    model = tiny_model(seed=4)
+    source_storage = model.model.layers[0].mlp.up_proj.weight.data_ptr()
+    replace_projections(model, lora_rank=rank, factor_mapping=mapping)
+    assert model.model.layers[0].mlp.up_proj.weight.data_ptr() == source_storage
+    assert all(module.lora_rank == rank and module.factor_mapping == mapping
+               for _, module in iter_ternary_modules(model))
 
 
 @pytest.mark.parametrize("multimodal", [False, True])
@@ -303,7 +322,7 @@ def test_repack_refuses_overwrite_and_nested_destinations(tmp_path, target):
         destination = tmp_path
     elif target == "symlink":
         destination = tmp_path / "link"
-        destination.symlink_to(source, target_is_directory=True)
+        _symlink_or_skip(destination, source, target_is_directory=True)
     else:
         destination = tmp_path / "existing"
         destination.mkdir()
@@ -371,7 +390,7 @@ def test_loader_validates_repacked_tokenizer_checksums(tmp_path):
 def test_repack_rejects_symlinked_tokenizer_assets(tmp_path):
     source, _ = _source_artifact(tmp_path)
     (source / "tokenizer").mkdir()
-    (source / "tokenizer" / "escape").symlink_to(tmp_path)
+    _symlink_or_skip(source / "tokenizer" / "escape", tmp_path, target_is_directory=True)
     with pytest.raises(ValueError, match="symbolic link"):
         repack_compressed(source, tmp_path / "converted")
 

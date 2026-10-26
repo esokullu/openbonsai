@@ -22,6 +22,15 @@ particular, the released inference implementation is not a compression recipe.
 
 ## Stages and decision boundaries
 
+The first paired 9B decoder experiment has completed: rotations improved the
+development metrics, but both compressed conditions failed useful generation.
+The preserved results and imported runtime changes are recorded in
+[the 5090 review](5090-runtime.md). The next controlled comparison is a fresh
+rotated 16×8 versus 128×1 pair from one pinned prompt source, with matched updates
+and valid-token exposure. It tests data diversity before changing the schedule
+or starting endpoint/RCO work on the GPU. The stages below retain their original
+gates; none of the software tests establishes successful quality recovery.
+
 1. Finish the already running 5090 baseline unchanged, including generation,
    FP16 export and independent reload. Freeze its source/config/data/artifacts.
    Review results before starting any next experiment or editing its checkout.
@@ -72,9 +81,12 @@ the same budget afterward.
 `replace_rotated_projections` installs decoder quantizers. `endpoints=True`
 also supports embedding/head **for explicit endpoint work**. `rotation_only`
 is a float-equivalence diagnostic and is rejected by the training loop. The
-original BF16 master stays frozen; rotated FP32 weights are currently recomputed
-transiently. This local reference implementation is not the remote chunked 9B
-memory path and needs integration/preflight before a full run.
+original BF16 master stays frozen. The imported decoder path recomputes rotated
+FP32 weights in complete row/group chunks and uses checkpoint recomputation to
+bound saved FP32 intermediates. It still reconstructs a complete source-dtype
+weight for the projection. The reconciled branch has CPU parity coverage;
+larger configurations require a new CUDA preflight. This does not implement
+memory-bounded embedding calibration.
 
 `RotatedTernaryLinear.mixed_candidate()` includes the rotation. Legacy
 `packed_state()`/`save_compressed()` reject it, preventing a silent missing

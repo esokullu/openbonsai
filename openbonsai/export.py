@@ -18,6 +18,7 @@ import torch
 from torch import nn
 from safetensors import safe_open
 from safetensors.torch import load_file, save_file
+from accelerate import init_empty_weights
 from transformers.initialization import no_init_weights
 
 from .adapter import config_from_dict, get_text_layers, iter_ternary_modules, model_from_config
@@ -75,14 +76,19 @@ def _under_module(name, module_names):
 
 
 def _write_tensor_file(directory, filename, tensors, files):
-    # Independent CPU copies break shared aliases, which safetensors rejects.
-    # A GPU-to-CPU transfer already makes a copy: avoid a second large clone.
-    # Only one bounded chunk (or one larger tensor) is copied at a time.
-    payload = {
-        name: (tensor.detach().contiguous().clone() if tensor.device.type == "cpu"
-               else tensor.detach().to("cpu").contiguous())
-        for name, tensor in tensors.items()
-    }
+    # Reuse unaliased CPU storage (including large retained embeddings). Only
+    # tensors sharing storage inside this file need a copy for safetensors.
+    # GPU-to-CPU transfers already create independent storage.
+    payload, seen_storage = {}, set()
+    for name, tensor in tensors.items():
+        value = tensor.detach().to("cpu").contiguous()
+        storage = value.untyped_storage().data_ptr()
+        if value.numel() and storage in seen_storage:
+            value = value.clone()
+            storage = value.untyped_storage().data_ptr()
+        if value.numel():
+            seen_storage.add(storage)
+        payload[name] = value
     path = directory / filename
     save_file(payload, str(path))
     files[filename] = {"bytes": path.stat().st_size, "sha256": _digest(path)}
@@ -458,9 +464,11 @@ def load_compressed(path, device="cpu"):
     manifest, checked = _read_artifact(root)
     files = manifest["files"]
     config = config_from_dict(json.loads(checked["config.json"].read_text()))
-    # Avoid filling large original weight tensors just to replace them. Native
-    # constructor-defined rotary buffers still initialize correctly on CPU.
-    with no_init_weights():
+    # Parameters are immediately replaced by artifact tensors: do not allocate
+    # a full FP32 copy of the original model first. Keep buffers on CPU so native
+    # constructor-defined rotary buffers and their nonregistered aliases remain
+    # initialized; the artifact restores all registered buffers below.
+    with no_init_weights(), init_empty_weights(include_buffers=False):
         model = model_from_config(config)
 
     consumed_files = {"config.json"}

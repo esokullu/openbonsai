@@ -6,6 +6,7 @@ input groups. Ternary grouping preserves the existing flattened convention.
 Storage bytes include the canonical JSON header, all tensors and checksum.
 No low-bit inference acceleration is supplied; ``weight`` reconstructs dense
 floats, while forwards decode row chunks (only requested embedding rows).
+Opt-in linear caching retains a full BF16 matrix in addition to packed payloads.
 """
 from __future__ import annotations
 
@@ -14,6 +15,7 @@ import copy
 import hashlib
 import json
 import math
+import mmap
 import os
 from pathlib import Path
 import struct
@@ -198,7 +200,8 @@ def affine_candidate(qcodes, scales, zeros, *, bits, group_size, bias=None,
     return candidate
 
 
-def ternary_candidate(state, *, module_kind="linear", packing="auto", source="scaleq", provenance=None):
+def ternary_candidate(state, *, module_kind="linear", packing="auto", source="scaleq", provenance=None,
+                      rotation_signs=None, rotation_block_size=None):
     """Import learned existing packed ternary values without refitting/scaling.
 
     Auto compares the complete serialized candidates, including BITCOS row
@@ -206,6 +209,8 @@ def ternary_candidate(state, *, module_kind="linear", packing="auto", source="sc
     """
     if packing not in ("auto", "2bit", "bitcos"):
         raise ValueError("packing must be auto, 2bit or bitcos")
+    if (rotation_signs is None) != (rotation_block_size is None):
+        raise ValueError("rotation signs and block size must be supplied together")
     choices = []
     for codec in (("2bit", "bitcos") if packing == "auto" else (packing,)):
         packed = repack_grouped_weight(state, packing=codec)
@@ -221,6 +226,8 @@ def ternary_candidate(state, *, module_kind="linear", packing="auto", source="sc
             _metadata("ternary-" + codec, (rows, width), module_kind, source, provenance,
                       group_size=packed["group_size"], group_axis="flattened"), tensors)
         validate_candidate(candidate)
+        if rotation_signs is not None:
+            candidate = with_rotation(candidate, rotation_signs, rotation_block_size)
         choices.append(candidate)
     return min(choices, key=candidate_nbytes)
 
@@ -375,16 +382,17 @@ def _rows(candidate, rows, dtype, device):
     return value.to(device=device, dtype=dtype)
 
 
-def candidate_weight(candidate, *, device=None, dtype=torch.float32):
+def candidate_weight(candidate, *, device=None, dtype=torch.float32, row_chunk_size=_CHUNK_ROWS):
     """Reconstruct the complete dense reference matrix, using bounded scratch."""
     validate_candidate(candidate)
+    row_chunk_size = _positive_int(row_chunk_size, "row_chunk_size")
     if dtype not in _FLOATS and dtype != torch.float64:
         raise ValueError("floating reconstruction dtype required")
     source_device = next(iter(candidate.tensors.values())).device
     device = source_device if device is None else device
     output = torch.empty(candidate.shape, dtype=dtype, device=device)
-    for start in range(0, candidate.shape[0], _CHUNK_ROWS):
-        end = min(start + _CHUNK_ROWS, candidate.shape[0])
+    for start in range(0, candidate.shape[0], row_chunk_size):
+        end = min(start + row_chunk_size, candidate.shape[0])
         output[start:end] = _rows(candidate, torch.arange(start, end), dtype, device)
     return output
 
@@ -422,9 +430,13 @@ def _segments(candidate):
     header, _ = _header(candidate)
     yield MAGIC + struct.pack("<Q", len(header)) + header
     for _, tensor in sorted(candidate.tensors.items()):
-        raw = tensor.detach().cpu().contiguous().view(torch.uint8).reshape(-1)
-        for start in range(0, raw.numel(), 4 * 1024 * 1024):
-            yield raw[start:start + 4 * 1024 * 1024].numpy().tobytes()
+        # Slice before transfer/contiguity, including noncontiguous payloads.
+        # Host scratch is bounded by 4 MiB or one tensor row, not the matrix.
+        row_bytes = math.prod(tensor.shape[1:]) * tensor.element_size()
+        rows = max(1, (4 * 1024 * 1024) // max(1, row_bytes))
+        for start in range(0, tensor.shape[0], rows):
+            raw = tensor[start:start + rows].detach().cpu().contiguous().view(torch.uint8)
+            yield raw.reshape(-1).numpy().tobytes()
 
 
 def encode_candidate(candidate):
@@ -447,7 +459,7 @@ def _no_duplicate_keys(pairs):
 
 def decode_candidate(blob):
     """Verify checksum and all contracts before returning owned CPU tensors."""
-    if not isinstance(blob, (bytes, bytearray)) or len(blob) < _PREFIX + _DIGEST:
+    if not isinstance(blob, (bytes, bytearray, memoryview)) or len(blob) < _PREFIX + _DIGEST:
         raise ValueError("truncated candidate")
     if blob[:len(MAGIC)] != MAGIC:
         raise ValueError("invalid candidate magic")
@@ -457,7 +469,7 @@ def decode_candidate(blob):
     if size > _MAX_HEADER or _PREFIX + size + _DIGEST > len(blob):
         raise ValueError("invalid candidate header length")
     try:
-        header = json.loads(blob[_PREFIX:_PREFIX + size], object_pairs_hook=_no_duplicate_keys,
+        header = json.loads(bytes(blob[_PREFIX:_PREFIX + size]), object_pairs_hook=_no_duplicate_keys,
                             parse_constant=lambda _: (_ for _ in ()).throw(ValueError("nonfinite JSON")))
     except (UnicodeDecodeError, json.JSONDecodeError, RecursionError) as error:
         raise ValueError("invalid candidate JSON") from error
@@ -485,7 +497,8 @@ def decode_candidate(blob):
         begin = _PREFIX + size + offset
         if expected:
             raw = bytearray(memoryview(blob)[begin:begin + expected])
-            tensors[name] = torch.frombuffer(raw, dtype=dtype).reshape(shape).clone()
+            # frombuffer retains its owned bytearray; a second full copy is unnecessary.
+            tensors[name] = torch.frombuffer(raw, dtype=dtype).reshape(shape)
         else:
             tensors[name] = torch.empty(shape, dtype=dtype)
         offset += expected
@@ -493,7 +506,9 @@ def decode_candidate(blob):
         raise ValueError("unreferenced payload bytes")
     result = MixedWeightCandidate(header["metadata"], tensors)
     validate_candidate(result)
-    if encode_candidate(result) != blob:
+    # Tensor bytes have been copied verbatim and layout/values validated. Only
+    # the canonical header needs re-encoding, not the entire payload again.
+    if _header(result)[0] != bytes(blob[_PREFIX:_PREFIX + size]):
         raise ValueError("noncanonical candidate encoding")
     return result
 
@@ -524,21 +539,30 @@ def save_candidate(candidate, path):
 
 
 def load_candidate(path):
-    """Read a candidate into CPU memory; serialized size is part of peak RAM."""
-    return decode_candidate(Path(path).read_bytes())
+    """Read owned CPU tensors without another full serialized byte-blob copy."""
+    with Path(path).open("rb") as handle:
+        if not handle.seek(0, os.SEEK_END):
+            raise ValueError("truncated candidate")
+        handle.seek(0)
+        with mmap.mmap(handle.fileno(), 0, access=mmap.ACCESS_READ) as mapped:
+            with memoryview(mapped) as view:
+                return decode_candidate(view)
 
 
 class _MixedBase(nn.Module):
-    def __init__(self, candidate, *, dtype=torch.bfloat16, device=None, row_chunk_size=64):
+    def __init__(self, candidate, *, dtype=torch.bfloat16, device=None, row_chunk_size=64,
+                 copy_payload=True):
         super().__init__()
         validate_candidate(candidate)
         if dtype not in _FLOATS:
             raise ValueError("unsupported compute dtype")
+        if type(copy_payload) is not bool:
+            raise ValueError("copy_payload must be a bool")
         self.row_chunk_size = _positive_int(row_chunk_size, "row_chunk_size")
         self.metadata = copy.deepcopy(candidate.metadata)
         self._tensor_names = tuple(sorted(candidate.tensors))
         for name, value in candidate.tensors.items():
-            self.register_buffer("payload_" + name, value.detach().clone().to(device=device))
+            self.register_buffer("payload_" + name, value.detach().to(device=device, copy=copy_payload))
         self.register_buffer("_compute_reference", torch.empty(0, dtype=dtype, device=device), persistent=False)
 
     def _candidate(self):
@@ -555,7 +579,7 @@ class _MixedBase(nn.Module):
     @property
     def weight(self):
         return candidate_weight(self._candidate(), device=self._compute_reference.device,
-                                dtype=self._compute_reference.dtype)
+                                dtype=self._compute_reference.dtype, row_chunk_size=self.row_chunk_size)
 
     @property
     def bias(self):
@@ -563,23 +587,92 @@ class _MixedBase(nn.Module):
 
 
 class MixedLinear(_MixedBase):
-    """Frozen row-chunk dense matmul reference; no low-bit kernel or speed claim."""
+    """Frozen row-chunk reference with optional nonpersistent BF16 decode cache.
+
+    Caching removes repeated decoding only: row sizes, GEMMs, bias conversion
+    and input rotation stay unchanged. Payloads are immutable while cached.
+    Inference-created tensors have no version counters, so callers modifying
+    them in inference mode must explicitly clear the cache first.
+    """
     def __init__(self, candidate, **kwargs):
         if candidate.module_kind != "linear":
             raise ValueError("MixedLinear requires a linear candidate")
         super().__init__(candidate, **kwargs)
         self.out_features, self.in_features = candidate.shape
+        self.register_buffer("_decoded_weight_cache", None, persistent=False)
+        self._decoded_weight_cache_signature = None
+
+    def _payload_signature(self):
+        tensors = []
+        for name in self._tensor_names:
+            value = getattr(self, "payload_" + name)
+            try:
+                version = value._version
+            except RuntimeError:
+                # Inference tensors are immutable by this runtime's contract;
+                # they cannot supply mutation detection through a version.
+                version = None
+            tensors.append((name, value.data_ptr(), tuple(value.shape), value.dtype, value.device, version))
+        return (self.metadata['encoding'], tuple(self.metadata['shape']),
+                self.metadata.get('group_size'), self.metadata.get('bits'),
+                self.row_chunk_size, tuple(tensors))
+
+    @property
+    def decoded_weight_cache_bytes(self):
+        value = self._decoded_weight_cache
+        return 0 if value is None else value.numel() * value.element_size()
+
+    def clear_decoded_weight_cache(self):
+        self._decoded_weight_cache = None
+        self._decoded_weight_cache_signature = None
+        return self
+
+    @torch.no_grad()
+    def prepare_decoded_weight_cache(self):
+        """Decode once, retaining rows * columns * 2 extra bytes in memory.
+
+        The full BF16 cache is excluded from artifacts; this is a decode-time
+        optimization, not low-bit inference or a reduction in loaded memory.
+        """
+        if self._compute_reference.dtype != torch.bfloat16:
+            raise ValueError("Decoded weight caching requires BF16 computation")
+        signature = self._payload_signature()
+        if self._decoded_weight_cache is not None and self._decoded_weight_cache_signature == signature:
+            return self
+        self.clear_decoded_weight_cache()
+        self._decoded_weight_cache = candidate_weight(
+            self._candidate(), device=self._compute_reference.device, dtype=torch.bfloat16,
+            row_chunk_size=self.row_chunk_size)
+        self._decoded_weight_cache_signature = signature
+        return self
+
+    def _apply(self, fn, recurse=True):
+        # Clear before a dtype/device transform, avoiding another full cache
+        # allocation and avoiding rounding a prior decode into a new dtype.
+        self.clear_decoded_weight_cache()
+        return super()._apply(fn, recurse=recurse)
+
+    def _load_from_state_dict(self, *args, **kwargs):
+        self.clear_decoded_weight_cache()
+        return super()._load_from_state_dict(*args, **kwargs)
 
     def forward(self, x):
         if x.shape[-1] != self.in_features or not x.is_floating_point():
             raise ValueError("linear input has incompatible width or dtype")
         candidate = self._candidate()
+        cached = self._decoded_weight_cache
+        if cached is not None and self._decoded_weight_cache_signature != self._payload_signature():
+            self.clear_decoded_weight_cache()
+            cached = None
+        if cached is not None and (cached.dtype != x.dtype or cached.device != x.device):
+            cached = None  # Preserve the original decoder's input-dtype rounding.
         if "rotation" in self.metadata:
             x = rotate(x, self.payload_rotation_signs, self.metadata["rotation"]["block_size"])
         chunks = []
         for start in range(0, self.out_features, self.row_chunk_size):
             end = min(start + self.row_chunk_size, self.out_features)
-            weight = _rows(candidate, torch.arange(start, end), x.dtype, x.device)
+            weight = (cached[start:end] if cached is not None else
+                      _rows(candidate, torch.arange(start, end), x.dtype, x.device))
             bias = None if self.bias is None else self.bias[start:end].to(device=x.device, dtype=x.dtype)
             chunks.append(F.linear(x, weight, bias))
         return torch.cat(chunks, dim=-1)
