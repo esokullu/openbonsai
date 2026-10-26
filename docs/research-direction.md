@@ -111,6 +111,11 @@ precision exceptions must fit the remaining budget. This is not an exported
 9B artifact or a quality result; the existing checkpoint's vision packaging
 and pretrained endpoint quality still need validation.
 
+The [native text-only extraction path](text-only-export.md) supplies explicit
+language-state mapping and reuses mixed export without duplicating frozen
+weight storage. Small native parity/reload tests cover the conversion; actual
+9B text-only deployment and a separately usable vision package remain pending.
+
 `prepare_mixed_export(original, names, metadata=..., tokenizer_dir=...)` freezes
 all common files before search. `plan.fixed_bytes + sum(candidate_nbytes(...))`
 is the exact final cost. Fixed-width byte fields keep manifest overhead constant

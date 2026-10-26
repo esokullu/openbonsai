@@ -51,12 +51,13 @@ and must not be counted twice. Retaining that vision payload gives about
 2.877 GB before the remaining container/configuration overhead.
 
 The existing 9B artifact preserves its native multimodal configuration. The
-adapter also supports Qwen's native text-only model class, but converting this
-checkpoint into a validated text-only artifact or separate vision package
-remains unimplemented and unverified. Deleting vision files from the existing
-artifact violates its retained-tensor contract. Explicit source/module mapping,
-native output parity and reload tests are required before a 2 GB language
-deployment can be claimed.
+adapter also supports Qwen's native text-only model class. A
+[text-only extraction helper](text-only-export.md) now maps original language
+state into that class and is tested on a small native hybrid fixture, including
+mixed export/reload. Actual 9B conversion and a separate usable vision package
+remain unverified. Deleting vision files from the existing artifact violates
+its retained-tensor contract. Real-checkpoint parity, actual file accounting and
+useful quality are required before a 2 GB language deployment can be claimed.
 
 The size calculation supports continuing to investigate broad ternary quality.
 It does not support replacing that objective with many 4/6-bit matrices: the
