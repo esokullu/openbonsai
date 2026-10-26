@@ -46,11 +46,16 @@ The subsequent [bounded first-window control](window0-calibration-result.md)
 has completed: 512 versus 128 updates on the same records reduced search hard
 MSE by 46.03%, with all 16 search records improving. Repeated exposure and
 annealing duration changed together. Late-step observations also found material
-epsilon damping, which motivates one fixed-schedule, epsilon-only control;
-changed-epsilon quality remains unmeasured in this result. Neither the local
-gain nor these observations validate later layers, endpoint compression or
-language quality. Do not promote them into an automatic full-model rerun or
-optimizer sweep. The stages below retain their original gates.
+epsilon damping. The completed [epsilon-only control](window0-epsilon-result.md)
+kept that 512-update recipe fixed and changed AdamW epsilon from 1e-8 to 1e-9.
+Search hard MSE fell a further 24.495%, with all 16 records improving and exact
+compact-state replay. This makes 1e-9 a provisional setting for that decoder
+recipe, not a new head setting or a universal default. Neither local result
+validates later layers, endpoint compression or language quality. The next
+bounded question is head-only resource and correctness feasibility before any
+scientific rotated/unrotated head comparison. Do not promote these findings
+into an automatic full-model rerun or optimizer sweep. The stages below retain
+their original gates.
 
 The following sequence preserves the original stage plan and its decision
 boundaries. The completed decoder experiments exercise these stages on bounded

@@ -10,6 +10,8 @@ The [completed original-prefix target control](docs/sequential-original-target-r
 
 A subsequent [first-layer calibration control](docs/window0-calibration-result.md) reduced separate search-set hard MSE by **46.03%** with 512 rather than 128 updates on the same records. Both compact states reloaded exactly, and late-step optimizer damping was measured. This is a local reconstruction improvement, not recovered full-model language quality or a new deployable artifact.
 
+The matched [epsilon-only control](docs/window0-epsilon-result.md) then reduced search hard MSE by another **24.50%**, changing AdamW epsilon from 1e-8 to 1e-9 at the same 512-update budget. All 16 search records improved and the compact state reloaded exactly. This finding applies to the first decoder window; it does not establish a head recipe, useful full-model quality or a smaller deployable artifact.
+
 ## Current research direction
 
 Prism's released inference implementation applies matching blockwise sign/Hadamard transforms to linear inputs and weights, and inverse transforms after embedding lookup. Its broad ternary coverage includes the embedding and output head. Our earlier artifact retained roughly **4.07 GB** in those two BF16 tensors alone. Keeping them uncompressed cannot approach the roughly 2 GB Bonsai language-model target. Vision must be reported separately. See the [pinned rotation audit](docs/rotations-audit.md) and [staged experiment plan](docs/research-direction.md).
