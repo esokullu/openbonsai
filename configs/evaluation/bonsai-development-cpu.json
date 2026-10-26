@@ -1,0 +1,12 @@
+{
+  "format": "openbonsai.prism-cpu-profile.v1",
+  "manifest_sha256": "8021d9cc8f54943a3b816af74cbc41d588173d385f51b73a681e979393ef5fdf",
+  "context_length": 513,
+  "vocab_size": 248320,
+  "threads": 4,
+  "resource_probes": {
+    "nll": {"record_index": 0},
+    "choice": {"question_index": 18, "option_index": 0},
+    "generation": {"text_index": 0, "token_start": 0, "token_end": 175, "target_position": 174}
+  }
+}

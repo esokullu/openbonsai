@@ -144,12 +144,88 @@ matched. The engineering threshold of `0.001` nats per target is scoped to this
 fixture, not a universal model-quality tolerance. Forced/dynamic EOS checks
 validate stopping only. [Validation record](../validation-evaluation.json).
 
+## Run a frozen manifest on CPU
+
+`tools/evaluate_prism_manifest.py` runs an existing frozen manifest through the
+unchanged common evaluator. It requires local weights, a clean pinned Prism
+checkout, a locally built worker and an explicit resource profile. It downloads
+nothing and changes no model. This supervisor supports **macOS/Linux POSIX
+process groups only**, even though the backend transport also supports Windows.
+
+Install the optional process-monitor dependency with `pip install -e '.[evaluation]'`.
+Then run from the repository root, replacing paths and setting the four hash
+variables from authenticated file/build receipts:
+
+```bash
+python tools/evaluate_prism_manifest.py --run \
+  --manifest /path/to/frozen-inputs.json \
+  --expected-manifest-sha256 "$MANIFEST_FILE_SHA256" \
+  --profile /path/to/resource-profile.json \
+  --expected-profile-sha256 "$PROFILE_FILE_SHA256" \
+  --gguf /path/to/model.gguf \
+  --expected-gguf-sha256 "$GGUF_FILE_SHA256" \
+  --worker /path/to/prism-eval-build/cmake/bin/prism-eval-worker \
+  --expected-worker-sha256 "$WORKER_FILE_SHA256" \
+  --prism-source /path/to/pinned-prism-llama.cpp \
+  --max-seconds 10800 --output /path/to/new-evaluation-directory
+```
+
+These flags require SHA256 values of the **exact file bytes**. The profile's
+`manifest_sha256` instead binds the manifest's **canonical `frozen_sha256`**;
+these two manifest hashes are different identities. The executable hash comes
+from the build being used, not a hardcoded binary for another platform. The
+runtime source commit remains the pinned commit above. The output directory
+must be new; this command does not resume or overwrite an earlier attempt.
+
+The profile format is `openbonsai.prism-cpu-profile.v1`. It records context
+length, vocabulary size, one to four CPU threads and three explicit timing
+probes: an NLL record index, a question/option index, and a token slice from an
+existing referenced text with one final target position. Probes must cover every
+corresponding input length, decoded length, requested vocabulary-row count and
+maximum rows in a 64-token worker batch. The generation probe must cover the
+longest permitted full-prefix forward: prefix length plus cap minus one. An
+unsuitable profile is rejected before loading the model; the runner does not
+select substitute data or probes.
+
+The bundled [Bonsai development profile](../configs/evaluation/bonsai-development-cpu.json)
+is bound to one existing development manifest. It contains no questions,
+answers, token sequences or weights and does not supply that manifest. It is not
+a default profile for arbitrary datasets. Other manifests need their own
+reviewed profile and expected file hashes. This bounded runner currently requires
+NLL, choice and generation records in a `search_validation` or `evaluation`
+manifest; it does not accept calibration-role inputs.
+
+All frozen texts must pass exact native ID and raw-piece checks before resource
+scoring. Work counts come from the manifest, preserving every item, option,
+target position, EOS list and generation cap. Admission reserves every possible
+generated token, multiplies measured work by 1.25, adds 300 seconds and includes
+the common evaluator's repeated tokenization check. Resource probes are excluded
+from quality aggregates. Shape coverage and margins are estimates, not runtime
+guarantees: an external monotonic supervisor caps the whole attempt at the
+explicit limit, which cannot exceed 10,800 seconds. Failed admission stops
+without shortening the evaluation or retrying.
+
+Outputs include source/file identities, the derived plan, native-tokenization
+and admission receipts, individual calls, item scores and generation bytes,
+sampled process RSS and final completion status. An incomplete run is not a
+complete baseline. Neither this command nor its synthetic tests establishes
+pretrained quality. The FP64 reduction caveat still applies: old FP32 diagnostic
+scores are not numerically matched comparators. The official PTQ1_0 CPU path
+also uses quantized activation dot products; FP32 logits and KV cache do not
+mean an all-FP32 model or establish parity with a different kernel or CUDA run.
+
+The portable wrapper passed 29 focused synthetic/process tests and the full
+1,502-test suite. These establish runner behavior, not a completed pretrained
+quality evaluation. [Validation record](../validation-prism-manifest-runner.json).
+
 ## Remaining gates
 
 The [official PTQ1_0 CPU preflight](bonsai-reference-preflight.md) now verifies
 the actual GGUF hash, tokenizer, scoring, state reset and short generation.
-Before real comparison, build and test the Windows/CUDA worker, measure a
-disjoint short BF16/OpenBonsai/Bonsai preflight, and record residual backend drift.
+Before a quality comparison, recompute every comparator under the common
+protocol, measure a disjoint short BF16/OpenBonsai/Bonsai preflight and record
+residual backend drift. A Windows/CUDA comparison additionally requires building
+and testing that worker on the target hardware.
 Keep the current 5090 compression experiment unchanged until its completed
 results are reviewed.
 
