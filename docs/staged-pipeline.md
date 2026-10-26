@@ -84,7 +84,7 @@ package directories cannot be stage output locations.
 | `seal` | Consume successful preparation results or explicitly attributed historical token records, package tokenizer assets, validate the declared roles and freeze all stage recipes. Publish `job.json`; original model weights remain at their existing path. |
 | `decoder` | Fit the declared rotated native text projections using the existing window trainer. Preserve original module names, source hashes and actual rotation signs in each candidate. |
 | `cache-head` | Capture original final-normalized hidden states before the large vocabulary projection. Run separately for each declared role, using the same original checkpoint and common source provenance. |
-| `head` | Fit the bounded head with the existing full-vocabulary KL objective on the calibration cache. An optional search-validation cache is scored; an optional evaluation cache is bound and checked for separation, but is not scored by this fitting stage. |
+| `head` | Fit the bounded head with the existing full-vocabulary KL objective on the calibration cache, then measure final hard calibration KL. An optional search-validation cache is scored; an optional evaluation cache is bound and checked for separation, but is not scored by this fitting stage. |
 | `embedding` | Fit the bounded embedding table using complete row sweeps against its original BF16 rows. Export requires the live all-row soft/hard coverage certificate. This stage does not train on the text traces. |
 | `assemble` | Verify the completed candidate stages, original source and declared coverage. Write one mixed artifact with retained tensors, native configuration and tokenizer assets. Its exact artifact byte total excludes the outer operation receipts. |
 
@@ -198,6 +198,18 @@ an `H-only` control so its decoder and embedding remain original, and evaluate O
 through the original-model path. Head fitting continues to use complete
 full-vocabulary KL and its own optimizer settings; decoder optimizer findings
 do not automatically transfer to this objective.
+
+After fitting, the head stage records `report.calibration` over every valid
+position in its calibration cache and, when supplied, `report.search_validation`.
+Both measure the final hard operator against the original teacher using native
+logits and global FP64 probability normalization across the full vocabulary.
+These measurements precede export and FP16 scale rounding; they are not packed
+reload scores or substitutes for language evaluation. The calibration pass is
+timed separately as `evaluate-head-calibration` and must be included in resource
+budgets. It adds no optimizer updates and does not score the evaluation cache.
+The [focused validation](../validation-head-final-calibration.json) checks both
+rotation modes against a dense oracle and verifies state preservation and
+failure before publication.
 
 This option enables a controlled experiment. It does not establish that rotating
 or ternarizing the pretrained 9B head preserves quality, nor that a head-only

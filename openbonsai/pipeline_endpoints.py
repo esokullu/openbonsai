@@ -329,13 +329,17 @@ def fit_head_stage(context, calibration_cache, output, search_cache=None, evalua
                 progress_callback, 'fit-head', phase='update', **event)))
         report = copy.deepcopy(fitted.report)
         del fitted  # No second compact CPU parameter copy persists into export.
-        if len(report['steps']) != total or operator.progress != 1.:
+        if (len(report['steps']) != total or operator.progress != 1.
+                or not operator.quant_enabled or operator.rotation_only):
             raise RuntimeError('Head fitting did not complete its declared update budget')
         operator.validate_parameters()
         report['final_hard_state_sha256'] = _head_state_sha256(operator)
         report['state_digest_scope'] = 'configuration/factors/LoRA/statistics/signs; source checked separately; no derivative snapshots'
         report['cache_stage_sha256s'] = {role: receipt['sha256'] for role, receipt in receipts.items()}
         report['evaluation_cache_used_for_scoring'] = False
+        report['calibration'] = _operation(operation, 'evaluate-head-calibration', lambda: evaluate_head_from_cache(
+            operator, caches['calibration'], source_provenance=context.source_provenance,
+            token_microbatch=training.token_microbatch, vocabulary_chunk=training.vocabulary_chunk))
         if 'search_validation' in caches:
             report['search_validation'] = _operation(operation, 'evaluate-head-search', lambda: evaluate_head_from_cache(
                 operator, caches['search_validation'], source_provenance=context.source_provenance,
