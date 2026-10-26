@@ -122,14 +122,15 @@ def test_dynamic_soft_surrogate_has_hard_forward_and_current_soft_gradient():
     torch.testing.assert_close(layer.quantized_weight(), layer.hard_weight(), rtol=0, atol=0)
 
 
-def test_packed_restore_matches_hard_inference_with_fp16_rounding():
+@pytest.mark.parametrize("packing", ["2bit", "bitcos", "auto"])
+def test_packed_restore_matches_hard_inference_with_fp16_rounding(packing):
     torch.manual_seed(4)
     layer = TernaryLinear.from_linear(nn.Linear(7, 5), group_size=4)
     with torch.no_grad():
         layer.raw_mu.uniform_(-0.1, 0.1)
         layer.raw_scale.uniform_(-0.1, 0.1)
     layer.set_progress(1)
-    state = layer.packed_state()
+    state = layer.packed_state(packing=packing)
     assert set(state).isdisjoint({"weight", "raw_mu", "raw_scale", "raw_threshold", "mu0", "alpha0"})
     buffer = io.BytesIO()
     torch.save(state, buffer)
@@ -149,6 +150,34 @@ def test_packed_restore_matches_hard_inference_with_fp16_rounding():
     assert packed.scales.dtype == packed.bias.dtype == torch.float16
     torch.testing.assert_close(packed.scales, original_scales, rtol=0, atol=0)
     torch.testing.assert_close(packed.bias, original_bias, rtol=0, atol=0)
+
+
+@pytest.mark.parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
+@pytest.mark.parametrize("zeros", [False, True])
+def test_bitcos_linear_is_exactly_equal_to_two_bit_reference(dtype, zeros):
+    torch.manual_seed(24)
+    linear = nn.Linear(31, 9)
+    if zeros:
+        with torch.no_grad():
+            linear.weight.zero_()
+    layer = TernaryLinear(linear, group_size=13)
+    old = restore_ternary_linear(layer.packed_state(packing="2bit"), dtype=dtype)
+    new = restore_ternary_linear(layer.packed_state(packing="bitcos"), dtype=dtype)
+    assert new.codes is None and new.presence.dtype == new.signs.dtype == torch.uint8
+    if zeros:
+        assert new.signs.numel() == 0
+    # Equal numeric values are insufficient for signed zeros: compare bytes too.
+    assert torch.equal(old.weight.view(torch.uint8), new.weight.view(torch.uint8))
+    assert torch.equal(old.scales.view(torch.uint8), new.scales.view(torch.uint8))
+    assert torch.equal(old.bias.view(torch.uint8), new.bias.view(torch.uint8))
+    x = torch.randn(2, 31).to(dtype)
+    torch.testing.assert_close(new(x), old(x), rtol=0, atol=0)
+    old.to(dtype=torch.bfloat16)
+    new.to(dtype=torch.bfloat16)
+    assert new.presence.dtype == new.signs.dtype == torch.uint8
+    torch.testing.assert_close(new(x.to(torch.bfloat16)), old(x.to(torch.bfloat16)), rtol=0, atol=0)
+    again = restore_ternary_linear(new.packed_state(packing="2bit"), dtype=torch.bfloat16)
+    assert torch.equal(again.weight.view(torch.uint8), new.weight.view(torch.uint8))
 
 
 def test_hard_evaluation_skips_backward_surrogate(monkeypatch):

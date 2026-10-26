@@ -1,18 +1,21 @@
 import json
+import hashlib
 import weakref
 from types import SimpleNamespace
 
 import pytest
 import torch
 from torch import nn
-from safetensors.torch import load_file
+from safetensors.torch import load_file, save_file
 
 from openbonsai import adapter
+from openbonsai import export as artifact_export
 from openbonsai.adapter import (
     get_text_layers, iter_ternary_modules, load_base_model, replace_projections,
     set_progress, set_quant_enabled, tiny_model,
 )
-from openbonsai.export import load_compressed, save_compressed
+from openbonsai.export import BITCOS_ARTIFACT_FORMAT, FORMAT, load_compressed, repack_compressed, save_compressed
+from openbonsai.packing import BITCOS_FORMAT, FORMAT as GROUPED_FORMAT, unpack_grouped_codes
 from openbonsai.quantizer import PackedTernaryLinear, TernaryLinear
 
 
@@ -75,13 +78,14 @@ def test_projection_conversion_releases_each_original_before_the_next(monkeypatc
 
 
 @pytest.mark.parametrize("multimodal", [False, True])
-def test_standalone_export_preserves_floats_and_roundtrip_logits(tmp_path, multimodal):
+@pytest.mark.parametrize("packing", ["2bit", "bitcos", "auto"])
+def test_standalone_export_preserves_floats_and_roundtrip_logits(tmp_path, multimodal, packing):
     model = tiny_model(seed=7, multimodal=multimodal)
     names = replace_projections(model)
     set_progress(model, 1)
     expected = logits(model)
     artifact = tmp_path / "packed"
-    manifest = save_compressed(model, artifact, metadata={"test_fixture": True})
+    manifest = save_compressed(model, artifact, metadata={"test_fixture": True}, packing=packing)
     loaded = load_compressed(artifact)
     actual = logits(loaded)
     # Export deliberately stores scales in fp16. The test bounds only that
@@ -115,11 +119,21 @@ def test_standalone_export_preserves_floats_and_roundtrip_logits(tmp_path, multi
     for info in manifest["packed_modules"].values():
         payload = load_file(str(artifact / info["file"]))
         state = info["state"]
-        assert payload["codes"].numel() == (state["padded_numel"] + 3) // 4
+        unpack_grouped_codes({**state, **payload})
+        if state["format"] == GROUPED_FORMAT:
+            assert payload["codes"].numel() == (state["padded_numel"] + 3) // 4
+            assert payload["codes"].dtype == torch.uint8
+        else:
+            assert state["format"] == BITCOS_FORMAT
+            assert "codes" not in payload
+            assert payload["presence"].dtype == payload["signs"].dtype == torch.uint8
         assert payload["scales"].numel() == state["num_groups"]
-        assert payload["codes"].dtype == torch.uint8
         assert payload["scales"].dtype == torch.float16
         assert "weight" not in payload
+    has_bitcos = any(item["state"]["format"] == BITCOS_FORMAT for item in manifest["packed_modules"].values())
+    assert manifest["format"] == (BITCOS_ARTIFACT_FORMAT if has_bitcos else FORMAT)
+    if packing in ("2bit", "bitcos"):
+        assert has_bitcos == (packing == "bitcos")
 
     with pytest.raises(ValueError, match="cannot be disabled"):
         set_quant_enabled(loaded, False)
@@ -151,6 +165,153 @@ def test_export_refuses_overwrite_and_detects_corruption(tmp_path):
     (artifact / filename).write_bytes(data)
     with pytest.raises(ValueError, match="Checksum mismatch"):
         load_compressed(artifact)
+
+
+def _source_artifact(tmp_path, *, packing="2bit"):
+    model = tiny_model(seed=31)
+    replace_projections(model)
+    source = tmp_path / "source"
+    manifest = save_compressed(model, source, metadata={"checkpoint": "immutable", "training": [1, 2]}, packing=packing)
+    return source, manifest
+
+
+def _rewrite_manifest(path, manifest):
+    # Corruption tests keep size/checksum bookkeeping honest so they exercise
+    # structural validation rather than merely failing total byte checks.
+    artifact_export._finalize_manifest(path, manifest)
+
+
+def test_repack_roundtrip_without_model_preserves_all_other_bytes(tmp_path, monkeypatch):
+    source, original = _source_artifact(tmp_path)
+    assert original["format"] == FORMAT
+    tokenizer = source / "tokenizer"
+    (tokenizer / "nested").mkdir(parents=True)
+    (tokenizer / "tokenizer.json").write_bytes(b'{"fixture": true}\n')
+    (tokenizer / "nested" / "template.jinja").write_bytes(b"{{ messages }}\n")
+    expected = logits(load_compressed(source))
+    originals = dict(iter_ternary_modules(load_compressed(source)))
+    bitcos, restored = tmp_path / "bitcos", tmp_path / "restored"
+
+    with monkeypatch.context() as patch:
+        def no_model(*args, **kwargs):
+            raise AssertionError("repack must not initialize a model or load original weights")
+        patch.setattr(artifact_export, "model_from_config", no_model)
+        patch.setattr(artifact_export, "load_compressed", no_model)
+        patch.setattr(adapter, "load_base_model", no_model)
+        first = repack_compressed(source, bitcos, packing="bitcos")
+        second = repack_compressed(bitcos, restored, packing="2bit")
+    assert first["format"] == BITCOS_ARTIFACT_FORMAT
+    assert second["format"] == FORMAT
+    for directory, manifest in ((bitcos, first), (restored, second)):
+        assert manifest["metadata"] == original["metadata"]
+        assert manifest["retained_tensors"] == original["retained_tensors"]
+        assert manifest["storage"]["retained_tensor_bytes"] == original["storage"]["retained_tensor_bytes"]
+        assert manifest["storage"]["directory_bytes"] == sum(p.stat().st_size for p in directory.rglob("*") if p.is_file())
+        assert manifest["storage"]["artifact_bytes"] + manifest["storage"]["supplementary_bytes"] == manifest["storage"]["directory_bytes"]
+        for filename in {"config.json"} | {item["file"] for item in original["retained_tensors"].values()}:
+            assert (directory / filename).read_bytes() == (source / filename).read_bytes()
+            assert manifest["files"][filename] == original["files"][filename]
+        for filename in ("tokenizer/tokenizer.json", "tokenizer/nested/template.jinja"):
+            assert (directory / filename).read_bytes() == (source / filename).read_bytes()
+            assert filename in manifest["supplementary_files"]
+        loaded = load_compressed(directory)
+        torch.testing.assert_close(logits(loaded), expected, rtol=0, atol=0)
+        for name, module in iter_ternary_modules(loaded):
+            torch.testing.assert_close(module.weight, originals[name].weight, rtol=0, atol=0)
+            assert manifest["packed_modules"][name]["compute_dtype"] == original["packed_modules"][name]["compute_dtype"]
+    for name, info in original["packed_modules"].items():
+        assert (source / info["file"]).read_bytes() == (restored / second["packed_modules"][name]["file"]).read_bytes()
+
+
+def test_repack_default_auto_selects_smaller_codes(tmp_path):
+    source, manifest = _source_artifact(tmp_path)
+    converted = repack_compressed(source, tmp_path / "auto")
+    assert converted["format"] == BITCOS_ARTIFACT_FORMAT
+    assert converted["storage"]["packed_tensor_bytes"] < manifest["storage"]["packed_tensor_bytes"]
+
+
+@pytest.mark.parametrize("target", ["same", "inside", "ancestor", "existing", "symlink"])
+def test_repack_refuses_overwrite_and_nested_destinations(tmp_path, target):
+    source, _ = _source_artifact(tmp_path)
+    if target == "same":
+        destination = source
+    elif target == "inside":
+        destination = source / "child"
+    elif target == "ancestor":
+        destination = tmp_path
+    elif target == "symlink":
+        destination = tmp_path / "link"
+        destination.symlink_to(source, target_is_directory=True)
+    else:
+        destination = tmp_path / "existing"
+        destination.mkdir()
+        (destination / "sentinel").write_text("keep")
+    before = (source / "manifest.json").read_bytes()
+    with pytest.raises((ValueError, FileExistsError)):
+        repack_compressed(source, destination)
+    assert (source / "manifest.json").read_bytes() == before
+    if target == "existing":
+        assert (destination / "sentinel").read_text() == "keep"
+
+
+@pytest.mark.parametrize("corruption", ["checksum", "missing_signs", "description", "compute_dtype", "storage", "retained_header", "unknown_format"])
+def test_repack_rejects_corrupt_artifacts_without_publishing(tmp_path, corruption):
+    source, manifest = _source_artifact(tmp_path, packing="bitcos")
+    info = next(iter(manifest["packed_modules"].values()))
+    filename = info["file"]
+    if corruption == "checksum":
+        data = bytearray((source / filename).read_bytes())
+        data[-1] ^= 1
+        (source / filename).write_bytes(data)
+    elif corruption == "missing_signs":
+        payload = load_file(str(source / filename))
+        removed = info["tensors"].pop("signs")
+        payload.pop("signs")
+        save_file(payload, str(source / filename))
+        manifest["files"][filename] = {"bytes": (source / filename).stat().st_size,
+                                      "sha256": hashlib.sha256((source / filename).read_bytes()).hexdigest()}
+        manifest["storage"]["packed_tensor_bytes"] -= removed["tensor_bytes"]
+        _rewrite_manifest(source, manifest)
+    elif corruption == "description":
+        info["tensors"]["presence"]["shape"][0] += 1
+        _rewrite_manifest(source, manifest)
+    elif corruption == "compute_dtype":
+        info["compute_dtype"] = "complex128"
+        _rewrite_manifest(source, manifest)
+    elif corruption == "storage":
+        manifest["storage"]["packed_tensor_bytes"] += 1
+        _rewrite_manifest(source, manifest)
+    elif corruption == "retained_header":
+        description = next(item for item in manifest["retained_tensors"].values() if item["dtype"] == "float32")
+        description["dtype"] = "int32"  # Same byte size, different actual header.
+        _rewrite_manifest(source, manifest)
+    else:
+        _rewrite_manifest(source, manifest)
+        data = (source / "manifest.json").read_text().replace(BITCOS_ARTIFACT_FORMAT, "unknown-artifact-format.v000")
+        (source / "manifest.json").write_text(data)
+    destination = tmp_path / "converted"
+    with pytest.raises(ValueError):
+        repack_compressed(source, destination)
+    assert not destination.exists()
+
+
+def test_loader_validates_repacked_tokenizer_checksums(tmp_path):
+    source, _ = _source_artifact(tmp_path)
+    (source / "tokenizer").mkdir()
+    (source / "tokenizer" / "tokenizer.json").write_text("original")
+    destination = tmp_path / "converted"
+    repack_compressed(source, destination)
+    (destination / "tokenizer" / "tokenizer.json").write_text("modified")
+    with pytest.raises(ValueError, match="Checksum mismatch"):
+        load_compressed(destination)
+
+
+def test_repack_rejects_symlinked_tokenizer_assets(tmp_path):
+    source, _ = _source_artifact(tmp_path)
+    (source / "tokenizer").mkdir()
+    (source / "tokenizer" / "escape").symlink_to(tmp_path)
+    with pytest.raises(ValueError, match="symbolic link"):
+        repack_compressed(source, tmp_path / "converted")
 
 
 def test_native_loader_pins_resolved_revision_without_remote_code(monkeypatch):

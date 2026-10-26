@@ -1,0 +1,171 @@
+{
+  "validated_at_utc": "2026-10-26T02:48:37.996145+00:00",
+  "scope": "Lossless BITCOS packing and CPU artifact repacking for existing OpenBonsai ternary values",
+  "environment": {
+    "python": "3.12.9",
+    "platform": "Darwin",
+    "architecture": "arm64",
+    "device": "cpu",
+    "packages": {
+      "torch": "2.14.1",
+      "transformers": "5.20.2",
+      "accelerate": "1.15.0",
+      "safetensors": "0.8.0",
+      "pytest": "9.1.1"
+    }
+  },
+  "pytest": {
+    "tests": 221,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "final_cli_path_normalization_recheck": {
+    "tests": 6,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "smoke": {
+    "project": "OpenBonsai",
+    "test": "offline native hybrid training and packed round trip",
+    "seed": 2,
+    "real_9b_weights_loaded": false,
+    "real_model_quality_evaluated": false,
+    "original_parameters": 728376,
+    "original_parameter_bytes": 2913504,
+    "converted_projections": 25,
+    "packed_roundtrip_max_logit_error": 0.0,
+    "fp16_scale_rounding_max_logit_error": 0.00013633258640766144,
+    "packing": "auto",
+    "storage": {
+      "packed_tensor_bytes": 148772,
+      "retained_tensor_bytes": 292096,
+      "manifest_bytes": 42552,
+      "artifact_bytes": 493321
+    },
+    "training": {
+      "training_config": {
+        "epochs": 3,
+        "batch_size": 1,
+        "window_size": 4,
+        "stride": 4,
+        "learning_rate": 0.001,
+        "weight_decay": 0.0,
+        "grad_clip": 1.0,
+        "seed": 2,
+        "gradient_checkpointing": true
+      },
+      "windows": [
+        {
+          "start": 0,
+          "end": 4,
+          "hard_mse_before": 0.00039912933217627663,
+          "hard_mse_after": 0.0003911870576086498,
+          "steps": 6,
+          "losses": [
+            0.0004127861466258764,
+            0.00037389135104604065,
+            0.00041378362220712006,
+            0.0003741556138265878,
+            0.00041489946306683123,
+            0.0003757094091270119
+          ]
+        }
+      ],
+      "samples": 2,
+      "nonpadding_tokens": 21,
+      "quality_claim": "software execution only; no full-model benchmark reproduction"
+    }
+  },
+  "repacking": {
+    "legacy_fixture": {
+      "description": "Pre-change tiny native Qwen3.5 hybrid artifact, not a real 9B model",
+      "source_manifest_sha256": "69f68467997d73912b138e0a9531fd6eee5712dff988e0597e25ee5edc3df6fb",
+      "source_format": "scaleq-qwen35.research.v1",
+      "output_format": "openbonsai-qwen35.research.v2",
+      "projections": 25,
+      "exact_weight_scale_bias_bytes": true,
+      "unchanged_retained_files_and_config": true,
+      "max_logit_error_by_sequence_length": {
+        "7": 0.0,
+        "33": 0.0,
+        "129": 0.0
+      },
+      "before": {
+        "artifact_bytes": 511399,
+        "manifest_bytes": 37122,
+        "packed_tensor_bytes": 174080,
+        "retained_tensor_bytes": 292096
+      },
+      "after": {
+        "artifact_bytes": 493321,
+        "manifest_bytes": 42552,
+        "packed_tensor_bytes": 148772,
+        "retained_tensor_bytes": 292096
+      },
+      "packed_tensor_reduction_percent": 14.538143382352942,
+      "artifact_reduction_percent": 3.5350088678311797
+    },
+    "controlled_half_zero_tensor": {
+      "weights": 1048576,
+      "group_size": 128,
+      "zero_fraction": 0.5,
+      "before": {
+        "code_bytes": 262144,
+        "scale_bytes": 16384,
+        "bias_bytes": 0,
+        "tensor_payload_bytes": 278528,
+        "weight_payload_bits_per_weight": 2.125,
+        "includes_container_overhead": false
+      },
+      "after": {
+        "code_bytes": 196608,
+        "scale_bytes": 16384,
+        "bias_bytes": 0,
+        "tensor_payload_bytes": 212992,
+        "weight_payload_bits_per_weight": 1.625,
+        "includes_container_overhead": false,
+        "presence_bytes": 131072,
+        "sign_bytes": 65536
+      },
+      "exact_reconstructed_weight_bytes": true
+    }
+  },
+  "independent_review": {
+    "material_findings": 0,
+    "checks": [
+      "100 randomized codec/runtime round trips",
+      "mixed-codec tiny multimodal v1 to BITCOS to v1 exact logits",
+      "retained vision/config/tokenizer byte preservation",
+      "unchanged source hashes",
+      "no native model initialization during repacking",
+      "exact artifact and supplementary byte accounting"
+    ]
+  },
+  "not_validated": [
+    "real Qwen3.5-9B artifact size",
+    "CUDA execution",
+    "optimized BITCOS inference kernels",
+    "quality preservation from BF16 to ternary; only existing ternary packing is lossless"
+  ],
+  "source_sha256": {
+    "README.md": "9be4c38cf794795a1fef5ae29608347ca0ec773cd685217f1e91556da884ca18",
+    "openbonsai/__init__.py": "d4d409a73d83336342db1c651338a85ef2179b918859b37d202e30ac56d2de0e",
+    "openbonsai/__main__.py": "3129adff95e0f38b87ab34cddfc27082c7892bcaec267ff5d40f160fdf55b44a",
+    "openbonsai/adapter.py": "7dff9788f3d38cf7226cf03731a4fda2f5697fd986f8d510b685215d67b0a5c8",
+    "openbonsai/calibration.py": "f26bcd478562bdd49dbd36fcd7d271becb57725ebd8775530116a7b861978fef",
+    "openbonsai/cli.py": "c4d968ef9ca7d4ef0478194d15f9d4761e7ba0b0ba87feca18e0398bf30f8003",
+    "openbonsai/export.py": "3ea28bd48717cc660d35ce834909c14ec2f6668d7c24a84654332d2eb81b590b",
+    "openbonsai/packing.py": "a60b22c1ee131e2bc84fda978977f91285b205075b97ad0fd312dff64522e6ed",
+    "openbonsai/prepare.py": "ca31034d96d0b2789fc0e06cc0f30bf24768dbe6d4bee6f5bab368f0ab2d42ca",
+    "openbonsai/quantizer.py": "2bf0b2781b7be26b7010811d7b05d6b5baa821ccc0ab5ffd26f9fa6943117f49",
+    "openbonsai/trainer.py": "7c477cf50305e81fbba30c33f2a8507a406300260dcd121893122b8d88fed5ed",
+    "tests/test_adapter_export.py": "e733218765c4dea3e6b6474407c309e964da170b6cfa2366850138fddada75d8",
+    "tests/test_calibration.py": "7ca492152f4b9c8feaa273e83b414f8299e8135f1e1a767bb42920c0193ce8ae",
+    "tests/test_cli.py": "53e2ea509d2f6b7778c9b1ee4609409ef73415f640cc718a2e97b8f4e65d7963",
+    "tests/test_packing.py": "acdc8364cf4876fcd6910ab35046558f8e2ce641133f3fbe402d29893a2a8054",
+    "tests/test_quantizer.py": "c5c2725726b7818dc30f0ecf4fd2e373f9f863f95d8288d7ebbb6d658f3f426a",
+    "tests/test_trainer.py": "e15e77fb155f973497e921d76d677900695e902ad243c52ea08c9061b5ba5de1"
+  }
+}

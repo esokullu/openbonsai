@@ -30,7 +30,8 @@ The compact model retains its parameter count; the storage reduction comes from 
 - Differentiable soft ternarization, followed by exact hard ternary forward values; no mean is added back to the reconstructed weights.
 - Sliding windows reconstruct original-weight window outputs from the **same input** as the quantized window. The input comes from the previously quantized prefix. Padding is excluded from the loss.
 - Native Qwen3.5 blocks retain their individual masks, rotary inputs, gates, and recurrent behavior. Gradient checkpointing is supported in the tested CPU reference path.
-- Packed checkpoint export, retained floating tensors, checksums, exact byte accounting, and offline reload.
+- Packed checkpoint export with lossless BITCOS or legacy two-bit storage, retained floating tensors, checksums, exact byte accounting, and offline reload.
+- CPU-only repacking of existing artifacts, with unchanged ternary codes, scales, biases, and retained weights; no new calibration or training.
 
 The default projection policy compresses the text MLP `gate/up/down`, full-attention `q/k/v/o`, and linear-attention `in_proj_qkv/in_proj_z/out_proj` projections. Embeddings, vocabulary head, vision tower, convolutions, norms, recurrent state parameters, and small `in_proj_a/in_proj_b` gates remain floating point. `--aggressive-gates` additionally compresses those two gates; its quality has not been evaluated. Preserving vision tensors does not establish preserved multimodal quality: the text stack changes, and calibration is text-only.
 
@@ -50,7 +51,7 @@ Installing the package also provides the `openbonsai` CLI. Run `openbonsai --hel
 
 The smoke command needs no network, model weights, or datasets. It trains a tiny hybrid model, exports it, and checks exact logits after reloading the same FP16-scale packed representation. A separate number measures rounding introduced when FP32 learned scales are exported to FP16. `runs/tiny-packed-report.json` records losses, bytes, and those checks. Existing nonempty output directories are refused.
 
-The delivered `validation.json` records the actual local test run: **80 passing tests** and an end-to-end offline smoke run. The tested stack is Python 3.12.9, PyTorch 2.14.1, Transformers 5.20.2, Accelerate 1.15.0, Safetensors 0.8.0, and Pytest 9.1.1. Transformers is constrained to the tested minor version because this adapter calls native decoder blocks. The main suite runs on CPU; additional tiny-model checks exercised MPS training and a 129-token multimodal-wrapper training run. CUDA, full-model mixed precision, and optimized DeltaNet kernels have not been validated here.
+The original `validation.json` records the initial **80 passing tests** and an end-to-end offline smoke run. The BITCOS update is recorded separately in [validation-bitcos.json](validation-bitcos.json): **221 passing tests**, an offline training/export smoke run, and exact full-model logits after repacking a pre-update artifact. On that tiny fixture, packed tensors shrink by **14.54%** and the complete model artifact by **3.54%**; these are software checks, not a size or quality benchmark for a real 9B model. The tested stack is Python 3.12.9, PyTorch 2.14.1, Transformers 5.20.2, Accelerate 1.15.0, Safetensors 0.8.0, and Pytest 9.1.1. Transformers is constrained to the tested minor version because this adapter calls native decoder blocks. The main suite runs on CPU; additional initial-prototype checks exercised MPS training and a 129-token multimodal-wrapper training run. CUDA, full-model mixed precision, and optimized DeltaNet kernels have not been validated here.
 
 ## Run a small real-model pilot
 
@@ -91,7 +92,22 @@ Without `--cache-dir`, all window inputs/targets live in CPU RAM. At 2,048 sampl
 
 ## Storage and inference
 
-The custom format stores four 2-bit ternary codes per byte and one FP16 scale per 128 weights. That is **2.125 bits per targeted weight**, before partial groups, biases, retained floating tensors, and file metadata. The alphabet has a theoretical information content of log2(3) ≈ 1.585 bits, but this implementation does not entropy-pack to that number. A full model is larger than its compressed projection payload.
+New exports default to `--packing auto`. For each projection, this selects **BITCOS** when its code tensors use fewer bytes than legacy two-bit packing; ties keep the two-bit format. `--packing bitcos` forces BITCOS, and `--packing 2bit` produces the legacy representation. The loader accepts both formats and mixed-codec artifacts. BITCOS artifacts require this updated OpenBonsai loader.
+
+BITCOS stores one presence bit per weight and one sign bit per nonzero weight, following [Breaking the 1.58-bit Barrier for Ternary LLMs](https://arxiv.org/abs/2609.16338). With zero fraction `z`, the code streams cost approximately `2 - z` bits per weight, plus the same FP16 group scales. At 50% zeros and group size 128, the projection payload is approximately **1.625 bits per weight instead of 2.125**, about **23.5% smaller**. Actual savings depend on sparsity, group/byte padding, retained floating tensors, and file headers. `auto` compares code tensor bytes, so it does not guarantee a smaller complete artifact for tiny tensors with extra metadata.
+
+The implementation uses row-major, least-significant-bit-first presence and compacted sign streams (`1` means negative), with zero final-byte padding. It implements the paper's lossless storage principle, not its hardware-specific kernel layout. **Repacking an existing artifact changes no weight values and introduces no additional quantization or scale rounding.** It does not undo any quality loss from the earlier BF16-to-ternary conversion.
+
+Repack an existing pilot on CPU, without loading the original model or retraining:
+
+```bash
+python -m openbonsai repack \
+  --input runs/qwen35-pilot \
+  --output runs/qwen35-pilot-bitcos \
+  --packing auto
+```
+
+The command verifies input checksums, processes one projection at a time, preserves retained tensors and tokenizer assets, and reports exact before/after model-artifact bytes. Use a new output directory; the source is preserved. `--packing 2bit` can convert back to the legacy format. Python callers can use `repack_compressed(source, destination, packing="auto")` from `openbonsai.export`, or choose the codec with `save_compressed(..., packing="auto")`.
 
 `manifest.json` accounts for packed tensors, retained tensors, safetensors headers, config, and the manifest itself. `train` additionally saves tokenizer assets in `tokenizer/`; those supplementary files are excluded from the reported model-artifact byte total. The artifact is neither GGUF nor an ordinary `from_pretrained` checkpoint. Load it through this package:
 
@@ -107,7 +123,7 @@ with torch.no_grad():
     logits = model(**inputs, use_cache=False).logits
 ```
 
-Reference inference dequantizes each projection to floating point for computation. It provides compact persistent weight storage, but **no optimized ternary kernel, speed guarantee, or measured peak-memory reduction**. For maximum compatibility the loader disables caches; efficient incremental generation is future work. Packed artifacts omit original weights and optimizer state, so they cannot resume quantization training. Exported scales/biases are FP16, introducing additional rounding relative to the learned FP32 factors.
+Reference inference dequantizes each projection to floating point for computation, including BITCOS projections. It provides compact persistent weight storage, but **no optimized ternary kernel, speed guarantee, or measured peak-memory reduction**. For maximum compatibility the loader disables caches; efficient incremental generation is future work. Packed artifacts omit original weights and optimizer state, so they cannot resume quantization training. The initial export rounds learned FP32 scales/biases to FP16; subsequent repacking preserves those stored FP16 values exactly.
 
 ## Explicit reconstruction choices
 
@@ -134,6 +150,7 @@ Before using a compressed 9B model, evaluate the original and compressed checkpo
 
 - [ScaleQ-1.58, arXiv:2608.01078](https://arxiv.org/abs/2608.01078): AYOT and the CAT-Q composition; §2 and Appendix C.
 - [CAT-Q, arXiv:2606.26650](https://arxiv.org/abs/2606.26650): grouped modulation, soft ternarization, sliding-window reconstruction.
+- [BITCOS, arXiv:2609.16338](https://arxiv.org/abs/2609.16338): presence bitmap and compacted signs for lossless packing of already-ternary weights; §II-A. Our portable implementation does not include the paper's fused CPU/Intel GPU kernels.
 - [Official BitTern repository](https://github.com/IntelChina-AI/BitTern), inspected commit `5a8fcd4f7e0366554b732d300a37e6ea467c3c35`: release scope and configuration reference; its training code was unavailable in that snapshot.
 - [SliderQuant](https://github.com/deep-optimization/SliderQuant), inspected commit `bf2641ece550d5f6edb0028c2ae8b0ee658bc9bf`: sliding-window implementation context. This prototype does not vendor its code or reproduce its full training system.
 - [Qwen3.5-9B configuration](https://huggingface.co/Qwen/Qwen3.5-9B/blob/main/config.json) and [native Transformers Qwen3.5 implementation](https://github.com/huggingface/transformers/tree/main/src/transformers/models/qwen3_5): architecture adaptation.

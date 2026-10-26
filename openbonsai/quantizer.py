@@ -19,7 +19,10 @@ import torch
 from torch import Tensor, nn
 from torch.nn import functional as F
 
-from .packing import pack_grouped_weight, unpack_ternary_codes, validate_packed_state
+from .packing import (
+    BITCOS_FORMAT, FORMAT as TERNARY_FORMAT, pack_grouped_weight,
+    unpack_bitcos_codes, unpack_ternary_codes, validate_packed_state,
+)
 
 
 def soft_ternary(z: Tensor, threshold: Tensor | float, sharpness: float) -> Tensor:
@@ -188,7 +191,7 @@ class TernaryLinear(nn.Module):
         return F.linear(x, self.quantized_weight() if self.quant_enabled else self.weight, self.bias)
 
     @torch.no_grad()
-    def packed_state(self) -> dict[str, Any]:
+    def packed_state(self, *, packing: str = "2bit") -> dict[str, Any]:
         """Export only hard codes/scales/bias, without dense training buffers."""
         if not all(bool(torch.isfinite(p).all()) for p in self.trainable_parameters()):
             raise ValueError("cannot pack nonfinite quantizer factors")
@@ -197,7 +200,8 @@ class TernaryLinear(nn.Module):
                 or bool((alpha <= 0).any()) or bool((threshold <= 0).any())):
             raise ValueError("cannot pack invalid mapped quantizer factors")
         codes, alpha = self._hard_codes_and_scales()
-        return pack_grouped_weight(codes, alpha, shape=list(self.weight.shape), group_size=self.group_size, bias=self.bias)
+        return pack_grouped_weight(codes, alpha, shape=list(self.weight.shape),
+                                   group_size=self.group_size, bias=self.bias, packing=packing)
 
     @classmethod
     def from_packed_state(
@@ -222,7 +226,10 @@ class PackedTernaryLinear(nn.Module):
         self.out_features, self.in_features = state["shape"]
         self.group_size, self.numel = state["group_size"], state["numel"]
         self.num_groups, self.padded_numel = state["num_groups"], state["padded_numel"]
-        self.register_buffer("codes", state["codes"].detach().clone().to(device=device))
+        self.packing_format = state["format"]
+        for key in ("codes", "presence", "signs"):
+            value = state.get(key)
+            self.register_buffer(key, None if value is None else value.detach().clone().to(device=device))
         self.register_buffer("scales", state["scales"].detach().clone().to(device=device))
         self.register_buffer("bias", None if state["bias"] is None else state["bias"].detach().clone().to(device=device))
         self.register_buffer("_compute_reference", torch.empty(0, device=device, dtype=dtype or torch.float32), persistent=False)
@@ -240,7 +247,7 @@ class PackedTernaryLinear(nn.Module):
 
     @property
     def weight(self) -> Tensor:
-        codes = unpack_ternary_codes(self.codes, self.padded_numel).to(self._compute_reference.dtype)
+        codes = self._unpack_codes().to(self._compute_reference.dtype)
         grouped = codes.reshape(self.num_groups, self.group_size) * self.scales.to(self._compute_reference.dtype)[:, None]
         return grouped.flatten()[:self.numel].reshape(self.out_features, self.in_features)
 
@@ -249,9 +256,20 @@ class PackedTernaryLinear(nn.Module):
         bias = None if self.bias is None else self.bias.to(dtype=x.dtype)
         return F.linear(x, weight, bias)
 
-    def packed_state(self) -> dict[str, Any]:
-        codes = unpack_ternary_codes(self.codes, self.padded_numel)
-        return pack_grouped_weight(codes, self.scales, shape=[self.out_features, self.in_features], group_size=self.group_size, bias=self.bias)
+    def _unpack_codes(self) -> Tensor:
+        if self.packing_format == TERNARY_FORMAT:
+            return unpack_ternary_codes(self.codes, self.padded_numel)
+        if self.packing_format == BITCOS_FORMAT:
+            return unpack_bitcos_codes(self.presence, self.signs, self.padded_numel)
+        raise ValueError(f"Unsupported packed format: {self.packing_format!r}")
+
+    def packed_state(self, *, packing: str | None = None) -> dict[str, Any]:
+        """Keep the stored codec unless explicitly asked to repack it."""
+        if packing is None:
+            packing = "bitcos" if self.packing_format == BITCOS_FORMAT else "2bit"
+        return pack_grouped_weight(self._unpack_codes(), self.scales,
+                                   shape=[self.out_features, self.in_features],
+                                   group_size=self.group_size, bias=self.bias, packing=packing)
 
 
 def restore_ternary_linear(

@@ -16,7 +16,7 @@ def _empty_output(path):
     return destination
 
 
-def smoke(output, seed=2):
+def smoke(output, seed=2, packing="auto"):
     import torch
     from .adapter import tiny_model, replace_projections, iter_ternary_modules, set_progress
     from .export import save_compressed, load_compressed
@@ -41,7 +41,8 @@ def smoke(output, seed=2):
     # FP16 export scales introduce small rounding versus FP32 learned scales.
     with torch.no_grad():
         hard_logits = model(**samples[0], use_cache=False).logits
-    manifest = save_compressed(model, output, metadata={"fixture": "random tiny native Qwen3.5", "training": report})
+    manifest = save_compressed(model, output, packing=packing,
+                               metadata={"fixture": "random tiny native Qwen3.5", "training": report})
     loaded = load_compressed(output)
     # Compare serialization with the SAME FP16 packed representation, separately
     # from the original hard weights, so a tolerance cannot hide a save bug.
@@ -58,7 +59,7 @@ def smoke(output, seed=2):
               "original_parameters": original_parameters, "original_parameter_bytes": original_bytes,
               "converted_projections": len(names), "packed_roundtrip_max_logit_error": 0.0,
               "fp16_scale_rounding_max_logit_error": float((hard_logits - restored_logits).abs().max()),
-              "storage": manifest["storage"], "training": report}
+              "packing": packing, "storage": manifest["storage"], "training": report}
     # Kept outside the artifact's checksummed accounting.
     report_path = output.parent / (output.name + "-report.json")
     report_path.write_text(json.dumps(result, indent=2, allow_nan=False) + "\n")
@@ -104,12 +105,35 @@ def train_command(args):
         "method": "independent ScaleQ-style Qwen3.5 research adaptation",
         "calibration": calibration, "training": report,
         "aggressive_recurrent_gates": args.aggressive_gates, "converted_projections": replaced}
-    manifest = save_compressed(model, output, metadata=metadata)
+    manifest = save_compressed(model, output, metadata=metadata, packing=args.packing)
     # Tokenizer assets are supplementary and excluded from manifest storage totals.
     tokenizer.save_pretrained(output / "tokenizer")
     return {"output": str(output.resolve()), "storage": manifest["storage"],
             "tokenizer": "tokenizer/ (additional bytes excluded from model artifact totals)",
             "quality_evaluation": "not performed; use held-out data before deployment"}
+
+
+def repack_command(args):
+    from .export import repack_compressed
+
+    source, destination = Path(args.input).expanduser().resolve(), Path(args.output).expanduser().absolute()
+    manifest = repack_compressed(source, destination, packing=args.packing)
+    original = json.loads((source / "manifest.json").read_text())
+    before, after = original["storage"], manifest["storage"]
+    return {
+        "input": str(source), "output": str(destination),
+        "packing": args.packing, "before": before, "after": after,
+        "artifact_bytes_saved": before["artifact_bytes"] - after["artifact_bytes"],
+        "artifact_reduction_percent": 100 * (1 - after["artifact_bytes"] / before["artifact_bytes"]),
+        "retrained": False,
+        "quality": "exactly preserves existing ternary codes, scales, biases, and retained tensors",
+        "tokenizer": "copied if present; supplementary bytes excluded from model artifact totals",
+    }
+
+
+def _packing_argument(command):
+    command.add_argument("--packing", choices=["auto", "bitcos", "2bit"], default="auto",
+        help="Storage codec: auto uses BITCOS only when its code payload is smaller (default: auto)")
 
 
 def parser():
@@ -120,7 +144,13 @@ def parser():
     demo = sub.add_parser("smoke", help="Offline test on random tiny Qwen3.5 (no downloads)")
     demo.add_argument("--output", required=True)
     demo.add_argument("--seed", type=int, default=2)
+    _packing_argument(demo)
+    repack = sub.add_parser("repack", help="Repack an existing artifact losslessly on CPU; no training or model download")
+    repack.add_argument("--input", required=True, help="Existing OpenBonsai artifact directory")
+    repack.add_argument("--output", required=True, help="New or empty destination directory")
+    _packing_argument(repack)
     run = sub.add_parser("train", help="Compress original dense Qwen3.5 weights")
+    _packing_argument(run)
     run.add_argument("--model", default="Qwen/Qwen3.5-9B")
     run.add_argument("--revision", default="main")
     run.add_argument("--local-files-only", action="store_true")
@@ -152,7 +182,9 @@ def main(argv=None):
         from .prepare import run
         result = run(args)
     elif args.command == "smoke":
-        result = smoke(args.output, args.seed)
+        result = smoke(args.output, args.seed, args.packing)
+    elif args.command == "repack":
+        result = repack_command(args)
     else:
         if args.log_every < 1:
             raise ValueError("log-every must be positive")
