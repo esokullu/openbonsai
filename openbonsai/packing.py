@@ -1,9 +1,12 @@
-"""Portable 2-bit and BITCOS ternary payloads.
+"""Portable 2-bit, BITCOS and base-3 ternary payloads.
 
 Four codes occupy a byte, least significant code first: 0 -> 00,
 +1 -> 01, -1 -> 10. 11 is invalid. Groups and final bytes are zero padded.
 BITCOS stores one presence bit per code, followed by a separate stream with
 one sign bit per nonzero code (1 means negative), both least significant first.
+Base-3 stores five trits per byte, least significant trit first, using digits
+0 -> 0, +1 -> 1, -1 -> 2. Bytes 243 through 255 are invalid; unused final trits
+are zero. This independent format is not Prism PTQ1 or a GGUF encoding.
 The reported bytes count tensor payloads, excluding container/metadata overhead.
 """
 from __future__ import annotations
@@ -17,6 +20,7 @@ from torch import Tensor
 # Stable on-disk identifier: preserve compatibility with pre-OpenBonsai artifacts.
 FORMAT = "scaleq.ternary-grouped.v1"
 BITCOS_FORMAT = "openbonsai.ternary-bitcos.v1"
+BASE3_FORMAT = "openbonsai.ternary-base3.v1"
 
 
 def _positive_int(value: Any, name: str) -> int:
@@ -59,6 +63,39 @@ def unpack_ternary_codes(packed: Tensor, numel: int) -> Tensor:
         raise ValueError("final-byte padding must be zero")
     slots = slots[:numel].to(torch.int8)
     return torch.where(slots == 2, -1, slots)
+
+
+def pack_base3_codes(codes: Tensor) -> Tensor:
+    """Losslessly pack five ternary codes per uint8, with zero tail digits.
+
+    The flattened code at position i occupies digit i % 5 of byte i // 5.
+    The digit mapping matches the existing 2-bit format: 0, +1, -1 -> 0, 1, 2.
+    This is storage packing only; it does not change codes, scales or quality.
+    """
+    flat = _ternary_flat(codes)
+    digits = torch.where(flat < 0, 2, flat).to(torch.uint8)
+    if digits.numel() % 5:
+        digits = torch.cat((digits, digits.new_zeros(5 - digits.numel() % 5)))
+    slots = digits.reshape(-1, 5)
+    # Every partial sum is at most 242, so uint8 arithmetic is exact here.
+    return slots[:, 0] + 3 * slots[:, 1] + 9 * slots[:, 2] + 27 * slots[:, 3] + 81 * slots[:, 4]
+
+
+def unpack_base3_codes(packed: Tensor, numel: int) -> Tensor:
+    """Decode base-3, rejecting reserved bytes and nonzero unused trits."""
+    if isinstance(numel, bool) or not isinstance(numel, int) or numel < 0:
+        raise ValueError("numel must be a nonnegative integer")
+    if not isinstance(packed, Tensor) or packed.dtype != torch.uint8 or packed.ndim != 1:
+        raise ValueError("packed codes must be a flat uint8 tensor")
+    if packed.numel() != (numel + 4) // 5:
+        raise ValueError("packed byte count does not match numel")
+    if bool((packed >= 243).any()):
+        raise ValueError("reserved base-3 byte values 243 through 255 are invalid")
+    digits = torch.stack(tuple((packed // power) % 3 for power in (1, 3, 9, 27, 81)), dim=1).flatten()
+    if bool((digits[numel:] != 0).any()):
+        raise ValueError("final-byte padding trits must be zero")
+    digits = digits[:numel].to(torch.int8)
+    return torch.where(digits == 2, -1, digits)
 
 
 def _pack_bits(bits: Tensor) -> Tensor:
@@ -130,11 +167,12 @@ def pack_grouped_weight(
 
     Codes may contain original elements only or include zero group padding.
     Casting scales/bias to FP16 is an additional, explicitly tested rounding step.
-    ``auto`` chooses BITCOS only when its two code streams are strictly smaller
-    than the 2-bit codes; scales, bias, and container overhead are not estimated.
+    ``auto`` minimizes actual code-stream bytes, breaking ties in the order
+    2-bit, BITCOS, base-3 to preserve earlier choices. Scales/bias cost the same
+    for each codec. Container overhead is not included at this low-level API.
     """
-    if packing not in ("2bit", "bitcos", "auto"):
-        raise ValueError("packing must be '2bit', 'bitcos', or 'auto'")
+    if packing not in ("2bit", "bitcos", "base3", "auto"):
+        raise ValueError("packing must be '2bit', 'bitcos', 'base3', or 'auto'")
     dims, numel, num_groups, padded_numel = _shape_and_counts(shape, group_size)
     flat = _ternary_flat(codes).cpu()
     if flat.numel() == numel:
@@ -159,9 +197,10 @@ def pack_grouped_weight(
             raise ValueError("bias must be finite and representable in FP16")
     if packing == "auto":
         bitcos_bytes = (padded_numel + 7) // 8 + (int((flat != 0).sum().item()) + 7) // 8
-        packing = "bitcos" if bitcos_bytes < (padded_numel + 3) // 4 else "2bit"
+        packing = min((("2bit", (padded_numel + 3) // 4), ("bitcos", bitcos_bytes),
+                       ("base3", (padded_numel + 4) // 5)), key=lambda choice: choice[1])[0]
     state: dict[str, Any] = {
-        "format": BITCOS_FORMAT if packing == "bitcos" else FORMAT,
+        "format": {"2bit": FORMAT, "bitcos": BITCOS_FORMAT, "base3": BASE3_FORMAT}[packing],
         "shape": list(dims),
         "group_size": group_size,
         "numel": numel,
@@ -174,7 +213,8 @@ def pack_grouped_weight(
         state["presence"], state["signs"] = pack_bitcos_codes(flat)
         code_bytes = state["presence"].numel() + state["signs"].numel()
     else:
-        state["codes"] = pack_ternary_codes(flat).contiguous()
+        pack_codes = pack_base3_codes if packing == "base3" else pack_ternary_codes
+        state["codes"] = pack_codes(flat).contiguous()
         code_bytes = state["codes"].numel()
     scale_bytes = half_scales.numel() * half_scales.element_size()
     bias_bytes = 0 if half_bias is None else half_bias.numel() * half_bias.element_size()
@@ -193,8 +233,8 @@ def pack_grouped_weight(
 
 
 def _validated_grouped_codes(state: dict[str, Any]) -> Tensor:
-    if not isinstance(state, dict) or state.get("format") not in (FORMAT, BITCOS_FORMAT):
-        raise ValueError(f"expected packed format {FORMAT} or {BITCOS_FORMAT}")
+    if not isinstance(state, dict) or state.get("format") not in (FORMAT, BITCOS_FORMAT, BASE3_FORMAT):
+        raise ValueError(f"expected packed format {FORMAT}, {BITCOS_FORMAT} or {BASE3_FORMAT}")
     dims, numel, num_groups, padded_numel = _shape_and_counts(state.get("shape"), state.get("group_size"))
     for name, expected in (("numel", numel), ("num_groups", num_groups), ("padded_numel", padded_numel)):
         if state.get(name) != expected or type(state.get(name)) is not int:
@@ -210,17 +250,19 @@ def _validated_grouped_codes(state: dict[str, Any]) -> Tensor:
         or not bool(torch.isfinite(bias).all())
     ):
         raise ValueError("bias must be a finite FP16 tensor matching out_features")
-    if state["format"] == FORMAT:
+    if state["format"] in (FORMAT, BASE3_FORMAT):
         if "presence" in state or "signs" in state:
-            raise ValueError("2-bit format cannot contain BITCOS streams")
-        codes = unpack_ternary_codes(state.get("codes"), padded_numel)
+            name = "2-bit" if state["format"] == FORMAT else "base-3"
+            raise ValueError(f"{name} format cannot contain BITCOS streams")
+        unpack_codes = unpack_ternary_codes if state["format"] == FORMAT else unpack_base3_codes
+        codes = unpack_codes(state.get("codes"), padded_numel)
     else:
         if "codes" in state:
             raise ValueError("BITCOS format cannot contain 2-bit codes")
         codes = unpack_bitcos_codes(state.get("presence"), state.get("signs"), padded_numel)
     if bool((codes[numel:] != 0).any()):
         raise ValueError("group padding must be zero")
-    streams = ("codes",) if state["format"] == FORMAT else ("presence", "signs")
+    streams = ("presence", "signs") if state["format"] == BITCOS_FORMAT else ("codes",)
     allowed_tensors = {*streams, "scales", "bias"}
     if any(isinstance(value, Tensor) and key not in allowed_tensors for key, value in state.items()):
         raise ValueError("unexpected tensor in packed state")
@@ -251,7 +293,7 @@ def _validated_grouped_codes(state: dict[str, Any]) -> Tensor:
 
 
 def validate_packed_state(state: dict[str, Any]) -> None:
-    """Validate both formats, including metadata, streams, and zero padding."""
+    """Validate all formats, including metadata, streams, and zero padding."""
     _validated_grouped_codes(state)
 
 
@@ -288,5 +330,5 @@ def unpack_grouped_weight(
 def packed_state_nbytes(state: dict[str, Any]) -> int:
     """Exact bytes of code, scale, and bias tensors (not serialized file size)."""
     validate_packed_state(state)
-    streams = ("codes",) if state["format"] == FORMAT else ("presence", "signs")
+    streams = ("presence", "signs") if state["format"] == BITCOS_FORMAT else ("codes",)
     return sum(state[key].numel() * state[key].element_size() for key in (*streams, "scales", "bias") if state.get(key) is not None)

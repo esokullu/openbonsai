@@ -97,7 +97,7 @@ The optional `soft_surrogate` Python mode differentiates the soft map at the cur
 
 ## Export and verification
 
-Export computes hard ternary codes and scales from the refined student. It saves those codes, FP16 scales/biases, and the retained floating-point tensors. It does not save a separate low-rank inference adapter. Packing remains BITCOS, legacy two-bit, or automatic selection; the low-rank change does not require a new packed format.
+Export computes hard ternary codes and scales from the refined student. It saves those codes, FP16 scales/biases, and the retained floating-point tensors. It does not save a separate low-rank inference adapter. Packing supports BITCOS, legacy two-bit, base-3, or automatic selection. The low-rank change itself requires no new encoding; the later base-3 codec uses the legacy artifact v3 marker and also works in the newer mixed format. [Codec details and validation](base3-packing.md).
 
 `openbonsai repack` only changes the encoding of already-ternary weights. It cannot add refinement, rerun calibration, or apply a training derivative fix. To test this update, start a fresh compression run from the original BF16 checkpoint and write a new output directory. Reusing valid traces from that same original checkpoint is possible; preserve their tokenizer and revision provenance.
 

@@ -22,7 +22,7 @@ def test_rotation_auto_compares_complete_candidate_bytes(zero_fraction):
     codes[torch.rand(codes.shape, generator=generator) < zero_fraction] = 0
     state = pack_grouped_weight(codes, torch.full((28,), .125), shape=codes.shape, group_size=8)
     kwargs = dict(rotation_signs=fixed_signs(32, seed=29), rotation_block_size=8)
-    candidates = [mf.ternary_candidate(state, packing=codec, **kwargs) for codec in ("2bit", "bitcos")]
+    candidates = [mf.ternary_candidate(state, packing=codec, **kwargs) for codec in ("2bit", "bitcos", "base3")]
     chosen = mf.ternary_candidate(state, packing="auto", **kwargs)
     expected = min(candidates, key=mf.candidate_nbytes)
     assert chosen.encoding == expected.encoding

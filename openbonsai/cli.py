@@ -149,8 +149,8 @@ def repack_command(args):
 
 
 def _packing_argument(command):
-    command.add_argument("--packing", choices=["auto", "bitcos", "2bit"], default="auto",
-        help="Storage codec: auto uses BITCOS only when its code payload is smaller (default: auto)")
+    command.add_argument("--packing", choices=["auto", "bitcos", "2bit", "base3"], default="auto",
+        help="Storage codec: auto chooses the smallest code payload among 2bit, BITCOS and base3")
 
 
 def _reconstruction_arguments(command):

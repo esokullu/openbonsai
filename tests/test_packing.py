@@ -5,7 +5,7 @@ import pytest
 import torch
 
 from openbonsai.packing import (
-    BITCOS_FORMAT, FORMAT, pack_bitcos_codes, pack_grouped_weight,
+    BASE3_FORMAT, BITCOS_FORMAT, FORMAT, pack_bitcos_codes, pack_grouped_weight,
     pack_ternary_codes, packed_state_nbytes, repack_grouped_weight,
     unpack_bitcos_codes, unpack_grouped_codes, unpack_grouped_weight,
     unpack_ternary_codes, validate_packed_state,
@@ -208,7 +208,7 @@ def test_bitcos_grouped_serialization_and_repack_preserve_exact_values(group_siz
     (8, 0, BITCOS_FORMAT, 1),
     (8, 1, FORMAT, 2),
     (8, 8, FORMAT, 2),
-    (9, 1, FORMAT, 3),
+    (9, 1, BASE3_FORMAT, 2),
     (16, 8, BITCOS_FORMAT, 3),
     (16, 9, FORMAT, 4),
 ])

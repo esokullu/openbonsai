@@ -94,7 +94,7 @@ deliberately forging Python state, and it is not a certificate of model quality.
 `export_embedding_candidate` requires that certificate before and after its
 two packing passes. It sets embedding kind, source provenance, coverage,
 scales, row indexes and rotation metadata **before** comparing complete
-serialized BITCOS versus two-bit costs. It never changes a linear candidate's
+serialized BITCOS, two-bit and base-3 costs. It never changes a linear candidate's
 kind after costing. Export checks current hard codes/FP32 scales across passes,
 source/sign invariance, and FP16 scale representability. No original table or
 separate low-rank adapter enters the packed candidate.

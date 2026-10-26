@@ -63,7 +63,7 @@ def test_affine_codes_match_independent_bit_and_weight_oracle(bits, width):
     assert c.tensors["scales"].dtype == torch.float32
 
 
-@pytest.mark.parametrize("packing", ["2bit", "bitcos", "auto"])
+@pytest.mark.parametrize("packing", ["2bit", "bitcos", "base3", "auto"])
 @pytest.mark.parametrize("zero", [False, True])
 def test_ternary_preserves_existing_learned_values_and_cross_row_groups(packing, zero):
     c, state = ternary(packing=packing, zero=zero)
@@ -75,6 +75,7 @@ def test_ternary_preserves_existing_learned_values_and_cross_row_groups(packing,
 @pytest.mark.parametrize("factory", [
     lambda: affine(4)[0], lambda: affine(6)[0],
     lambda: ternary(packing="2bit")[0], lambda: ternary(packing="bitcos")[0],
+    lambda: ternary(packing="base3")[0],
     lambda: ternary(kind="embedding", packing="bitcos", zero=True)[0],
     lambda: mf.bf16_candidate(torch.randn(3, 5).bfloat16(), torch.randn(3).bfloat16()),
 ])
@@ -103,9 +104,9 @@ def test_auto_uses_whole_serialized_cost_including_row_index():
     # Small rows have a proportionately expensive BITCOS row index.
     _, state = ternary(rows=64, width=2, group_size=8, zero=True)
     auto = mf.ternary_candidate(state, packing="auto")
-    candidates = [mf.ternary_candidate(state, packing=p) for p in ("2bit", "bitcos")]
+    candidates = [mf.ternary_candidate(state, packing=p) for p in ("2bit", "bitcos", "base3")]
     assert mf.candidate_nbytes(auto) == min(map(mf.candidate_nbytes, candidates))
-    assert auto.encoding == "ternary-2bit"
+    assert auto.encoding == "ternary-base3"
     _, wide = ternary(rows=3, width=4096, group_size=128, zero=True)
     assert mf.ternary_candidate(wide, packing="auto").encoding == "ternary-bitcos"
 
@@ -153,6 +154,7 @@ def test_affine_reconstructs_before_rounding_metadata_to_compute_dtype(zero, dty
 @pytest.mark.parametrize("factory", [
     lambda: affine(4)[0], lambda: affine(6)[0],
     lambda: ternary(packing="2bit")[0], lambda: ternary(packing="bitcos")[0],
+    lambda: ternary(packing="base3")[0],
     lambda: mf.bf16_candidate(torch.randn(9, 15).bfloat16(), torch.randn(9).bfloat16()),
 ])
 def test_linear_forward_input_gradients_and_exact_reload(factory):
@@ -329,7 +331,7 @@ def test_wrong_runtime_kind_and_invalid_configuration_rejected():
 
 
 @pytest.mark.parametrize("kind", ["linear", "embedding"])
-@pytest.mark.parametrize("codec", ["affine4", "affine6", "2bit", "bitcos", "bf16"])
+@pytest.mark.parametrize("codec", ["affine4", "affine6", "2bit", "bitcos", "base3", "bf16"])
 def test_rotation_payload_runtime_math_exact_reload_and_size(kind, codec):
     generator = torch.Generator().manual_seed(22)
     rows, width = 7, 32

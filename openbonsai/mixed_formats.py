@@ -27,7 +27,7 @@ import torch
 from torch import Tensor, nn
 from torch.nn import functional as F
 
-from .packing import (BITCOS_FORMAT, FORMAT as TERNARY_FORMAT,
+from .packing import (BASE3_FORMAT, BITCOS_FORMAT, FORMAT as TERNARY_FORMAT,
                       repack_grouped_weight, unpack_grouped_codes)
 from .hadamard import inverse_rotate, rotate, validate_rotation
 
@@ -119,6 +119,12 @@ def _unsigned_at(stream, positions, bits):
     return ((low | (high << 8)) >> offsets) & ((1 << bits) - 1)
 
 
+def _base3_at(stream, positions):
+    """Read radix-3 digits at arbitrary flat positions without a row index."""
+    powers = torch.tensor([1, 3, 9, 27, 81], dtype=torch.int64, device=stream.device)
+    return (stream[positions // 5].to(torch.int64) // powers[positions % 5]) % 3
+
+
 def _padding(stream, count, bits, name):
     expected = (count * bits + 7) // 8
     if stream.dtype != torch.uint8 or stream.ndim != 1 or stream.numel() != expected:
@@ -207,12 +213,12 @@ def ternary_candidate(state, *, module_kind="linear", packing="auto", source="sc
     Auto compares the complete serialized candidates, including BITCOS row
     indexes and differing JSON metadata, rather than nominal code bits.
     """
-    if packing not in ("auto", "2bit", "bitcos"):
-        raise ValueError("packing must be auto, 2bit or bitcos")
+    if packing not in ("auto", "2bit", "bitcos", "base3"):
+        raise ValueError("packing must be auto, 2bit, bitcos or base3")
     if (rotation_signs is None) != (rotation_block_size is None):
         raise ValueError("rotation signs and block size must be supplied together")
     choices = []
-    for codec in (("2bit", "bitcos") if packing == "auto" else (packing,)):
+    for codec in (("2bit", "bitcos", "base3") if packing == "auto" else (packing,)):
         packed = repack_grouped_weight(state, packing=codec)
         rows, width = packed["shape"]
         tensors = {key: value.clone() for key, value in packed.items()
@@ -229,6 +235,43 @@ def ternary_candidate(state, *, module_kind="linear", packing="auto", source="sc
         if rotation_signs is not None:
             candidate = with_rotation(candidate, rotation_signs, rotation_block_size)
         choices.append(candidate)
+    return min(choices, key=candidate_nbytes)
+
+
+def repack_ternary_candidate(candidate, *, packing="auto"):
+    """Re-encode existing ternary codes without reconstructing floating weights.
+
+    Source/provenance, FP16 scales, stored bias dtype and rotation signs are preserved.
+    This changes one candidate's storage only; it does not rewrite a model
+    manifest or supply original BF16 weights for calibration.
+    """
+    validate_candidate(candidate)
+    formats = {"ternary-2bit": TERNARY_FORMAT, "ternary-bitcos": BITCOS_FORMAT,
+               "ternary-base3": BASE3_FORMAT}
+    if candidate.encoding not in formats:
+        raise ValueError("repacking requires a ternary candidate")
+    m, t = candidate.metadata, candidate.tensors
+    count = math.prod(candidate.shape)
+    groups = (count + m["group_size"] - 1) // m["group_size"]
+    state = {"format": formats[candidate.encoding], "shape": list(candidate.shape),
+             "group_size": m["group_size"], "numel": count, "num_groups": groups,
+             "padded_numel": groups * m["group_size"], "scales": t["scales"], "bias": None}
+    for name in ("codes", "presence", "signs"):
+        if name in t:
+            state[name] = t[name]
+    rotation = m.get("rotation")
+    choices = []
+    for codec in (("2bit", "bitcos", "base3") if packing == "auto" else (packing,)):
+        result = ternary_candidate(state, module_kind=candidate.module_kind, packing=codec,
+            source=m["source"], provenance=m["provenance"], rotation_signs=t.get("rotation_signs"),
+            rotation_block_size=rotation["block_size"] if rotation else None)
+        # Imported mixed candidates may retain BF16/FP32 bias. The legacy
+        # grouped state contract is FP16, so pass codes/scales through it and
+        # restore the already validated bias before comparing complete costs.
+        if "bias" in t:
+            result.tensors["bias"] = t["bias"].detach().cpu().contiguous().clone()
+        validate_candidate(result)
+        choices.append(result)
     return min(choices, key=candidate_nbytes)
 
 
@@ -306,7 +349,7 @@ def validate_candidate(candidate):
         if t["zeros"].dtype not in (torch.uint8, torch.int8, torch.int16, torch.int32, torch.int64) or t["zeros"].shape != shape:
             raise ValueError("invalid affine zero points")
         return
-    if m["encoding"] not in ("ternary-2bit", "ternary-bitcos"):
+    if m["encoding"] not in ("ternary-2bit", "ternary-bitcos", "ternary-base3"):
         raise ValueError("unsupported candidate encoding")
     if set(m) != common | {"group_size", "group_axis"} or m["group_axis"] != "flattened":
         raise ValueError("invalid ternary metadata")
@@ -326,6 +369,21 @@ def validate_candidate(candidate):
             codes = _unsigned_at(t["codes"], positions, 2)
             if bool((codes == 3).any()) or bool((codes[positions >= count] != 0).any()):
                 raise ValueError("invalid ternary codes or group padding")
+    elif m["encoding"] == "ternary-base3":
+        if set(t) != {"codes", "scales"} | extra:
+            raise ValueError("unexpected base3 tensors")
+        stream = t["codes"]
+        if stream.dtype != torch.uint8 or stream.ndim != 1 or stream.numel() != (padded + 4) // 5:
+            raise ValueError("invalid base3 stream size or dtype")
+        for start in range(0, stream.numel(), 1048576):
+            if bool((stream[start:start + 1048576] > 242).any()):
+                raise ValueError("invalid base3 byte")
+        if padded % 5 and int(stream[-1]) // (3 ** (padded % 5)):
+            raise ValueError("nonzero base3 final-byte padding")
+        for start in range(count, padded, 1048576):
+            pos = torch.arange(start, min(start + 1048576, padded), device=stream.device)
+            if bool((_base3_at(stream, pos) != 0).any()):
+                raise ValueError("nonzero ternary group padding")
     else:
         if set(t) != {"presence", "signs", "scales", "row_sign_offsets"} | extra:
             raise ValueError("unexpected BITCOS tensors")
@@ -369,6 +427,9 @@ def _rows(candidate, rows, dtype, device):
     else:
         if m["encoding"] == "ternary-2bit":
             codes = _unsigned_at(t["codes"], pos, 2)
+            codes = torch.where(codes == 2, -1, codes)
+        elif m["encoding"] == "ternary-base3":
+            codes = _base3_at(t["codes"], pos)
             codes = torch.where(codes == 2, -1, codes)
         else:
             present = _unsigned_at(t["presence"], pos, 1)

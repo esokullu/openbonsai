@@ -161,7 +161,7 @@ def test_training_initialization_export_and_audit_keep_fp32_arrays_chunk_bounded
         stats = layer.audit_weight_statistics()
         packed = layer.packed_state(packing="bitcos")
         with torch.no_grad():
-            for codec in ("2bit", "bitcos"):
+            for codec in ("2bit", "bitcos", "base3"):
                 restored = PackedTernaryLinear(layer.packed_state(packing=codec), dtype=torch.bfloat16)
                 restored(torch.randn(1, 256, dtype=torch.bfloat16))
     assert max(allocations.sizes) <= limit + 2 * source.in_features
@@ -173,7 +173,7 @@ def test_training_initialization_export_and_audit_keep_fp32_arrays_chunk_bounded
     assert packed["numel"] == source.weight.numel()
 
 
-@pytest.mark.parametrize("codec", ["2bit", "bitcos", "auto"])
+@pytest.mark.parametrize("codec", ["2bit", "bitcos", "base3", "auto"])
 @pytest.mark.parametrize("mapping", ["exp", "sigmoid"])
 def test_chunked_export_and_packed_decode_with_cross_byte_groups(monkeypatch, codec, mapping):
     torch.manual_seed(721)
@@ -242,7 +242,7 @@ def test_noncontiguous_source_rows_preserve_bounded_reconstruction(monkeypatch):
     assert layer.weight.data_ptr() == source.weight.data_ptr()
 
 
-@pytest.mark.parametrize("codec", ["2bit", "bitcos"])
+@pytest.mark.parametrize("codec", ["2bit", "bitcos", "base3"])
 def test_packed_input_dtype_override_retains_configured_rounding(monkeypatch, codec):
     monkeypatch.setattr(quantizer, "_GROUP_CHUNK_ELEMENTS", 7)
     codes = torch.tensor([1, -1, 0, 1, 1, 0, -1, 1, -1, 0, 1, -1])

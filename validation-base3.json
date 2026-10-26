@@ -1,0 +1,381 @@
+{
+  "format": "openbonsai.base3-validation.v1",
+  "date_utc": "2026-10-26",
+  "base_commit": "2c1241cb2d71f1ebeed328053f4fb3c50ab514ad",
+  "quality_claim": false,
+  "inference_acceleration_claim": false,
+  "active_5090_run_changed": false,
+  "new_9b_artifact_created": false,
+  "packing": {
+    "format": "openbonsai.ternary-base3.v1",
+    "digits": {
+      "0": 0,
+      "1": 1,
+      "-1": 2
+    },
+    "trits_per_byte": 5,
+    "digit_order": "least significant first",
+    "unused_final_digits": 0,
+    "reserved_byte_values": [
+      243,
+      255
+    ],
+    "continuous_across_rows_and_groups": true,
+    "preserves_stored_codes_scales_bias_rotation_and_provenance": true,
+    "prism_gguf_compatible": false,
+    "legacy_auto_cost": "code payload bytes only",
+    "mixed_auto_cost": "complete serialized candidate bytes"
+  },
+  "hardware": {
+    "platform": "macOS-26.0.1-arm64-arm-64bit",
+    "device": "cpu",
+    "python": "3.12.9",
+    "torch": "2.14.1",
+    "transformers": "5.20.2",
+    "performance_benchmark": false
+  },
+  "tests": {
+    "command": "python -m pytest -q",
+    "passed": 1381,
+    "seconds": 25.01,
+    "coverage": [
+      "all 243 valid byte patterns and lengths/tails",
+      "arbitrary row/group/chunk boundary crossings",
+      "reserved-byte and padding corruption rejection",
+      "exact repacking and stored bias dtype preservation",
+      "bounded endpoint two-pass streams and source/coverage guards",
+      "mixed actual-byte costs including row indexes",
+      "rotated linear and embedding lookup, gradients and cache parity",
+      "legacy v1/v2/v3 migration and format checks"
+    ]
+  },
+  "reviews": [
+    "Independent packing and endpoint implementation reviews; no remaining blockers",
+    "Independent mixed integration/probe review; stored BF16/FP32 bias issue fixed and verified",
+    "Independent final documentation/audit/evidence review verified all source hashes and receipts; no remaining findings"
+  ],
+  "implementation_files": {
+    "openbonsai/packing.py": {
+      "sha256": "0f8f6b155e0f936c74a0d774ecea162371d30118f23c00d0d18bb6d381860282",
+      "bytes": 16808
+    },
+    "openbonsai/endpoint_export.py": {
+      "sha256": "747e099029b116b770de1973dc737efa58d78c5cb798b2b21d33d4e62847eea1",
+      "bytes": 18581
+    },
+    "openbonsai/mixed_formats.py": {
+      "sha256": "e733012adb572038427dcd525c136894ad20c06faa3929215492744dc0c175b3",
+      "bytes": 38698
+    },
+    "openbonsai/export.py": {
+      "sha256": "8d79eddaf6bc14ceca08c9068c9aacdcbe40e62999de7797eeb34a9f3372f3a8",
+      "bytes": 26807
+    },
+    "openbonsai/quantizer.py": {
+      "sha256": "e1efc9cc88dc06e49998e1c635519c52c48dbf3af3c991aa74847a9e243bded7",
+      "bytes": 30648
+    },
+    "openbonsai/cli.py": {
+      "sha256": "b5544f6897a010dc5e1e4f1dbd0d4679ad89f80540dace004733e19a3d5bce39",
+      "bytes": 12737
+    },
+    "tools/probe_base3_packing.py": {
+      "sha256": "21ec16bb6cb15cb23409cde8c1472b0d316c2c6e02a21113246f282461ff318d",
+      "bytes": 8285
+    },
+    "tools/audit_bonsai_ternary.py": {
+      "sha256": "011894981e0b24cf3abe1241d25b5ad0eae1b65b71d565e2ade33488d0b50ac6",
+      "bytes": 21350
+    },
+    "tools/bonsai_ternary_decoder.cpp": {
+      "sha256": "e87b0345f43584ce0e8e737840f1530320ebc51cb872591c633f5cb0a7db8662",
+      "bytes": 749
+    },
+    "tests/test_adapter_export.py": {
+      "sha256": "3bccb58522db5d75c13b426c16e0fddda98c6ecdec1151af1101adcfb6d583de",
+      "bytes": 22118
+    },
+    "tests/test_base3_packing.py": {
+      "sha256": "79bf499adcf046378e7b49dfdf0755bd238ab64d2ec34677fe57cd03953e01a2",
+      "bytes": 11796
+    },
+    "tests/test_base3_runtime.py": {
+      "sha256": "976215f44ef2e78e8d44064eb0db6740158933eb0788c0d83e6895c5a680a6ff",
+      "bytes": 6412
+    },
+    "tests/test_cli.py": {
+      "sha256": "bf4eeb4e9339b3cfa79aa349707b22c7f2fdf3b18b7e2a9530bddb5c7998c318",
+      "bytes": 9245
+    },
+    "tests/test_embedding_export.py": {
+      "sha256": "0838e6e6479671adcc735d67e0de3f9216a8ed9feeb97c0e3e70cd0815e049f0",
+      "bytes": 8742
+    },
+    "tests/test_endpoint_base3.py": {
+      "sha256": "00aa93b5c1a273f022c782a4bba6a668e9fa880434c631570e708a374630602d",
+      "bytes": 7547
+    },
+    "tests/test_endpoint_export.py": {
+      "sha256": "27129a06c5d89aaaf75a74bba76c96d1fbd3224cc483e779f27683b1364eee7f",
+      "bytes": 14790
+    },
+    "tests/test_mixed_cache.py": {
+      "sha256": "8f91bef2bd15a8af628af3d18ae538a8ed90cd4e28f63be5c47678e037ed9fb4",
+      "bytes": 7973
+    },
+    "tests/test_mixed_formats.py": {
+      "sha256": "909464173b20bcf42df3a8be579ce9d5294a30e6926b06e8905887bd85633189",
+      "bytes": 20391
+    },
+    "tests/test_mixed_port.py": {
+      "sha256": "6bc3e676774e0c56fa641d62caaaddfe4bdadf4c22dbb378b7b0adfaf0a51484",
+      "bytes": 8411
+    },
+    "tests/test_packing.py": {
+      "sha256": "386887acd976d3cb309a68e672ca297494216ee32415ec44d2adcb1bae13fa92",
+      "bytes": 13449
+    },
+    "tests/test_quantizer.py": {
+      "sha256": "619e966e8c2ab1402b157a7dab7c0fed1561153908bb0e7ed60353be4ccf7eb2",
+      "bytes": 28916
+    },
+    "tests/test_quantizer_chunked.py": {
+      "sha256": "38865ce6d773c2f9914077b76db2aabd6824686cc949eb3f993775a39a7ebb22",
+      "bytes": 12952
+    }
+  },
+  "native_probe": {
+    "command": "python tools/probe_base3_packing.py --output NEW_DIRECTORY",
+    "report_receipt": {
+      "sha256": "a0385fe945811c6749ef21ebf50d4979ae46956da803cfef24f0d4ac9860373d",
+      "bytes": 54426
+    },
+    "passed": true,
+    "seed": 5090,
+    "pretrained_weights_loaded": false,
+    "scope": "25 rotated decoder projections plus rotated embedding/head; endpoints uncalibrated",
+    "dtype": "bfloat16",
+    "threads": 2,
+    "training_config": {
+      "epochs": 2,
+      "batch_size": 1,
+      "window_size": 2,
+      "stride": 2,
+      "learning_rate": 0.005,
+      "lora_learning_rate": 0.001,
+      "weight_decay": 0.0,
+      "grad_clip": 1.0,
+      "seed": 5090,
+      "gradient_checkpointing": true,
+      "reconstruction_loss": "huber",
+      "huber_delta": 1.0,
+      "teacher_prefix": "quantized"
+    },
+    "calibration_samples": 2,
+    "original_teacher_bypass_exact": true,
+    "original_source_unchanged": true,
+    "codecs": {
+      "2bit": {
+        "actual_artifact_bytes": 261555,
+        "candidate_bytes": 214409,
+        "fixed_bytes": 47146,
+        "exact_codes_and_metadata": true,
+        "reload": {
+          "fresh_process": true,
+          "exact_logits": true,
+          "logits_sha256": [
+            "45a21bcaae6799647f7e216a3351447b237dff88964cea1e098ffb57e8f8a38b",
+            "9c96b6fd80f57378d612502d3c176699ac37d7ba72e536c0286937ef5ab9b440"
+          ]
+        },
+        "candidate_count": 27,
+        "manifest_receipt": {
+          "sha256": "976517178263bf2d29791894cfc8e825e93fb6db54d3b07abcacf4bbe34207cb",
+          "bytes": 25542
+        }
+      },
+      "bitcos": {
+        "actual_artifact_bytes": 278953,
+        "candidate_bytes": 231807,
+        "fixed_bytes": 47146,
+        "exact_codes_and_metadata": true,
+        "reload": {
+          "fresh_process": true,
+          "exact_logits": true,
+          "logits_sha256": [
+            "45a21bcaae6799647f7e216a3351447b237dff88964cea1e098ffb57e8f8a38b",
+            "9c96b6fd80f57378d612502d3c176699ac37d7ba72e536c0286937ef5ab9b440"
+          ]
+        },
+        "candidate_count": 27,
+        "manifest_receipt": {
+          "sha256": "f9a54affa985c52f20c712d68a74bcc914b77868572c0f550ab397b4d49b8256",
+          "bytes": 25542
+        }
+      },
+      "base3": {
+        "actual_artifact_bytes": 225547,
+        "candidate_bytes": 178401,
+        "fixed_bytes": 47146,
+        "exact_codes_and_metadata": true,
+        "reload": {
+          "fresh_process": true,
+          "exact_logits": true,
+          "logits_sha256": [
+            "45a21bcaae6799647f7e216a3351447b237dff88964cea1e098ffb57e8f8a38b",
+            "9c96b6fd80f57378d612502d3c176699ac37d7ba72e536c0286937ef5ab9b440"
+          ]
+        },
+        "candidate_count": 27,
+        "manifest_receipt": {
+          "sha256": "a6011e338b8828c60c958cc33b7e17756632295d1a0060d3f3ebac7d4bdec1e3",
+          "bytes": 25542
+        }
+      },
+      "auto": {
+        "actual_artifact_bytes": 225547,
+        "candidate_bytes": 178401,
+        "fixed_bytes": 47146,
+        "exact_codes_and_metadata": true,
+        "reload": {
+          "fresh_process": true,
+          "exact_logits": true,
+          "logits_sha256": [
+            "45a21bcaae6799647f7e216a3351447b237dff88964cea1e098ffb57e8f8a38b",
+            "9c96b6fd80f57378d612502d3c176699ac37d7ba72e536c0286937ef5ab9b440"
+          ]
+        },
+        "candidate_count": 27,
+        "manifest_receipt": {
+          "sha256": "a6011e338b8828c60c958cc33b7e17756632295d1a0060d3f3ebac7d4bdec1e3",
+          "bytes": 25542
+        }
+      }
+    },
+    "interpretation": "Exact preservation and smaller written fixture; random uncalibrated endpoints, not pretrained quality or a 9B size forecast."
+  },
+  "official_checkpoint_audit": {
+    "command": "python tools/audit_bonsai_ternary.py --model LOCAL_GGUF --prism-source PINNED_SOURCE --native-library LOCAL_NATIVE_WRAPPER --output NEW_JSON",
+    "report_receipt": {
+      "sha256": "626c6f1b688e40e5506b68488023b57b91e48830e4d0e536505eecb65743ee55",
+      "bytes": 791422
+    },
+    "build_and_run_receipt": {
+      "sha256": "8dfa2cb4de9fa59f7a9650a3cb987a9fb5bd7cb1e38d8e8dfea244beeeea507d",
+      "bytes": 3503
+    },
+    "source": {
+      "model_repository": "prism-ml/Ternary-Bonsai-2-9B-gguf",
+      "model_revision": "5b2abb02362efbed46bbe204014b02837778b2c2",
+      "model_sha256": "3561df7ac7d26a71ffa991ac2db740b10841c3a350aa2676ccd3ff5d428b4e8b",
+      "model_bytes": 1997486976,
+      "runtime_sha": "c9c34bc9c4042c13a31598ebf43461cd0ad8f00d",
+      "reader_sha256": "d0ea743200e19d7ef0a4c969edcc4a6dba8e3656a790b217e3bdc7b31170718e",
+      "quants_source_sha256": "46dd353f30e7f1c42c7d82d88d91fad64dbe5d6e680b234de25355d9fb482d13",
+      "struct_source_sha256": "96539c9bd8e4544692bf242951180edaa2fd5775864fbc3e833f44111b96b934",
+      "native_library_sha256": "d9ac057620c1f01a4d6a6a4b2f4873e8ee5c93481a46e6f971abc17ee32c50bd",
+      "native_wrapper_source_sha256": "e87b0345f43584ce0e8e737840f1530320ebc51cb872591c633f5cb0a7db8662",
+      "script_sha256": "011894981e0b24cf3abe1241d25b5ad0eae1b65b71d565e2ade33488d0b50ac6",
+      "numpy_version": "2.5.4"
+    },
+    "scope": "All 202 stored language-model ternary matrices including embedding/head; no vision/MTP; latent Hadamard basis",
+    "pretrained_weights_inspected": true,
+    "inference_executed": false,
+    "gpu_used": false,
+    "no_private_evidence_required": true,
+    "source_and_model_identity_verified": true,
+    "overwrite_refusal_verified": true,
+    "decoder_verification": {
+      "native_encoded_known_blocks": 260,
+      "all_byte_values_blocks": 256,
+      "fixed_positive_scale_all_zero_code_block": true,
+      "exact": true,
+      "known_patterns": "all negative/zero/positive; alternating; one +/-1 at each of 128 positions",
+      "zero_code_bytes": {
+        "qs": 128,
+        "qh": 127
+      }
+    },
+    "measurement": {
+      "chunk_blocks": 16384,
+      "max_packed_chunk_bytes": 458752,
+      "method": "memory map plus byte lookup tables and exact FP16 histograms; no full reconstructed weight",
+      "scale_distribution_weighting": "one observation per 128-weight group, including zero groups",
+      "native_real_blocks_verified": 825,
+      "elapsed_seconds": 13.39225524989888,
+      "peak_rss_bytes": 2931245056,
+      "rss_note": "RSS includes file-backed mmap pages and tokenizer metadata; it is not decoded weight storage."
+    },
+    "elements": 8946450432,
+    "ternary_tensors": 202,
+    "zero_fraction": 0.32757441728147496,
+    "group_zero_count_distribution": {
+      "minimum": 2,
+      "maximum": 42,
+      "groups_with_42_zeros": 67553316,
+      "fraction_with_42_zeros": 0.9665089538831751,
+      "interpretation": "Observed checkpoint structure; neither a packing requirement nor proof of an unpublished training constraint"
+    },
+    "scale_distribution": {
+      "count": 69894144,
+      "unique_fp16_bit_patterns": 7724,
+      "negative_groups": 0,
+      "zero_groups": 0,
+      "subnormal_positive_groups": 89,
+      "min": 5.960464477539063e-08,
+      "max": 0.267822265625,
+      "mean": 0.014717984596466812,
+      "std": 0.0031782345282892885,
+      "quantile_method": "exact inverse empirical CDF; rank floor(q*(n-1)), no interpolation",
+      "quantiles": {
+        "0.0": 5.960464477539063e-08,
+        "0.01": 0.00861358642578125,
+        "0.05": 0.0105743408203125,
+        "0.25": 0.01251220703125,
+        "0.5": 0.01422882080078125,
+        "0.75": 0.0166168212890625,
+        "0.95": 0.0201263427734375,
+        "0.99": 0.023529052734375,
+        "1.0": 0.267822265625
+      }
+    },
+    "costs": {
+      "ptq1_code_bytes": 1817247744,
+      "fp16_scale_bytes": 139788288,
+      "two_bit_code_bytes": 2236612608,
+      "bitcos_presence_bytes": 1118306304,
+      "bitcos_sign_bytes": 751977857,
+      "bitcos_code_bytes": 1870284161,
+      "flat5trit_code_bytes": 1789290192,
+      "openbonsai_row_index_bytes": 15378000,
+      "bitcos_plus_scales_bytes": 2010072449,
+      "bitcos_plus_scales_and_row_indexes_bytes": 2025450449,
+      "bitcos_payload_delta_vs_ptq1_bytes": 53036417,
+      "indexed_bitcos_payload_delta_vs_ptq1_bytes": 68414417,
+      "bitcos_code_bits_per_weight": 1.6724256621913847,
+      "flat5trit_plus_scales_bytes": 1929078480,
+      "flat5trit_saving_vs_ptq1_bytes": 27957552,
+      "flat5trit_saving_vs_bitcos_bytes": 80993969,
+      "flat5trit_saving_vs_indexed_bitcos_bytes": 96371969
+    },
+    "hypothetical_file_payload_substitution": {
+      "retained_other_tensor_bytes": 29411328,
+      "existing_container_metadata_alignment_bytes": 11039616,
+      "all_bitcos_without_indexes_bytes": 2050523393,
+      "all_bitcos_with_row_indexes_bytes": 2065901393,
+      "all_flat5trit_bytes": 1969529424,
+      "per_tensor_min_ptq1_or_indexed_bitcos_bytes": 1997486976,
+      "limitations": "Arithmetic payload substitutions only, not constructed GGUF/OpenBonsai artifacts. Existing metadata is held fixed. New codec headers/runtime support and transform representation changes are excluded. Original FP16 scales and trit codes are preserved."
+    },
+    "interpretation": "Observed 42-zero cap is a research lead only, not a packing requirement or proof of Prism training. Alternative packing costs are hypothetical, not exported artifacts."
+  },
+  "limitations": [
+    "No new real-9B base3 export, runtime comparison or quality result",
+    "No optimized base3 inference kernel; floating reconstruction remains",
+    "Legacy auto compares code payload only; mixed auto includes complete candidate files",
+    "Mixed repacking helper operates on one candidate, not a whole-artifact migration command",
+    "Official audit verified on macOS; documented Linux build remains untested",
+    "BF16-to-ternary quality loss is unchanged; useful pretrained quality not established"
+  ],
+  "next_gate": "Review both frozen 5090 diversity arms before any code integration or new experiment. Consider common-prefix target-divergence diagnostic before changing calibration. No large RCO search."
+}

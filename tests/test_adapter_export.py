@@ -14,8 +14,8 @@ from openbonsai.adapter import (
     get_text_layers, iter_ternary_modules, load_base_model, replace_projections,
     set_progress, set_quant_enabled, tiny_model,
 )
-from openbonsai.export import BITCOS_ARTIFACT_FORMAT, FORMAT, load_compressed, repack_compressed, save_compressed
-from openbonsai.packing import BITCOS_FORMAT, FORMAT as GROUPED_FORMAT, unpack_grouped_codes
+from openbonsai.export import BASE3_ARTIFACT_FORMAT, BITCOS_ARTIFACT_FORMAT, FORMAT, load_compressed, repack_compressed, save_compressed
+from openbonsai.packing import BASE3_FORMAT, BITCOS_FORMAT, FORMAT as GROUPED_FORMAT, unpack_grouped_codes
 from openbonsai.quantizer import PackedTernaryLinear, TernaryLinear
 
 
@@ -152,7 +152,7 @@ def test_projection_storage_transfer_preserves_rank_and_factor_mapping(rank, map
 
 
 @pytest.mark.parametrize("multimodal", [False, True])
-@pytest.mark.parametrize("packing", ["2bit", "bitcos", "auto"])
+@pytest.mark.parametrize("packing", ["2bit", "bitcos", "base3", "auto"])
 def test_standalone_export_preserves_floats_and_roundtrip_logits(tmp_path, multimodal, packing):
     model = tiny_model(seed=7, multimodal=multimodal)
     names = replace_projections(model, lora_rank=4)
@@ -199,6 +199,9 @@ def test_standalone_export_preserves_floats_and_roundtrip_logits(tmp_path, multi
         if state["format"] == GROUPED_FORMAT:
             assert payload["codes"].numel() == (state["padded_numel"] + 3) // 4
             assert payload["codes"].dtype == torch.uint8
+        elif state["format"] == BASE3_FORMAT:
+            assert payload["codes"].numel() == (state["padded_numel"] + 4) // 5
+            assert payload["codes"].dtype == torch.uint8
         else:
             assert state["format"] == BITCOS_FORMAT
             assert "codes" not in payload
@@ -208,9 +211,11 @@ def test_standalone_export_preserves_floats_and_roundtrip_logits(tmp_path, multi
         assert "weight" not in payload
         assert not any("lora_" in name for name in payload)
     has_bitcos = any(item["state"]["format"] == BITCOS_FORMAT for item in manifest["packed_modules"].values())
-    assert manifest["format"] == (BITCOS_ARTIFACT_FORMAT if has_bitcos else FORMAT)
-    if packing in ("2bit", "bitcos"):
+    has_base3 = any(item["state"]["format"] == BASE3_FORMAT for item in manifest["packed_modules"].values())
+    assert manifest["format"] == (BASE3_ARTIFACT_FORMAT if has_base3 else BITCOS_ARTIFACT_FORMAT if has_bitcos else FORMAT)
+    if packing in ("2bit", "bitcos", "base3"):
         assert has_bitcos == (packing == "bitcos")
+        assert has_base3 == (packing == "base3")
 
     with pytest.raises(ValueError, match="cannot be disabled"):
         set_quant_enabled(loaded, False)
@@ -307,7 +312,7 @@ def test_repack_roundtrip_without_model_preserves_all_other_bytes(tmp_path, monk
 def test_repack_default_auto_selects_smaller_codes(tmp_path):
     source, manifest = _source_artifact(tmp_path)
     converted = repack_compressed(source, tmp_path / "auto")
-    assert converted["format"] == BITCOS_ARTIFACT_FORMAT
+    assert converted["format"] == BASE3_ARTIFACT_FORMAT
     assert converted["storage"]["packed_tensor_bytes"] < manifest["storage"]["packed_tensor_bytes"]
 
 

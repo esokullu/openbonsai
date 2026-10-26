@@ -90,7 +90,7 @@ chunked and whole-head GEMMs require measurement.
 ## Export and reference runtime
 
 `export_head_candidate` creates a normal mixed-format ternary candidate. It
-counts and validates bounded code chunks, chooses between two-bit and BITCOS
+counts and validates bounded code chunks, chooses among two-bit, BITCOS and base-3
 using complete serialized candidate bytes, then packs only the selected
 representation. Sign streams remain continuous across non-byte-aligned chunk
 boundaries; row indexes, FP16 scales, rotation signs and metadata are counted.

@@ -125,7 +125,7 @@ def test_dynamic_soft_surrogate_has_hard_forward_and_current_soft_gradient():
     torch.testing.assert_close(layer.quantized_weight(), layer.hard_weight(), rtol=0, atol=0)
 
 
-@pytest.mark.parametrize("packing", ["2bit", "bitcos", "auto"])
+@pytest.mark.parametrize("packing", ["2bit", "bitcos", "base3", "auto"])
 @pytest.mark.parametrize("factor_mapping", ["exp", "sigmoid"])
 def test_packed_restore_matches_hard_inference_with_fp16_rounding(packing, factor_mapping):
     torch.manual_seed(4)
@@ -359,7 +359,7 @@ def test_hard_public_forward_matches_independent_round_clamp_oracle(rank, factor
         x = torch.tensor([[.5, 1., -.25, -1.], [1., -2., .5, .25]])
         layer.set_progress(1)
         torch.testing.assert_close(layer(x), F.linear(x, expected_weight, source.bias), rtol=0, atol=0)
-        for packing in ("2bit", "bitcos"):
+        for packing in ("2bit", "bitcos", "base3"):
             restored = restore_ternary_linear(layer.packed_state(packing=packing))
             rounded_weight = (codes * scale.half().float()).reshape_as(source.weight)
             torch.testing.assert_close(restored(x), F.linear(x, rounded_weight, source.bias), rtol=0, atol=0)
@@ -396,7 +396,7 @@ def test_sigmoid_factor_bounds_and_finite_large_raw_values():
         layer.packed_state()
 
 
-@pytest.mark.parametrize("packing", ["2bit", "bitcos"])
+@pytest.mark.parametrize("packing", ["2bit", "bitcos", "base3"])
 def test_low_rank_update_changes_codes_and_is_merged_before_export(packing):
     source = linear_with_weight([[-2, -1, 1, 2]], bias=[.125])
     layer = TernaryLinear(source, group_size=4, lora_rank=1)

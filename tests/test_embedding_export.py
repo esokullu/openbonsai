@@ -35,7 +35,7 @@ def fitted(*, rows=7, width=8, group=2, rotated=False, pattern='random', padding
 
 
 @pytest.mark.parametrize('rotated', [False, True])
-@pytest.mark.parametrize('packing', ['2bit', 'bitcos', 'auto'])
+@pytest.mark.parametrize('packing', ['2bit', 'bitcos', 'base3', 'auto'])
 def test_complete_candidate_cost_kind_and_inverse_lookup(rotated, packing):
     embedding, provenance = fitted(rotated=rotated)
     candidate = export_embedding_candidate(embedding, packing=packing, provenance=provenance)
@@ -62,9 +62,9 @@ def test_complete_candidate_cost_kind_and_inverse_lookup(rotated, packing):
 def test_partial_bytes_and_auto_compares_final_embedding_metadata(pattern):
     embedding, _ = fitted(rows=5, width=7, group=7, pattern=pattern)
     candidates = {codec: export_embedding_candidate(embedding, packing=codec)
-                  for codec in ('2bit', 'bitcos', 'auto')}
+                  for codec in ('2bit', 'bitcos', 'base3', 'auto')}
     costs = {codec: len(encode_candidate(candidate)) for codec, candidate in candidates.items()}
-    assert costs['auto'] == min(costs['2bit'], costs['bitcos'])
+    assert costs['auto'] == min(costs[codec] for codec in ('2bit', 'bitcos', 'base3'))
     assert all(candidate.module_kind == 'embedding' for candidate in candidates.values())
     for candidate in candidates.values():
         assert torch.equal(candidate_weight(candidate), candidate_weight(candidates['2bit']))
@@ -101,7 +101,8 @@ def test_stale_state_rejected_even_if_changed_through_data(mutation):
         export_embedding_candidate(embedding)
 
 
-def test_state_change_after_last_code_chunk_is_not_silently_certified(monkeypatch):
+@pytest.mark.parametrize('packing', ['bitcos', 'base3'])
+def test_state_change_after_last_code_chunk_is_not_silently_certified(monkeypatch, packing):
     embedding, _ = fitted()
     original = embedding.quantizer.hard_codes_rows
     calls = 0
@@ -115,7 +116,7 @@ def test_state_change_after_last_code_chunk_is_not_silently_certified(monkeypatc
         return result
     monkeypatch.setattr(embedding.quantizer, 'hard_codes_rows', changed_after_rows)
     with pytest.raises(RuntimeError, match='stale'):
-        export_embedding_candidate(embedding)
+        export_embedding_candidate(embedding, packing=packing)
 
 
 def test_provenance_and_bias_cannot_change_embedding_semantics():
@@ -145,7 +146,8 @@ def test_revision_alias_cannot_contradict_the_fitting_checkpoint():
                                                           'resolved_revision': 'b' * 40})
 
 
-def test_export_guards_and_packing_do_not_promote_the_full_source_table():
+@pytest.mark.parametrize('packing', ['bitcos', 'base3'])
+def test_export_guards_and_packing_do_not_promote_the_full_source_table(packing):
     from torch.utils._python_dispatch import TorchDispatchMode
     from torch.utils._pytree import tree_flatten
     embedding, _ = fitted(rows=13, width=32, group=4)
@@ -158,5 +160,5 @@ def test_export_guards_and_packing_do_not_promote_the_full_source_table():
                     pytest.fail(f'Full table materialized by {func}')
             return result
     with NoFullTable():
-        candidate = export_embedding_candidate(embedding, packing='bitcos')
+        candidate = export_embedding_candidate(embedding, packing=packing)
     assert candidate.shape == (13, 32)

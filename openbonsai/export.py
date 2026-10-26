@@ -23,12 +23,13 @@ from transformers.initialization import no_init_weights
 
 from .adapter import config_from_dict, get_text_layers, iter_ternary_modules, model_from_config
 from .quantizer import PackedTernaryLinear, TernaryLinear
-from .packing import BITCOS_FORMAT, FORMAT as GROUPED_FORMAT, repack_grouped_weight, validate_packed_state
+from .packing import BASE3_FORMAT, BITCOS_FORMAT, FORMAT as GROUPED_FORMAT, repack_grouped_weight, validate_packed_state
 
 
 # Stable on-disk identifier: preserve compatibility with pre-OpenBonsai artifacts.
 FORMAT = "scaleq-qwen35.research.v1"
 BITCOS_ARTIFACT_FORMAT = "openbonsai-qwen35.research.v2"
+BASE3_ARTIFACT_FORMAT = "openbonsai-qwen35.research.v3"
 _CHUNK_BYTES = 64 * 1024 * 1024
 
 
@@ -103,15 +104,21 @@ def _destination(path):
 
 
 def _packing_option(packing):
-    if packing not in ("2bit", "bitcos", "auto"):
-        raise ValueError("packing must be '2bit', 'bitcos', or 'auto'")
+    if packing not in ("2bit", "bitcos", "base3", "auto"):
+        raise ValueError("packing must be '2bit', 'bitcos', 'base3', or 'auto'")
+
+
+def _artifact_format(module_formats):
+    formats = set(module_formats)
+    if BASE3_FORMAT in formats:
+        return BASE3_ARTIFACT_FORMAT
+    return BITCOS_ARTIFACT_FORMAT if BITCOS_FORMAT in formats else FORMAT
 
 
 def _finalize_manifest(staging, manifest):
     """Resolve the manifest's self-inclusive byte count before publication."""
-    manifest["format"] = (BITCOS_ARTIFACT_FORMAT if any(
-        item["state"]["format"] == BITCOS_FORMAT for item in manifest["packed_modules"].values()
-    ) else FORMAT)
+    manifest["format"] = _artifact_format(
+        item["state"]["format"] for item in manifest["packed_modules"].values())
     payload_bytes = sum(entry["bytes"] for entry in manifest["files"].values())
     supplementary = manifest.get("supplementary_files")
     for _ in range(16):
@@ -262,7 +269,7 @@ def _read_artifact(root):
         if manifest_path.is_symlink():
             raise ValueError("Artifact manifest cannot be a symbolic link")
         manifest = json.loads(manifest_path.read_text())
-        if not isinstance(manifest, dict) or manifest.get("format") not in (FORMAT, BITCOS_ARTIFACT_FORMAT):
+        if not isinstance(manifest, dict) or manifest.get("format") not in (FORMAT, BITCOS_ARTIFACT_FORMAT, BASE3_ARTIFACT_FORMAT):
             raise ValueError(f"Unsupported compressed artifact format: {manifest.get('format') if isinstance(manifest, dict) else None!r}")
         _json_bytes(manifest)  # Reject JSON NaN and other noncanonical metadata.
         files, modules, retained, storage = (manifest[key] for key in (
@@ -274,7 +281,7 @@ def _read_artifact(root):
         checked = {name: _artifact_file(root, name, description) for name, description in files.items()}
         payload_files = {"config.json"}
         packed_bytes, retained_bytes = 0, 0
-        has_bitcos = False
+        module_formats = set()
         for name, info in modules.items():
             if not isinstance(name, str) or not all(name.split(".")):
                 raise ValueError("Invalid packed module name")
@@ -286,11 +293,11 @@ def _read_artifact(root):
                 raise ValueError(f"Invalid packed module metadata: {name}")
             if set(info["state"]) & set(info["tensors"]):
                 raise ValueError(f"Packed state metadata shadows tensor keys: {name}")
-            if info["state"].get("format") not in (GROUPED_FORMAT, BITCOS_FORMAT):
+            if info["state"].get("format") not in (GROUPED_FORMAT, BITCOS_FORMAT, BASE3_FORMAT):
                 raise ValueError(f"Unsupported packed module format: {name}")
-            has_bitcos |= info["state"]["format"] == BITCOS_FORMAT
+            module_formats.add(info["state"]["format"])
             packed_bytes += sum(_description_bytes(item) for item in info["tensors"].values())
-        expected_format = BITCOS_ARTIFACT_FORMAT if has_bitcos else FORMAT
+        expected_format = _artifact_format(module_formats)
         if manifest["format"] != expected_format:
             raise ValueError("Artifact format does not match its packed module formats")
         for name, description in retained.items():

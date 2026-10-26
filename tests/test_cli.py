@@ -183,7 +183,7 @@ def test_repack_cli_preserves_assets_and_reports_actual_savings(tmp_path, monkey
 ])
 def test_packing_choices_and_defaults(command, required):
     assert parser().parse_args([command, *required]).packing == "auto"
-    for packing in ("auto", "bitcos", "2bit"):
+    for packing in ("auto", "bitcos", "2bit", "base3"):
         assert parser().parse_args([command, *required, "--packing", packing]).packing == packing
     with pytest.raises(SystemExit):
         parser().parse_args([command, *required, "--packing", "unknown"])

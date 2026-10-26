@@ -28,7 +28,9 @@ The [matched evaluation path](docs/matched-evaluation.md) freezes bytes, token I
 
 [Validation results](validation-rotations.json) record **444 passing CPU tests** and the paired fixture run. The rotated fixture was slightly larger and had higher random-model NLL; this is not evidence of a pretrained-model benefit. Its timings are single reference forwards, not a throughput benchmark.
 
-The new `openbonsai.mixed_export` format supports rotated ternary, ordinary ternary, 4/6-bit affine and BF16 tensors. Its budget includes candidate headers, code streams, scales/zero points, row indices, rotation signs, retained tensors, config, generation settings and supplied tokenizer assets. Export verifies the predicted total against actual files. BITCOS is selected only when the **whole candidate file** is smaller. This format is separate from the legacy ternary format described below; use `load_mixed` for new artifacts. It reconstructs floating-point weights for execution and makes no inference acceleration claim.
+The new `openbonsai.mixed_export` format supports rotated ternary, ordinary ternary, 4/6-bit affine and BF16 tensors. Its budget includes candidate headers, code streams, scales/zero points, row indices, rotation signs, retained tensors, config, generation settings and supplied tokenizer assets. Export verifies the predicted total against actual files. Automatic ternary packing compares **whole candidate file** costs for two-bit, BITCOS and base-3 storage. This format is separate from the legacy ternary format described below; use `load_mixed` for new artifacts. It reconstructs floating-point weights for execution and makes no inference acceleration claim.
+
+The [lossless base-3 codec](docs/base3-packing.md) stores five ternary codes per byte and preserves existing learned values. It reduced a complete native random-model fixture from 261,555 bytes with two-bit storage to 225,547 bytes, with identical fresh-process logits. [Validation](validation-base3.json) records 1,381 passing CPU tests. This is a storage result, not quality recovery. A separate [official checkpoint statistics audit](docs/bonsai-ternary-statistics.md) explains why BITCOS is not always the smallest choice at the measured zero densities.
 
 The 5090 experiment's bounded decoder training, loading and EOS fixes are now integrated into this research branch. [Validation](validation-5090-runtime.json) records 699 passing CPU tests and paired native-fixture checks. Full BF16 decoded-weight caching is explicitly optional, defaults to off, and adds runtime memory excluded from artifact bytes; the completed 9B comparison used 13.824 GB of this cache. Keep existing experiment snapshots unchanged when adopting this branch.
 
@@ -60,7 +62,7 @@ The compact model retains its parameter count; the storage reduction comes from 
 - The hard-stage surrogate uses the parameters and sharpness from the actual last soft forward, with the current loss gradient. This is an explicit interpretation of the paper's backward rule.
 - By default, sliding windows reconstruct original-weight window outputs from the **same input** as the quantized window, produced by the previously quantized prefix. An opt-in [original-prefix teacher control](docs/teacher-target-control.md) tests accumulated-error correction; it has not established a pretrained quality improvement. Padding is excluded from the loss.
 - Native Qwen3.5 blocks retain their individual masks, rotary inputs, gates, and recurrent behavior. Gradient checkpointing is supported in the tested CPU reference path.
-- Packed checkpoint export with lossless BITCOS or legacy two-bit storage, retained floating tensors, checksums, exact byte accounting, and offline reload.
+- Packed checkpoint export with lossless base-3, BITCOS or legacy two-bit storage, retained floating tensors, checksums, exact byte accounting, and offline reload.
 - CPU-only repacking of existing artifacts, with unchanged ternary codes, scales, biases, and retained weights; no new calibration or training.
 
 The default projection policy compresses the text MLP `gate/up/down`, full-attention `q/k/v/o`, and linear-attention `in_proj_qkv/in_proj_z/out_proj` projections. Embeddings, vocabulary head, vision tower, convolutions, norms, recurrent state parameters, and small `in_proj_a/in_proj_b` gates remain floating point. `--aggressive-gates` additionally compresses those two gates; its quality has not been evaluated. Preserving vision tensors does not establish preserved multimodal quality: the text stack changes, and calibration is text-only.
@@ -133,9 +135,11 @@ Without `--cache-dir`, all window inputs/targets live in CPU RAM. At 2,048 sampl
 
 ## Storage and inference
 
-New exports default to `--packing auto`. For each projection, this selects **BITCOS** when its code tensors use fewer bytes than legacy two-bit packing; ties keep the two-bit format. `--packing bitcos` forces BITCOS, and `--packing 2bit` produces the legacy representation. The loader accepts both formats and mixed-codec artifacts. BITCOS artifacts require this updated OpenBonsai loader.
+New exports default to `--packing auto`. In the legacy `save_compressed`/CLI path, this selects the smallest **code payload** among two-bit, BITCOS and base-3 for each projection; ties prefer two-bit, then BITCOS, then base-3. Force a codec with `--packing 2bit`, `--packing bitcos` or `--packing base3`. The updated loader accepts legacy v1/v2 artifacts and v3 artifacts containing base-3 modules. Older loaders cannot read base-3. The newer mixed-candidate/endpoint exporters instead compare complete serialized candidate files, including metadata and BITCOS row indexes.
 
 BITCOS stores one presence bit per weight and one sign bit per nonzero weight, following [Breaking the 1.58-bit Barrier for Ternary LLMs](https://arxiv.org/abs/2609.16338). With zero fraction `z`, the code streams cost approximately `2 - z` bits per weight, plus the same FP16 group scales. At 50% zeros and group size 128, the projection payload is approximately **1.625 bits per weight instead of 2.125**, about **23.5% smaller**. Actual savings depend on sparsity, group/byte padding, retained floating tensors, and file headers. `auto` compares code tensor bytes, so it does not guarantee a smaller complete artifact for tiny tensors with extra metadata.
+
+Base-3 uses approximately **1.6 code bits per weight**, plus the same scales and rotation metadata. Its flattened stream crosses row and scale-group boundaries without adding byte padding at each boundary. Ignoring headers and row indexes, BITCOS becomes smaller at more than roughly 40% zeros. Neither codec changes sparsity or rounds stored scales. Base-3 is an independent OpenBonsai encoding, not Prism's PTQ1_0/GGUF format.
 
 The implementation uses row-major, least-significant-bit-first presence and compacted sign streams (`1` means negative), with zero final-byte padding. It implements the paper's lossless storage principle, not its hardware-specific kernel layout. **Repacking an existing artifact changes no weight values and introduces no additional quantization or scale rounding.** It does not undo any quality loss from the earlier BF16-to-ternary conversion.
 
@@ -144,11 +148,13 @@ Repack an existing pilot on CPU, without loading the original model or retrainin
 ```bash
 python -m openbonsai repack \
   --input runs/qwen35-pilot \
-  --output runs/qwen35-pilot-bitcos \
+  --output runs/qwen35-pilot-repacked \
   --packing auto
 ```
 
 The command verifies input checksums, processes one projection at a time, preserves retained tensors and tokenizer assets, and reports exact before/after model-artifact bytes. Use a new output directory; the source is preserved. `--packing 2bit` can convert back to the legacy format. Python callers can use `repack_compressed(source, destination, packing="auto")` from `openbonsai.export`, or choose the codec with `save_compressed(..., packing="auto")`.
+
+That command handles legacy ternary artifacts. For the newer mixed format, `repack_ternary_candidate(candidate, packing="auto")` in `openbonsai.mixed_formats` re-encodes one already-loaded ternary candidate; it is not a complete mixed-artifact repack command. It preserves codes, stored scales/biases, rotation signs and provenance. It refuses BF16 candidates rather than quantizing them implicitly.
 
 `manifest.json` accounts for packed tensors, retained tensors, safetensors headers, config, and the manifest itself. `train` additionally saves tokenizer assets in `tokenizer/`; those supplementary files are excluded from the reported model-artifact byte total. The artifact is neither GGUF nor an ordinary `from_pretrained` checkpoint. Load it through this package:
 

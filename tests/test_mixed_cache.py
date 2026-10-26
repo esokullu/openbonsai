@@ -30,7 +30,7 @@ def candidate(encoding='bitcos', rotated=False):
     return (mf.with_rotation(result, fixed_signs(128, seed=5090), 64) if rotated else result)
 
 
-@pytest.mark.parametrize('encoding', ['2bit', 'bitcos', 'affine', 'bf16'])
+@pytest.mark.parametrize('encoding', ['2bit', 'bitcos', 'base3', 'affine', 'bf16'])
 @pytest.mark.parametrize('rotated', [False, True])
 def test_cache_exact_weights_outputs_row_calls_and_no_serialization_change(monkeypatch, encoding, rotated):
     torch.set_num_threads(4)

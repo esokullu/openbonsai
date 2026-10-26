@@ -22,8 +22,8 @@ from torch.nn import functional as F
 from torch.utils.checkpoint import checkpoint
 
 from .packing import (
-    BITCOS_FORMAT, FORMAT as TERNARY_FORMAT, pack_grouped_weight,
-    unpack_bitcos_codes, unpack_ternary_codes, validate_packed_state,
+    BASE3_FORMAT, BITCOS_FORMAT, FORMAT as TERNARY_FORMAT, pack_grouped_weight,
+    unpack_base3_codes, unpack_bitcos_codes, unpack_ternary_codes, validate_packed_state,
 )
 
 
@@ -498,6 +498,10 @@ class PackedTernaryLinear(nn.Module):
                 selected = self.codes[first // 4:(last + 3) // 4]
                 values = unpack_ternary_codes(selected, selected.numel() * 4)
                 codes = values[first % 4:first % 4 + last - first]
+            elif self.packing_format == BASE3_FORMAT:
+                selected = self.codes[first // 5:(last + 4) // 5]
+                values = unpack_base3_codes(selected, selected.numel() * 5)
+                codes = values[first % 5:first % 5 + last - first]
             elif self.packing_format == BITCOS_FORMAT:
                 presence = self._bit_range(self.presence, first, last)
                 count = int(presence.sum().item())
@@ -528,12 +532,14 @@ class PackedTernaryLinear(nn.Module):
             return unpack_ternary_codes(self.codes, self.padded_numel)
         if self.packing_format == BITCOS_FORMAT:
             return unpack_bitcos_codes(self.presence, self.signs, self.padded_numel)
+        if self.packing_format == BASE3_FORMAT:
+            return unpack_base3_codes(self.codes, self.padded_numel)
         raise ValueError(f"Unsupported packed format: {self.packing_format!r}")
 
     def packed_state(self, *, packing: str | None = None) -> dict[str, Any]:
         """Keep the stored codec unless explicitly asked to repack it."""
         if packing is None:
-            packing = "bitcos" if self.packing_format == BITCOS_FORMAT else "2bit"
+            packing = {BITCOS_FORMAT: "bitcos", BASE3_FORMAT: "base3", TERNARY_FORMAT: "2bit"}[self.packing_format]
         return pack_grouped_weight(self._unpack_codes(), self.scales,
                                    shape=[self.out_features, self.in_features],
                                    group_size=self.group_size, bias=self.bias, packing=packing)

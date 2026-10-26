@@ -61,7 +61,7 @@ def dense_reference(head):
             * head.scales.half().float().unsqueeze(-1)).reshape(head.codes.shape)
 
 
-@pytest.mark.parametrize('packing', ['2bit', 'bitcos', 'auto'])
+@pytest.mark.parametrize('packing', ['2bit', 'bitcos', 'base3', 'auto'])
 @pytest.mark.parametrize('chunk', [1, 2, 3, 4])
 def test_codecs_cross_partial_bytes_tail_rows_and_fp16_scales(packing, chunk):
     head = FixedRows(PATTERN, chunk=chunk, bias=True)
@@ -92,24 +92,26 @@ def test_bitcos_all_zero_and_all_nonzero_rows(density):
 
 
 @pytest.mark.parametrize('rows,width,nonzero,expected', [
-    (5, 16, False, 'ternary-2bit'),  # BITCOS stream is smaller, but full header/index is larger.
+    (1, 16, False, 'ternary-2bit'),  # Base3 has equal payload bytes but a larger header.
     (17, 2048, False, 'ternary-bitcos'),
-    (17, 2048, True, 'ternary-2bit'),
+    (17, 2048, True, 'ternary-base3'),
 ])
 def test_auto_chooses_actual_complete_serialized_cost(rows, width, nonzero, expected):
     codes = torch.full((rows, width), int(nonzero), dtype=torch.int8)
     head = FixedRows(codes, group_size=16, chunk=3)
-    candidates = {codec: export_head_candidate(head, packing=codec) for codec in ('2bit', 'bitcos', 'auto')}
+    candidates = {codec: export_head_candidate(head, packing=codec)
+                  for codec in ('2bit', 'bitcos', 'base3', 'auto')}
     actual = {codec: len(encode_candidate(candidate)) for codec, candidate in candidates.items()}
-    assert actual['auto'] == min(actual['2bit'], actual['bitcos'])
+    assert actual['auto'] == min(actual[codec] for codec in ('2bit', 'bitcos', 'base3'))
     assert candidates['auto'].encoding == expected
 
 
-def test_rotation_signs_remain_explicit_and_operator_reloads_identically():
+@pytest.mark.parametrize('packing', ['2bit', 'bitcos', 'base3'])
+def test_rotation_signs_remain_explicit_and_operator_reloads_identically(packing):
     codes = torch.tensor([[1, 0, -1, 0, 1, 0, -1, 1]] * 9, dtype=torch.int8)
     signs = torch.tensor([1, -1, 1, 1, -1, 1, -1, -1], dtype=torch.int8)
     head = FixedRows(codes, group_size=2, chunk=4, signs=signs, bias=True)
-    candidate = export_head_candidate(head, packing='bitcos', provenance={'rotation_seed': 23})
+    candidate = export_head_candidate(head, packing=packing, provenance={'rotation_seed': 23})
     assert candidate.metadata['rotation'] == {'block_size': 4, 'convention': 'row-DH', 'normalization': 'orthonormal'}
     torch.testing.assert_close(candidate.tensors['rotation_signs'], signs)
     hidden = torch.randn(3, 8)
@@ -204,7 +206,7 @@ def test_rejects_changed_result_between_count_and_packing_passes(change):
         export_head_candidate(head, packing='bitcos')
 
 
-@pytest.mark.parametrize('packing', ['2bit', 'bitcos'])
+@pytest.mark.parametrize('packing', ['2bit', 'bitcos', 'base3'])
 @pytest.mark.parametrize('rotated', [False, True])
 def test_actual_calibrated_head_exports_lora_into_codes(packing, rotated):
     torch.manual_seed(15)
@@ -226,7 +228,8 @@ def test_actual_calibrated_head_exports_lora_into_codes(packing, rotated):
 
 
 @pytest.mark.parametrize('rotated', [False, True])
-def test_native_head_only_mixed_export_and_reload(tmp_path, rotated):
+@pytest.mark.parametrize('packing', ['base3', 'auto'])
+def test_native_head_only_mixed_export_and_reload(tmp_path, rotated, packing):
     from openbonsai.adapter import tiny_model
     from openbonsai.mixed_export import prepare_mixed_export, save_mixed, load_mixed
 
@@ -236,7 +239,7 @@ def test_native_head_only_mixed_export_and_reload(tmp_path, rotated):
     if signs is not None:
         signs[::3] = -1
     head = BoundedTernaryHead(model.lm_head, row_chunk_size=13, signs=signs, block_size=128, lora_rank=2)
-    candidate = export_head_candidate(head, packing='auto', provenance={'calibration': 'fixture'})
+    candidate = export_head_candidate(head, packing=packing, provenance={'calibration': 'fixture'})
     output = tmp_path / 'head-only'
     with prepare_mixed_export(model, ['lm_head'], metadata={'source_checkpoint': 'native-fixture'}) as plan:
         cost = plan.fixed_bytes + candidate_nbytes(candidate)
@@ -289,10 +292,11 @@ def test_source_or_rotation_changes_during_packing_are_rejected(change):
         export_head_candidate(head)
 
 
-def test_smaller_requested_chunk_preserves_identical_serialized_candidate():
+@pytest.mark.parametrize('packing', ['2bit', 'bitcos', 'base3', 'auto'])
+def test_smaller_requested_chunk_preserves_identical_serialized_candidate(packing):
     head = FixedRows(PATTERN, chunk=4)
-    default = export_head_candidate(head, packing='bitcos')
+    default = export_head_candidate(head, packing=packing)
     head.calls.clear()
-    smaller = export_head_candidate(head, packing='bitcos', row_chunk_size=1)
+    smaller = export_head_candidate(head, packing=packing, row_chunk_size=1)
     assert all(end - start == 1 for start, end in head.calls)
     assert encode_candidate(smaller) == encode_candidate(default)

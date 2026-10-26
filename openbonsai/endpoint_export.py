@@ -2,7 +2,7 @@
 
 Only one row chunk of hard codes and FP32 scales is requested at a time.
 Compact payloads reside on CPU. A count pass determines the exact complete
-serialized cost of both codecs without allocating either code stream; a second
+serialized cost of all three codecs without allocating their code streams; a second
 pass packs only the selected codec. No original weight or low-rank factors are
 included in the candidate. This is a reference exporter, not a training stage.
 """
@@ -19,7 +19,7 @@ from .mixed_formats import (
     FORMAT, MixedWeightCandidate, _DIGEST, _PREFIX, _header,
     candidate_nbytes, validate_candidate,
 )
-from .packing import pack_ternary_codes
+from .packing import pack_base3_codes, pack_ternary_codes
 
 
 def _positive_integer(value, name):
@@ -82,6 +82,46 @@ class _BitWriter:
         return self.buffer
 
 
+class _TritWriter:
+    """Append bounded code chunks, carrying up to four trits between chunks.
+
+    Rows are not padded separately: the flattened matrix is one base-3 stream.
+    Only the final byte may contain unused, zero-valued trits.
+    """
+    def __init__(self, numel: int):
+        if type(numel) is not int or numel < 0:
+            raise ValueError('Trit count must be a nonnegative integer')
+        self.numel = numel
+        self.position = self.byte_position = 0
+        self.buffer = torch.empty((numel + 4) // 5, dtype=torch.uint8)
+        self.pending = torch.empty(0, dtype=torch.int8)
+
+    def append(self, codes: Tensor):
+        if (not isinstance(codes, Tensor) or codes.dtype != torch.int8
+                or codes.device.type != 'cpu' or self.position + codes.numel() > self.numel):
+            raise ValueError('Code chunk does not fit the planned base3 stream')
+        flat = codes.reshape(-1)
+        if not bool(((flat == -1) | (flat == 0) | (flat == 1)).all()):
+            raise ValueError('Base3 codes must contain only -1, 0 or +1')
+        self.position += flat.numel()
+        if self.pending.numel():
+            flat = torch.cat((self.pending, flat))
+        complete = flat.numel() // 5 * 5
+        if complete:
+            packed = pack_base3_codes(flat[:complete])
+            self.buffer[self.byte_position:self.byte_position + packed.numel()] = packed
+            self.byte_position += packed.numel()
+        # Clone so a four-element tail cannot retain an entire row chunk.
+        self.pending = flat[complete:].clone()
+
+    def finish(self):
+        if self.position != self.numel:
+            raise ValueError('Packed stream length changed between count and export passes')
+        if self.pending.numel():
+            self.buffer[self.byte_position:] = pack_base3_codes(self.pending)
+        return self.buffer
+
+
 def _checked_rows(head, start: int, end: int):
     codes, scales = head.hard_codes_rows(start, end)
     shape = (end - start, head.in_features)
@@ -117,6 +157,8 @@ def _prototype(encoding, rows, width, group_size, nonzero, provenance, bias, rot
     tensors = {'scales': torch.empty(rows * (width // group_size), dtype=torch.float16, device='meta')}
     if encoding == 'ternary-2bit':
         tensors['codes'] = torch.empty((rows * width + 3) // 4, dtype=torch.uint8, device='meta')
+    elif encoding == 'ternary-base3':
+        tensors['codes'] = torch.empty((rows * width + 4) // 5, dtype=torch.uint8, device='meta')
     else:
         tensors.update(presence=torch.empty((rows * width + 7) // 8, dtype=torch.uint8, device='meta'),
                        signs=torch.empty((nonzero + 7) // 8, dtype=torch.uint8, device='meta'),
@@ -151,8 +193,8 @@ def _export_endpoint_candidate(head, *, packing='auto', provenance=None, row_chu
         raise ValueError('Unsupported endpoint module kind')
     if module_kind == 'embedding' and head.bias is not None:
         raise ValueError('Embedding candidates cannot have bias')
-    if packing not in ('auto', '2bit', 'bitcos'):
-        raise ValueError('packing must be auto, 2bit or bitcos')
+    if packing not in ('auto', '2bit', 'bitcos', 'base3'):
+        raise ValueError('packing must be auto, 2bit, bitcos or base3')
     if provenance is not None and not isinstance(provenance, dict):
         raise ValueError('provenance must be a dictionary')
     rows = _positive_integer(head.out_features, 'out_features')
@@ -199,7 +241,7 @@ def _export_endpoint_candidate(head, *, packing='auto', provenance=None, row_chu
         _update_digest(count_digest, codes, scales)
         nonzero += int((codes != 0).sum())
         del codes, scales, half
-    choices = ('2bit', 'bitcos') if packing == 'auto' else (packing,)
+    choices = ('2bit', 'bitcos', 'base3') if packing == 'auto' else (packing,)
     prototypes = [_prototype('ternary-' + codec, rows, width, group_size, nonzero,
                              details, bias, rotation, module_kind=module_kind) for codec in choices]
     prototype, planned_bytes = min(prototypes, key=lambda pair: pair[1])
@@ -213,6 +255,8 @@ def _export_endpoint_candidate(head, *, packing='auto', provenance=None, row_chu
         tensors['rotation_signs'] = rotation[1]
     if codec == '2bit':
         codes_writer = _BitWriter(rows * width * 2)
+    elif codec == 'base3':
+        codes_writer = _TritWriter(rows * width)
     else:
         presence_writer, signs_writer = _BitWriter(rows * width), _BitWriter(nonzero)
         offsets = torch.empty(rows + 1, dtype=torch.int64)
@@ -226,6 +270,8 @@ def _export_endpoint_candidate(head, *, packing='auto', provenance=None, row_chu
         stored_scales[start * groups_per_row:end * groups_per_row] = half.reshape(-1)
         if codec == '2bit':
             codes_writer.append(pack_ternary_codes(codes), codes.numel() * 2)
+        elif codec == 'base3':
+            codes_writer.append(codes)
         else:
             present = codes != 0
             counts = present.sum(dim=1, dtype=torch.int64)
@@ -237,7 +283,7 @@ def _export_endpoint_candidate(head, *, packing='auto', provenance=None, row_chu
         del codes, scales, half
     if count_digest.digest() != export_digest.digest():
         raise ValueError('Hard codes or scales changed between export passes')
-    if codec == '2bit':
+    if codec in ('2bit', 'base3'):
         tensors['codes'] = codes_writer.finish()
     else:
         tensors.update(presence=presence_writer.finish(), signs=signs_writer.finish(), row_sign_offsets=offsets)
