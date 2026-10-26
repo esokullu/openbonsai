@@ -218,6 +218,79 @@ The portable wrapper passed 29 focused synthetic/process tests and the full
 1,502-test suite. These establish runner behavior, not a completed pretrained
 quality evaluation. [Validation record](../validation-prism-manifest-runner.json).
 
+## Run an existing native model
+
+`tools/evaluate_transformers_manifest.py` runs one materialized original BF16
+checkpoint or one complete `openbonsai.mixed.qwen35.v1` artifact. It uses the
+same frozen-manifest scorer as the Prism path. It does not fit, quantize, export,
+rename modules or convert a multimodal model into a text-only artifact. Legacy
+packed checkpoint formats require their own loader and are rejected here.
+
+```bash
+python tools/evaluate_transformers_manifest.py --run \
+  --kind mixed --model /path/to/sealed-mixed-artifact \
+  --expected-model-sha256 "$MODEL_DIRECTORY_SHA256" \
+  --tokenizer /path/to/materialized-tokenizer \
+  --expected-tokenizer-sha256 "$TOKENIZER_DIRECTORY_SHA256" \
+  --manifest /path/to/frozen-inputs.json \
+  --expected-manifest-sha256 "$MANIFEST_FILE_SHA256" \
+  --profile /path/to/native-resource-profile.json \
+  --expected-profile-sha256 "$PROFILE_FILE_SHA256" \
+  --device cuda:0 --cache-policy warm \
+  --max-seconds 10800 --output /path/to/new-native-evaluation
+```
+
+For original BF16, select `--kind original --cache-policy cold` and its original
+checkpoint directory. CPU is also supported. The model and tokenizer hashes
+are the `sha256` values returned by `openbonsai.eval_backends.local_directory_identity`:
+they bind every file, relative path and byte count in a materialized directory.
+They are not a Hub revision or a hash of just one shard. The runner rejects
+symlinks and changed sources; authenticate these directory identities against
+the intended checkpoint before dispatch. Inputs remain offline and read-only.
+
+The [native development profile](../configs/evaluation/bonsai-development-native.json)
+binds the same development manifest as the CPU profile, with separate native
+resource shapes. Native scoring forwards **all input IDs**, including trailing
+unscored positions; Prism forwards through the last required prediction. Native
+probe admission therefore counts full input length, total head rows and bounded
+head chunks explicitly. Neither path changes the frozen target positions.
+The full tokenization gate precedes scoring, and timing probes are excluded
+from quality. Full generation caps, a 1.25 timing margin and 300 seconds are
+reserved without assuming early EOS. Failure stops without shortening the suite.
+
+The mixed loader starts with decoded caches disabled. `warm` explicitly builds
+the caches module by module, preserves stored payloads and row chunks, and
+requires bitwise-equal cold/warm probe logits. It reports extra nonpersistent
+cache bytes separately from artifact bytes. `cold` leaves reconstruction on
+the execution path. These are floating-point reference executions, not evidence
+of a fast ternary inference kernel. Original and mixed runs retain their native
+multimodal tensor names and saved rotation signs; they share text-only scoring
+inputs, not a claim of identical model or kernel arithmetic.
+
+Each CUDA operation records synchronized allocator peaks and before/after free
+memory, with a conservative peak-reserved headroom check. The provided profile
+requires 4 GiB free. This does not continuously observe allocations from other
+processes. Runtime metadata records software, device, driver information, head
+chunk size, payload dtypes and cache policy. Wall time includes hashing, loading,
+verification and cleanup; it is not an isolated inference-speed measurement.
+
+The native runner owns one child under an external monotonic deadline, using
+a process group on POSIX or a kill-on-close Job Object on Windows. It does not
+fall back to an uncontained Windows process. **Before a model run on Windows,
+run `python -m pytest -q tests/test_evaluation_supervisor.py` on that host.**
+The harmless child/descendant tests must pass, including the native Windows
+supervisor-death test. Mock Windows calls on macOS are not Windows validation.
+Then validate native model loading with the tiny CPU fixture tests before
+launching any pretrained GPU evaluation. Keep current training processes and
+their frozen code untouched until their completed results have been reviewed.
+
+The native runner and supervisor passed 60 focused checks and the full 1,562-test
+suite; one native Windows-only check was skipped on macOS. The tiny CPU checks
+include real original/mixed disk loading, preserved rotation signs, exact cache
+parity, and a complete subprocess evaluation with source and cleanup receipts.
+They do not establish pretrained quality or CUDA feasibility.
+[Validation record](../validation-native-manifest-runner.json).
+
 ## Remaining gates
 
 The [official PTQ1_0 CPU preflight](bonsai-reference-preflight.md) now verifies

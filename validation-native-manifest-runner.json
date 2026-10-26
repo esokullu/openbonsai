@@ -1,0 +1,71 @@
+{
+  "date": "2026-10-26",
+  "base_commit": "784d8ccabae54fb54cda0a7596b9a71d665f8322",
+  "scope": "One existing original BF16 or complete mixed artifact evaluated with frozen native inputs and common FP64 probability reduction; cross-platform owned child supervisor",
+  "quality_claim": false,
+  "actual_pretrained_9b_execution": false,
+  "actual_cuda_validation": false,
+  "actual_windows_validation": false,
+  "active_5090_experiment_changed": false,
+  "active_official_cpu_experiment_changed": false,
+  "file_sha256": {
+    "tools/evaluate_transformers_manifest.py": "d4885f165cb0d5ea4e9d954b5bf64c8fa21a947f2d9f562ee0c6b42c6ceb4ec1",
+    "openbonsai/evaluation_supervisor.py": "94d14e69638ebe02a234484b617500cd8e117a2d3b239683f1cab96a805b827f",
+    "tests/test_transformers_manifest_runner.py": "a3c20e01cd6a57b51be8d83c2f7465438707efc5b05150fcc9aabf71cef0041c",
+    "tests/test_transformers_runner_controls.py": "3972d6ea9ac726794d2e919381ae8e385caefbd09cb8c576184318fadab39f18",
+    "tests/test_evaluation_supervisor.py": "51f391fc35ee1f1aaeb5d8e344d3ed3d73f13aaa44ea5c4171f4482dc56fa41a",
+    "configs/evaluation/bonsai-development-native.json": "28b79ad0aecdb88aa4693f241dd9fc364b632f84b5b65622625bef10a83ae4d4",
+    "openbonsai/evaluation.py": "3b31b024db2bf56859494e0c5d69ffd13ac78a28b8b6f15134851be1949bfeb5",
+    "openbonsai/eval_backends.py": "1240292a821ad311b8ea2eeff35a9f3ae7b05903164811798c6cde79857fa929",
+    "openbonsai/mixed_formats.py": "e733012adb572038427dcd525c136894ad20c06faa3929215492744dc0c175b3",
+    "openbonsai/mixed_export.py": "a0b6988627ab20f375ddbc3f4b3a85dbf52c53d2bd1552f93054daa621af9401"
+  },
+  "focused_tests": {
+    "passed": 60,
+    "skipped": 1,
+    "seconds": 10.41,
+    "command": "OMP_NUM_THREADS=2 PYTHONDONTWRITEBYTECODE=1 python -m pytest -q tests/test_evaluation_supervisor.py tests/test_transformers_manifest_runner.py tests/test_transformers_runner_controls.py",
+    "log_sha256": "795952e8b9920689839173cd11662493d2a2f3e9b8584b4ea8bda21207010608",
+    "scope": "Real random tiny native original/mixed CPU models and a full original subprocess CLI; fake resource/scoring contracts; native POSIX and mocked Windows lifecycle checks"
+  },
+  "full_suite": {
+    "passed": 1562,
+    "skipped": 1,
+    "seconds": 48.53,
+    "command": "OMP_NUM_THREADS=2 PYTHONDONTWRITEBYTECODE=1 python -m pytest -q",
+    "log_sha256": "402289aba04f7d6a587d1985852d4b996158a0438f29504f020664e82a80e6cb"
+  },
+  "meaningful_checks": [
+    "Independent full-model FP64 full-vocabulary oracle includes padded vocabulary rows and sparse targets",
+    "All native input IDs consumed, including trailing unscored positions",
+    "Stored rotated ternary payload/signs and native multimodal module names preserved through real mixed loading",
+    "Cold/warm native logit and probability equality with original source files preserved",
+    "Full tiny original subprocess completes child, evaluation, source-preservation and supervisor cleanup receipts",
+    "Every frozen option, target, EOS list and generation cap retained; admission does not assume early EOS",
+    "Invalid source hashes and profiles rejected before model work; CUDA headroom gates tested with fake observations",
+    "Native POSIX child/descendant deadlines, orphan and signal cleanup; Windows API layout/order/failure paths mocked"
+  ],
+  "reviews": {
+    "native_scientific": "Independent review passed at runner d4885f165cb0d5ea4e9d954b5bf64c8fa21a947f2d9f562ee0c6b42c6ceb4ec1",
+    "runner_and_docs": "Independent review passed at same runner SHA",
+    "supervisor": "Root independent source review against CPython and Microsoft API contracts; no actionable finding",
+    "root": "Reviewed source, tests, docs and untouched active evaluator/backend/worker hashes"
+  },
+  "required_next_gates": [
+    "Wait for current5090 experiment completion, preserve and review its artifacts before any new instructions",
+    "Run tests/test_evaluation_supervisor.py on actual Windows host; including native kill-on-close supervisor-death test",
+    "Run tiny native fixture tests on target environment before any9B model child",
+    "Select and authenticate one original and one sealed mixed source, then independently preflight full-cap admission and memory; no overlapping model children"
+  ],
+  "limitations": [
+    "No actual9B, CUDA or native Windows validation in this commit",
+    "Only complete mixed v1 or original BF16, CPU or cuda:0; no legacy artifact conversion",
+    "Preserved multimodal package is evaluated with text inputs; not a text-only artifact or multimodal quality proof",
+    "Warm-cache equivalence probe is one explicit full-vocabulary row, not universal pretrained-model parity",
+    "Runtime reconstructs floating weights; decoded cache memory is additional and not artifact bytes",
+    "CUDA before/after free memory plus own allocator peaks do not continuously observe other processes",
+    "RSS is sampled summed process RSS, not exact physical peak; concurrent CPU reference makes timings unsuitable as throughput",
+    "Legacy FP32 diagnostic results are not matched to this FP64 protocol",
+    "POSIX ownership assumes cooperating children; abrupt Windows supervisor death before assignment may leave a suspended child without executed evaluator code"
+  ]
+}
