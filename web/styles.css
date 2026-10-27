@@ -102,6 +102,28 @@ h1 {
   background: var(--paper);
 }
 
+.github-link {
+  vertical-align: middle;
+}
+
+.hf-link {
+  margin-left: 12px;
+  color: var(--ink);
+  background: var(--paper);
+}
+
+.hf-link:hover {
+  color: var(--paper);
+  background: var(--ink);
+}
+
+@media (max-width: 560px) {
+  .hf-link {
+    margin-left: 0;
+    margin-top: 12px;
+  }
+}
+
 .github-link:focus-visible,
 .explainer a:focus-visible,
 .explainer-video:focus-visible,
