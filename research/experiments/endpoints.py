@@ -75,6 +75,7 @@ def main():
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     model, tok = load_model()
+    model.requires_grad_(False)  # weights are overwritten in place below
     state = torch.load(args.state, map_location="cpu")
     apply_state(model, state)
     frozen = json.loads(FROZEN.read_text(encoding="utf-8"))
