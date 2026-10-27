@@ -306,7 +306,7 @@ openbonsai run --model <dir or HF id> --config examples/qwen3_5-9b.yaml --out ru
 - The 9B example pins Qwen's commit, so `model.revision=null` (or your own commit) is needed for a Hugging Face id; without it the download fails with a 404. A local folder ignores it.
 - The 9B example asks for ternary endpoints and a GGUF explicitly. For a tied model, also pass `--set endpoints.head=auto --set endpoints.embedding=auto`; without them the run is refused before the first stage.
 
-**Base model without a chat template** (for example `meta-llama/Llama-3.1-8B`). The traces stage cannot run, because transformers has no template to render the prompts with ("tokenizer.chat_template is not set"), and the error surfaces as a raw traceback. Turn traces off and use UltraChat in place of the trace data; its conversations are then joined as plain text. The block counts keep the totals of the example (256 calibration blocks, 2,048 distillation sequences):
+**Base model without a chat template** (for example `meta-llama/Llama-3.1-8B`). The traces stage cannot run, because there is no template to render the prompts with, so `openbonsai run` refuses the model before the first stage and prints the `--set` lines below. Turn traces off and use UltraChat in place of the trace data; its conversations are then joined as plain text. The block counts keep the totals of the example (256 calibration blocks, 2,048 distillation sequences):
 
 ```
 openbonsai run --model <dir or HF id> --config examples/qwen3_5-9b.yaml --out runs/my-base \

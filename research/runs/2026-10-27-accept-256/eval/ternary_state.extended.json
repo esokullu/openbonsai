@@ -1,0 +1,7 @@
+{
+ "source": "D:/openbonsai/runs/2026-10-27-gptq-ternary-256-norefit/ternary_state.pt",
+ "suite": "extended",
+ "wiki16k_nll": 3.082415442680153,
+ "arc100": 67,
+ "chat_nll": 1.9484052744315457
+}

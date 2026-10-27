@@ -23,13 +23,13 @@ rotation:
   signs: {mode: seeded, seed: width}
   impl: dense              # the experiments' arithmetic; fwht avoids the dense R
 traces:
-  # First-turn UltraChat prompts from rows below the calibration rows, answered
-  # greedily without thinking (the AYOT settings of the 3.30 run). That run's 128
-  # traces held 66,904 tokens against the 65,536 the 32 blocks below need (2%
-  # spare); 160 prompts leave room (the first 128 are the n: 128 sample).
-  # These 160 prompts include 2 of the 16 behind the extended suite's chat NLL (UltraChat rows
-  # 859 and 3307); --set 'traces.prompts.rows=[5000,6000]' avoids them (docs/evaluation.md).
-  prompts: {kind: ultrachat, rows: [0, 6000], n: 160, seed: 5090}
+  # First-turn UltraChat prompts from rows 5,000 to 5,999, below the calibration rows,
+  # answered greedily without thinking (the AYOT settings of the 3.30 run). That run's
+  # 128 traces held 66,904 tokens against the 65,536 the 32 blocks below need (2%
+  # spare); 160 prompts leave room. Rows below 5,000 hold the 16 prompts behind the
+  # extended suite's chat NLL; traces and calibration that contain one are refused
+  # (docs/evaluation.md).
+  prompts: {kind: ultrachat, rows: [5000, 6000], n: 160, seed: 5090}
   max_new_tokens: 512
   thinking: false
   batch: 8

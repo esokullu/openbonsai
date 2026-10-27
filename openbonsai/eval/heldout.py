@@ -1,4 +1,4 @@
-"""Keep the reasoning suites' TEST problems out of calibration data and trace prompts.
+"""Keep evaluation data out of calibration data and trace prompts.
 
 The ``gsm8k`` and ``humaneval`` suites (openbonsai.eval.reasoning) score TEST
 problems. If calibration blocks (calibrate, the distillation teacher's data)
@@ -23,6 +23,14 @@ to be scored (data built before a guard existed, or without the full splits).
 A problem is contained when its whitespace-normalized text is a substring: a
 GSM8K question, or a HumanEval prompt from ``def <entry_point>(`` on.
 
+The ``extended`` suite's chat NLL scores 16 Qwen3.5-9B answers to UltraChat
+first-turn prompts (assets/bonsai-dev/chat-traces16.jsonl, rows below 5,000).
+``chat_needles`` decodes their prompts and answers with the run's tokenizer,
+and ``build`` (calibration and the distillation teacher) and the trace prompts
+refuse data that contains one. A tokenizer that cannot reproduce the suite's
+token ids gets no chat needles: the extended suite refuses such a model, so
+its chat NLL cannot be fitted on.
+
 Future math or code calibration must come from TRAINING splits, e.g.
 ``openai/gsm8k`` ``main/train-00000-of-00001.parquet`` (HumanEval has no
 training split; use another dataset's training split, such as MBPP's).
@@ -40,6 +48,10 @@ class ContaminationError(ValueError):
 
 ADVICE = ("these are evaluation TEST problems (openbonsai.eval.reasoning); math or code calibration data "
           "must come from training splits (e.g. openai/gsm8k main/train-00000-of-00001.parquet)")
+CHAT_PREFIX = "chat-nll/"
+CHAT_ADVICE = ("these are the extended suite's chat-NLL prompts or answers (UltraChat rows below 5,000, "
+               "openbonsai/eval/assets/bonsai-dev/chat-traces16.jsonl); take trace prompts from rows 5,000 on "
+               "(--set 'traces.prompts.rows=[5000,6000]') and UltraChat calibration from min_row 6000")
 
 
 def normalize(text: str) -> str:
@@ -90,12 +102,49 @@ def contained(texts, probes=None) -> list[tuple[int, str]]:
     return hits
 
 
+def _trace_parts(text: str) -> tuple[str, str]:
+    """(user prompt, answer) of a chat trace rendered by Qwen3.5's template (the empty think block dropped)."""
+    prompt = text.split("<|im_start|>user\n", 1)[-1].split("<|im_end|>", 1)[0]
+    answer = text.split("<|im_start|>assistant\n", 1)[-1]
+    if "</think>" in answer:
+        answer = answer.split("</think>", 1)[1]
+    answer = answer.split("<|im_end|>", 1)[0].rstrip("�")   # a cut multi-byte character at the cap
+    return prompt, answer
+
+
+def chat_needles(tokenizer) -> tuple[tuple[str, str], ...]:
+    """(normalized text, id) of the prompt and the answer of each of the extended suite's 16 chat-NLL
+    traces, decoded with ``tokenizer``; none when ``tokenizer`` cannot reproduce the suite's token ids
+    (the extended suite refuses such a model, so its chat NLL cannot be contaminated)."""
+    if tokenizer is None:
+        return ()
+    from .suites import check_tokenizer, load_dev_manifest, load_extended_inputs
+    try:
+        check_tokenizer(tokenizer, load_dev_manifest())
+    except Exception:          # SuiteNotApplicable, or a tokenizer that cannot even encode the texts
+        return ()
+    out = []
+    for rec in load_extended_inputs()[1]:
+        ids = [int(t) for t, m in zip(rec["input_ids"], rec["attention_mask"]) if m]
+        prompt, answer = _trace_parts(tokenizer.decode(ids, skip_special_tokens=False))
+        row = rec["source_row_index"]
+        out += [(normalize(text), f"{CHAT_PREFIX}row-{row}/{part}")
+                for text, part in ((prompt, "prompt"), (answer, "answer")) if normalize(text)]
+    return tuple(out)
+
+
+def _advice(ids) -> str:
+    chat = any(i.startswith(CHAT_PREFIX) for i in ids)
+    test = any(not i.startswith(CHAT_PREFIX) for i in ids)
+    return "; ".join(a for a, on in ((ADVICE, test), (CHAT_ADVICE, chat)) if on)
+
+
 def check_texts(texts, where: str, probes=None) -> None:
     hits = contained(texts, probes)
     if hits:
         ids = sorted({pid for _, pid in hits})
-        raise ContaminationError(f"{where}: {len({i for i, _ in hits})} item(s) contain {len(ids)} test problem(s) "
-                                 f"({', '.join(ids[:5])}{', ...' if len(ids) > 5 else ''}); {ADVICE}")
+        raise ContaminationError(f"{where}: {len({i for i, _ in hits})} item(s) contain {len(ids)} evaluation "
+                                 f"item(s) ({', '.join(ids[:5])}{', ...' if len(ids) > 5 else ''}); {_advice(ids)}")
 
 
 def check_blocks(tokenizer, blocks, where: str, bos: int | None = None, probes=None) -> None:

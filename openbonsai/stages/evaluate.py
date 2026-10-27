@@ -137,7 +137,8 @@ def compare_blocks(ctx, tok) -> torch.Tensor:
     blocks, _ = calibrate.build(tok, sources, seq_len=int(c["seq_len"]), seed=int(c["seed"]),
                                 chat_kwargs=adapter.chat_kwargs(thinking=False), bos=adapter.bos_id(tok),
                                 traces_path=ctx.run.stage_dir("traces", create=False) / "traces.jsonl",
-                                local_files_only=bool(ctx.cfg["model"].get("local_files_only")), where="eval.compare")
+                                local_files_only=bool(ctx.cfg["model"].get("local_files_only")), where="eval.compare",
+                                chat_guard=False)   # held-out scoring data, not training data
     return blocks
 
 

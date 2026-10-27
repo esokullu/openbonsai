@@ -16,6 +16,9 @@
         greedy chat generation on frozen GSM8K/HumanEval TEST subsets (docs/evaluation.md)
     openbonsai inspect PATH            summary of a state file, GGUF, latent checkpoint folder or run directory
 
+Errors print one line (``openbonsai: error: ...``) and exit 2; ``--debug`` (or
+OPENBONSAI_DEBUG=1) shows the traceback instead.
+
 A stage whose output exists with the same config hash is skipped; ``--force``
 reruns it from scratch, discarding its resumable work (with ``run``, also every
 later stage; distill then keeps its teacher shards unless distill itself is
@@ -29,6 +32,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
 import sys
 from pathlib import Path
@@ -172,17 +176,54 @@ def execute(ctx, stage: str, *, force=False, **kwargs) -> str:
     return "ran"
 
 
+# docs/adding-a-model.md and the README, "Base model without a chat template"
+NO_TEMPLATE_SETS = ("--set traces.enabled=false "
+                    "--set 'calibrate.sources=[{kind: wikitext2, n: 128}, {kind: ultrachat, n: 128, min_row: 6000}]' "
+                    "--set 'distill.teacher.sources=[{kind: wikitext2, n: 512}, {kind: ultrachat, n: 1536, "
+                    "min_row: 6000}]'")
+
+
+def check_calibration_batch(cfg: dict) -> None:
+    """The quantize stage runs the calibration blocks in batches of quantize.batch and refuses a remainder."""
+    counts = [max(int(s.get("n") or 0), 0) for s in cfg["calibrate"].get("sources") or ()]
+    total, batch = sum(counts), int(cfg["quantize"].get("batch") or 0)
+    if batch <= 0 or not total or total % batch == 0:
+        return
+    last = max(i for i, n in enumerate(counts) if n)
+    raise ConfigError(f"calibrate.sources ask for {total} blocks in all, not a multiple of quantize.batch "
+                      f"({batch}), which the quantize stage refuses; make the total a multiple of it, e.g. "
+                      f"--set calibrate.sources.{last}.n={counts[last] + batch - total % batch}, "
+                      f"or set quantize.batch to a divisor of {total}")
+
+
+def check_chat_template(ctx) -> None:
+    """The traces stage renders its prompts with the model's chat template."""
+    if not getattr(ctx.load_tokenizer(), "chat_template", None):
+        raise ConfigError("the model's tokenizer has no chat template, so the traces stage cannot render its "
+                          "prompts; disable traces and use text sources instead (docs/adding-a-model.md, base "
+                          f"model without a chat template): {NO_TEMPLATE_SETS}")
+
+
 def preflight(ctx, stages=STAGES) -> None:
     """Fail before any work on settings a later stage of ``stages`` (those this command runs) would refuse."""
     from .config import distill_uses_endpoints, upstream
     from .stages.endpoints import ternary_endpoints
     from .stages.export import EXPORT_NEEDS_DISTILLED_ENDPOINTS, check_latent_out, resolve_format
+    for stage in stages:              # a stage reading a disabled stage's output (StageContext.require_inputs)
+        if stage_enabled(ctx.cfg, stage):
+            for u in upstream(ctx.cfg, stage):
+                if not stage_enabled(ctx.cfg, u):
+                    raise ConfigError(f"{stage} reads the {u} stage's output, but {u} is disabled; "
+                                      f"enable it or give {stage} its own path: sources")
+    if "quantize" in stages:
+        check_calibration_batch(ctx.cfg)
     adapter = ctx.adapter()
     endpoints_on = stage_enabled(ctx.cfg, "endpoints")
     if endpoints_on and "endpoints" in stages:
         ternary_endpoints(ctx.cfg, adapter)    # unknown modes; ternary for a tied table
     if stage_enabled(ctx.cfg, "traces") and "traces" in stages:
         from .stages.traces import checked_chat_kwargs
+        check_chat_template(ctx)
         checked_chat_kwargs(adapter, bool(ctx.cfg["traces"].get("thinking")), "traces.thinking")
     if stage_enabled(ctx.cfg, "eval") and "eval" in stages:
         from .eval.reasoning import SUITES
@@ -191,7 +232,7 @@ def preflight(ctx, stages=STAGES) -> None:
             check_thinking_modes(ctx.cfg, adapter)   # a mode the chat template cannot do fails now, not at eval
     if stage_enabled(ctx.cfg, "export") and "export" in stages:
         explicit_latent = (ctx.cfg["export"].get("format") or "auto") == "latent"
-        # refuses an explicit ptq1_0-gguf the model (with its tokenizer) cannot take
+        # refuses an explicit ptq1_0-gguf the model (its tokenizer, its weights' file format) cannot take
         fmt, _ = resolve_format(ctx.cfg, adapter, None if explicit_latent else ctx.model_dir(weights=False))
         out = ctx.cfg["export"].get("out")
         if out and fmt == "latent":
@@ -279,6 +320,11 @@ def cmd_inspect(args) -> int:
     return 0
 
 
+def _debug(p: argparse.ArgumentParser, default) -> None:
+    p.add_argument("--debug", action="store_true", default=default,
+                   help="show the traceback of an error (also OPENBONSAI_DEBUG=1)")
+
+
 def _common(p: argparse.ArgumentParser) -> None:
     p.add_argument("--model", help="HF model id or local directory (sets model.path)")
     p.add_argument("--config", help="YAML config (defaults to the run's saved run.yaml)")
@@ -288,6 +334,7 @@ def _common(p: argparse.ArgumentParser) -> None:
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(prog="openbonsai", description="Ternary (PTQ1_0) compression of dense LLMs.")
     ap.add_argument("--version", action="version", version=f"openbonsai {__version__}")
+    _debug(ap, False)
     sub = ap.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("run", help="run every stage into one run directory")
     r.add_argument("--out", required=True, help="run directory")
@@ -295,6 +342,7 @@ def build_parser() -> argparse.ArgumentParser:
     r.add_argument("--until", choices=STAGES, help="stop after this stage")
     r.add_argument("--force", action="append", choices=STAGES, help="rerun this stage and every later one")
     r.add_argument("--skip", action="append", choices=STAGES, help="do not run this stage")
+    _debug(r, argparse.SUPPRESS)       # also after the command; SUPPRESS keeps a --debug given before it
     r.set_defaults(func=cmd_run)
     for stage in STAGES:
         s = sub.add_parser(stage, help=f"run the {stage} stage")
@@ -320,23 +368,34 @@ def build_parser() -> argparse.ArgumentParser:
             s.add_argument("--verify", dest="verify", action="store_true", default=None,
                            help="verify the written file (the default)")
             s.add_argument("--no-verify", dest="verify", action="store_false", help="skip verification")
+        _debug(s, argparse.SUPPRESS)
         s.set_defaults(func=cmd_stage, stage=stage)
     i = sub.add_parser("inspect", help="summarize a state file, GGUF, latent checkpoint folder or run directory")
     i.add_argument("path")
+    _debug(i, argparse.SUPPRESS)
     i.set_defaults(func=cmd_inspect)
     return ap
 
 
+def _one_line(error: BaseException) -> str:
+    text = " ".join(str(error).split()) or type(error).__name__
+    return text if isinstance(error, (ConfigError, StageNotReady)) else f"{text} ({type(error).__name__})"
+
+
 def main(argv=None) -> int:
+    """Errors a user can act on (config, plan, data, missing inputs) print one line and a hint and return 2;
+    with --debug or OPENBONSAI_DEBUG=1 they propagate with their traceback."""
     args = build_parser().parse_args(argv)
-    from .eval.heldout import ContaminationError
-    from .formats.gguf import GGUFError
     from .stages.export import ExportError
+    debug = bool(getattr(args, "debug", False)) or os.environ.get("OPENBONSAI_DEBUG", "") not in ("", "0")
     try:
         return args.func(args)
-    except (ConfigError, FileNotFoundError, NotImplementedError, StageNotReady, ExportError, GGUFError,
-            ContaminationError) as error:
-        print(f"openbonsai: error: {error}", file=sys.stderr)
+    except (ValueError, FileNotFoundError, NotImplementedError, StageNotReady, ExportError) as error:
+        # ValueError covers ConfigError, ContaminationError, GGUFError, UnsupportedGeometry, SuiteNotApplicable
+        if debug:
+            raise
+        print(f"openbonsai: error: {_one_line(error)}", file=sys.stderr)
+        print("openbonsai: hint: rerun with --debug (or OPENBONSAI_DEBUG=1) for the traceback", file=sys.stderr)
         return 2
 
 

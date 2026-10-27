@@ -92,17 +92,35 @@ def default_name(model_path, fmt: str = "ptq1_0-gguf") -> str:
     return f"OpenBonsai-{model_basename(model_path)}-" + ("PTQ1_0" if fmt == "ptq1_0-gguf" else "ternary")
 
 
+def weights_problem(model_dir) -> str | None:
+    """Why the GGUF writer cannot read the checkpoint in ``model_dir``: it reads ``model.safetensors`` or its
+    index, and the folder has PyTorch ``.bin`` weights instead (None when it has safetensors, or no weight
+    files to tell by, such as a hub snapshot of the config and tokenizer only)."""
+    if model_dir is None:
+        return None
+    root = Path(model_dir)
+    if any((root / name).is_file() for name in ("model.safetensors", "model.safetensors.index.json")):
+        return None
+    bins = sorted({p.name for pattern in ("pytorch_model*.bin", "model*.bin", "*.bin.index.json")
+                   for p in root.glob(pattern)})
+    if not bins:
+        return None
+    return (f"the checkpoint has PyTorch weights ({bins[0]}) but no model.safetensors or "
+            "model.safetensors.index.json, which the GGUF writer reads; save it as safetensors first "
+            "(model.save_pretrained(folder, safe_serialization=True)) and pass that folder")
+
+
 def resolve_format(cfg: dict, adapter, model_dir=None) -> tuple[str, str | None]:
     """(``ptq1_0-gguf`` or ``latent``, why not the GGUF). ``auto`` falls back to latent when the adapter
     cannot write this model as a GGUF; an explicit ``ptq1_0-gguf`` it cannot write is refused. With
-    ``model_dir`` the tokenizer is checked too."""
+    ``model_dir`` the tokenizer and the weights' file format (``weights_problem``) are checked too."""
     from ..config import ConfigError
     fmt = cfg["export"].get("format") or "auto"
     if fmt not in FORMATS:
         raise ConfigError(f"export.format {fmt!r}: use one of {FORMATS}")
     if fmt == "latent":
         return "latent", None
-    reason = adapter.gguf_unsupported(model_dir)
+    reason = adapter.gguf_unsupported(model_dir) or weights_problem(model_dir)
     if fmt == "ptq1_0-gguf" and reason:
         raise ConfigError(f"export.format ptq1_0-gguf: {reason}. Use export.format latent (or auto)")
     return ("latent", reason) if reason else ("ptq1_0-gguf", None)
@@ -541,7 +559,7 @@ def export_gguf(adapter, source, model_dir, out, *, name: str, small: dict | Non
     ``load_legacy_pt`` dict; ``small``: distilled high-precision tensors (FP32,
     names relative to the text model); ``model_dir``: the model's files (config,
     tokenizer, checkpoint tensors kept in F32)."""
-    reason = adapter.gguf_unsupported(model_dir)
+    reason = adapter.gguf_unsupported(model_dir) or weights_problem(model_dir)
     if reason:
         raise ExportError(f"no PTQ1_0 GGUF for this model: {reason}. Export a latent checkpoint instead "
                           "(export.format latent or auto)")

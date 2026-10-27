@@ -3,7 +3,9 @@
 The traces become calibration and distillation data, so the quantized model
 is fitted on the distribution it actually produces. Prompts come from a JSONL
 file (``prompt``, ``question`` or ``messages`` per line) or from the first user
-turn of UltraChat rows below the calibration rows. Generation is greedy and
+turn of UltraChat rows below the calibration rows (default rows 5,000 to 5,999:
+rows below 5,000 hold the extended suite's chat-NLL prompts, which
+``load_prompts`` refuses). Generation is greedy and
 batched with left padding; every batch is written atomically as one part
 file, so a rerun resumes after the last finished batch.
 
@@ -54,7 +56,7 @@ def read_prompts(path, max_samples: int | None = None) -> list[list[dict]]:
     return prompts
 
 
-def ultrachat_prompts(path, *, rows=(0, 6000), n=128, seed=5090) -> list[list[dict]]:
+def ultrachat_prompts(path, *, rows=(5000, 6000), n=128, seed=5090) -> list[list[dict]]:
     """First user message of UltraChat rows [rows[0], rows[1]), deduplicated, seeded sample."""
     import pyarrow.parquet as pq
     table = pq.read_table(path, columns=["messages"]).column("messages").to_pylist()[rows[0]:rows[1]]
@@ -168,7 +170,8 @@ def generate_batch(model, tokenizer, prompts: list[list[dict]], *, chat_kwargs: 
 
 
 def load_prompts(ctx) -> list[list[dict]]:
-    """The trace prompts; refuses any that contain a reasoning suite's test problem (eval.heldout)."""
+    """The trace prompts; refuses any that contain a reasoning suite's test problem or a prompt or answer of
+    the extended suite's chat NLL (eval.heldout)."""
     from ..eval import heldout
     spec = ctx.cfg["traces"]["prompts"] or {}
     kind = spec.get("kind", "jsonl")
@@ -183,11 +186,13 @@ def load_prompts(ctx) -> list[list[dict]]:
         heldout.check_source({"kind": "ultrachat", **spec}, "traces.prompts")
         path = resolve_file({"kind": "ultrachat", **spec},
                             local_files_only=bool(ctx.cfg["model"].get("local_files_only")))
-        prompts = ultrachat_prompts(path, rows=tuple(spec.get("rows", (0, 6000))), n=int(n or 128),
+        prompts = ultrachat_prompts(path, rows=tuple(spec.get("rows", (5000, 6000))), n=int(n or 128),
                                     seed=int(spec.get("seed", 5090)))
     else:
         raise ValueError(f"unknown traces.prompts.kind {kind!r}")
-    heldout.check_texts(["\n".join(str(m.get("content", "")) for m in msgs) for msgs in prompts], "traces.prompts")
+    probes = heldout.needles() + heldout.chat_needles(ctx.load_tokenizer())
+    heldout.check_texts(["\n".join(str(m.get("content", "")) for m in msgs) for msgs in prompts], "traces.prompts",
+                        probes)
     return prompts
 
 

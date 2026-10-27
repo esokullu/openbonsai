@@ -1,0 +1,57 @@
+dump: n_ctx 256, n_vocab 248320, n_chunk 4
+[transformers] `causal_conv1d_fn` is falling back to its reference PyTorch implementation because `causal_conv1d` is not installed. This is correct but much slower; install `causal_conv1d` for the optimized kernel.
+[transformers] `chunk_gated_delta_rule` is falling back to its reference PyTorch implementation because `flash-linear-attention` is not installed. This is correct but much slower; install `flash-linear-attention` for the optimized kernel.
+layer 0 linear_attention 0.9s |h| 6.86
+layer 1 linear_attention 0.9s |h| 8.70
+layer 2 linear_attention 1.0s |h| 8.50
+layer 3 full_attention 0.6s |h| 13.29
+layer 4 linear_attention 0.9s |h| 14.81
+layer 5 linear_attention 0.9s |h| 17.46
+layer 6 linear_attention 0.7s |h| 20.91
+layer 7 full_attention 0.7s |h| 22.38
+layer 8 linear_attention 0.7s |h| 23.27
+layer 9 linear_attention 0.8s |h| 25.52
+layer 10 linear_attention 0.7s |h| 29.17
+layer 11 full_attention 0.6s |h| 30.27
+layer 12 linear_attention 0.8s |h| 30.48
+layer 13 linear_attention 0.7s |h| 32.43
+layer 14 linear_attention 0.8s |h| 34.98
+layer 15 full_attention 0.6s |h| 36.12
+layer 16 linear_attention 0.7s |h| 35.94
+layer 17 linear_attention 0.8s |h| 38.74
+layer 18 linear_attention 0.7s |h| 44.63
+layer 19 full_attention 0.6s |h| 51.15
+layer 20 linear_attention 0.7s |h| 58.91
+layer 21 linear_attention 0.7s |h| 67.40
+layer 22 linear_attention 0.8s |h| 80.34
+layer 23 full_attention 0.6s |h| 88.76
+layer 24 linear_attention 0.7s |h| 101.68
+layer 25 linear_attention 0.7s |h| 111.84
+layer 26 linear_attention 0.8s |h| 123.99
+layer 27 full_attention 0.6s |h| 135.51
+layer 28 linear_attention 0.8s |h| 155.81
+layer 29 linear_attention 0.8s |h| 171.14
+layer 30 linear_attention 0.8s |h| 188.01
+layer 31 full_attention 0.6s |h| 245.30
+{
+ "mode": "orig",
+ "e2e": "",
+ "dump": "C:/Users/esoku/AppData/Local/Temp/claude/D--openbonsai/a378e74a-dcb3-49cb-a9bc-29dd6c56e1f4/scratchpad/fixcheck/llama_e2e_c256x4.kld",
+ "n_ctx": 256,
+ "n_chunk": 4,
+ "scored_tokens": 508,
+ "ppl_ref": 10.090925623303358,
+ "ppl_llama_from_dump": 13697.735924862025,
+ "ppl_ref_per_chunk_cumulative": [
+  8.474107789649416,
+  8.278271353160585,
+  9.791772260918695,
+  10.090925623303358
+ ],
+ "mean_kl_llama_vs_ref": 7.460499938241042,
+ "max_kl": 17.01212380847786,
+ "top1_agreement": 0.04133858267716536,
+ "nll_corr": 0.20476800621170171,
+ "mean_abs_nll_diff": 7.29029874197024,
+ "seconds": 27.032313585281372
+}

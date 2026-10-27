@@ -13,7 +13,8 @@ starts with BOS and carries seq_len - 1 data tokens.
 The reasoning suites' TEST problems (GSM8K, HumanEval) never enter the blocks:
 a source naming a test split is refused, and so are blocks whose text contains
 a frozen test problem (openbonsai.eval.heldout). Math or code calibration data
-must come from training splits.
+must come from training splits. Blocks that contain a prompt or an answer of the
+extended suite's chat NLL are refused too (``heldout.chat_needles``).
 
 Output: ``calib/tokens.npy`` (int32 [N, seq_len]) and ``calib/sources.json``.
 """
@@ -140,13 +141,15 @@ def jsonl_blocks(tok, path, seq_len, n, seed, *, chat_kwargs=None, bos=None, shu
 
 
 def build(tok, sources, *, seq_len=2048, seed=0, chat_kwargs=None, bos=None, traces_path=None,
-          local_files_only=False, where="calibration"):
+          local_files_only=False, where="calibration", chat_guard=True):
     """Blocks from every source in order, then one seeded permutation.
 
-    Refuses evaluation test data (``heldout``; ``where`` names the data in the error).
-    Returns (LongTensor [N, seq_len], per-source report).
+    Refuses evaluation test data (``heldout``; ``where`` names the data in the error) and, with
+    ``chat_guard``, the extended suite's chat-NLL prompts and answers (training data only: calibration
+    and the distillation teacher). Returns (LongTensor [N, seq_len], per-source report).
     """
     from ..eval import heldout
+    probes = heldout.needles() + (heldout.chat_needles(tok) if chat_guard else ())
     blocks, report = [], []
     for k, src in enumerate(sources):
         kind, n = src.get("kind"), int(src.get("n") or 0)
@@ -173,7 +176,7 @@ def build(tok, sources, *, seq_len=2048, seed=0, chat_kwargs=None, bos=None, tra
                                shuffle=bool(src.get("shuffle", False)))
         if len(got) != n:
             raise ValueError(f"{kind}: only {len(got)} blocks of {seq_len} tokens available, {n} requested")
-        heldout.check_blocks(tok, got, f"{where} source {k} ({kind})", bos=bos)
+        heldout.check_blocks(tok, got, f"{where} source {k} ({kind})", bos=bos, probes=probes)
         blocks += got
         report.append({"kind": kind, "blocks": n, "path": str(path), "sha256": file_sha256(path),
                        **{k: src[k] for k in ("repo", "revision", "file", "min_row", "seed") if k in src}})

@@ -84,9 +84,14 @@ The package ports of `experiments/` (core/gptq, stages/quantize, endpoints, dist
 | `runs/2026-10-27-gptq-ternary-256-norefit/` | 256 blocks, no refit, per-module signs: 3.2954, ARC 13 |
 | `runs/2026-10-27-gptq-shared-256/` | Same with one sign vector per width (Prism's layout): 3.3183, ARC 15; extended suite 3.103, ARC 78/100, chat 1.964 |
 | `runs/2026-10-27-endpoints-256/` | Endpoints on the per-module-sign decoder: one line of log, no result |
-| `runs/2026-10-27-endpoints-shared-256/` | Ternary endpoints on the shared-sign decoder: head only 3.3831 (ARC 16), embedding only 3.4161 (11), both 3.4793 (13) |
+| `runs/2026-10-27-endpoints-shared-256/` | Ternary endpoints on the shared-sign decoder: head only 3.3831 (ARC 16), embedding only 3.4161 (11), both 3.4793 (13) (`stdout.log`, progress bars collapsed to their last state) |
 | `runs/gguf-test/` | The PTQ1_0 GGUF exporter on a synthetic 9B state with edge cases: export logs, verification reports, a negative control, and Prism's load log |
-| not copied yet | The distillation runs `2026-10-27-e2e-kd-shared-v1` (2.892, ARC 19) and `-small-v1` (2.884), and the GGUF with its Prism perplexity logs (`2026-10-27-gguf-shared-v1`: 11.93, against 16.51 for the official model). Their numbers are quoted in [../docs/method.md](../docs/method.md). |
+| `runs/gguf-test/runtime-parity/` | Prism's logits against a PyTorch FP32 reference of the same synthetic state (`ref_vs_llama.py`): mean KL 0.0028 nats, top-1 95.1% over 508 tokens (4 x 256, WikiText-2 test) with the distilled scales of the file (`ref_fq_e2e`); 0.068 / 68.1% against the reference without them (`ref_fq_plain_vs_e2efile`); BF16 weights as a baseline (`ref_orig`). The synthetic state has perplexity about 13,700; the check was not run on the distilled model. The 252 MB logit dump is not copied |
+| `runs/2026-10-27-bf16-extended/` | BF16 Qwen3.5-9B: dev 2.423 (ARC 19), extended suite 2.218, ARC 97/100, chat 0.554 |
+| `runs/2026-10-27-e2e-kd-shared-v1/` | Scale distillation of the all-ternary shared-sign state, 4.2M tokens (`log.txt`): 2.892, ARC 19; extended 2.626, ARC 87/100, chat 1.318 |
+| `runs/2026-10-27-e2e-kd-shared-small-v1/` | The same with the small high-precision tensors trained too: 2.884, ARC 19; extended 2.616, ARC 87/100, chat 1.308 |
+| `runs/2026-10-27-gguf-shared-v1/` | The distilled state exported as a PTQ1_0 GGUF (`export.log`, `*.export.json`) and Prism's CPU perplexity (WikiText-2 test, 8 x 512): 11.93, against 16.51 for the official model (`prism_ppl_*.log`). The GGUF itself is not copied |
+| `runs/2026-10-27-accept-256/eval/` | The package's own `openbonsai eval` of `2026-10-27-gptq-ternary-256-norefit`'s state on the GPU (acceptance run): dev 3.293, ARC 14; extended 3.082, ARC 67/100, chat 1.948 |
 
 **Starting from Prism's weights (separate experiment, not a from-scratch result):**
 

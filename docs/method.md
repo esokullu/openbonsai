@@ -16,7 +16,7 @@ Each row adds one step to the row above it, unless it says otherwise.
 
 | Step | Dev NLL | ARC /20 | Wiki 16K | ARC /100 | Chat | Source |
 |---|---|---|---|---|---|---|
-| BF16 Qwen3.5-9B | 2.423 | 19 | 2.218 | 97 | 0.554 | dev: `research/experiments/out/quick_eval.jsonl`; Wiki 16K and ARC /100: `research/runs/2026-10-26-5090-pilot/report.md` (2.2175, 97); all three extended numbers also in local run `2026-10-27-bf16-extended.jsonl` (not copied into `research/runs/`) |
+| BF16 Qwen3.5-9B | 2.423 | 19 | 2.218 | 97 | 0.554 | dev: `research/experiments/out/quick_eval.jsonl`; Wiki 16K and ARC /100: `research/runs/2026-10-26-5090-pilot/report.md` (2.2175, 97); all three extended numbers also in `research/runs/2026-10-27-bf16-extended/` |
 | Plain ternary rounding (TWN), no rotation | 10.20 | 9 | | | | same |
 | Same, rotated | 9.10 | 1 | | | | same |
 | Rotated, least-squares scales (RTN) | 8.94 | 4 | | | | same |
@@ -27,8 +27,8 @@ Each row adds one step to the row above it, unless it says otherwise.
 | + ternary head | 3.383 | 16 | 3.167 | 74 | 2.051 | `research/runs/2026-10-27-endpoints-shared-256/` |
 | Instead: ternary embedding only | 3.416 | 11 | 3.218 | 59 | 2.139 | same |
 | + ternary head and embedding (all ternary, ~2 GB) | 3.480 | 13 | 3.281 | 62 | 2.225 | same, and step 0 of the next row |
-| + scale distillation, 4.2M tokens | **2.892** | **19** | **2.626** | **87** | **1.318** | local run `2026-10-27-e2e-kd-shared-v1` (not copied into `research/runs/`) |
-| + small high-precision tensors trained too | 2.884 | 19 | 2.616 | 87 | 1.308 | local run `2026-10-27-e2e-kd-shared-small-v1` (same) |
+| + scale distillation, 4.2M tokens | **2.892** | **19** | **2.626** | **87** | **1.318** | `research/runs/2026-10-27-e2e-kd-shared-v1/log.txt` |
+| + small high-precision tensors trained too | 2.884 | 19 | 2.616 | 87 | 1.308 | `research/runs/2026-10-27-e2e-kd-shared-small-v1/log.txt` |
 | Official Ternary Bonsai 2 9B, for reference | 3.191 | 17 | | | | `research/runs/2026-10-27-bonsai-start-convert/eval_bf16.json` (PyTorch, unmodified official weights); 3.192 and ARC 16 in Prism's CPU runtime |
 
 All rows round in groups of 128 weights, and keep the embedding and head in BF16 until the endpoint rows. The three rounding rows use no calibration data: "TWN" is the Ternary Weight Networks rule (threshold 0.7 × mean |w|, scale = mean |w| above it), and "RTN" searches the threshold for the least squared error. They round every decoder linear layer, `in_proj_a`/`in_proj_b` of the Gated DeltaNet layers (Qwen3.5's linear-attention layers, three of every four) included. The GPTQ rows keep those two in high precision (section 2). The ternary-endpoint rows were scored with dense dequantized weights; the "all ternary" row repeats the first evaluation of the distillation run, which uses the runtime arithmetic (the dense evaluation gave 3.479, ARC 13, Wiki 16K 3.280, ARC /100 63, chat 2.222).
@@ -37,7 +37,7 @@ All rows round in groups of 128 weights, and keep the embedding and head in BF16
 
 Three datasets feed the pipeline, all at pinned revisions. The numbers below are those of `examples/qwen3_5-9b.yaml`.
 
-- **Traces (AYOT).** The BF16 model answers 160 UltraChat first-turn prompts, from rows 0 to 5,999, with its own chat template. Decoding is greedy, without thinking, up to 512 tokens. The ScaleQ paper calls this "attend to your own thoughts": the compressed model is fitted on the text the model actually produces, not only on text written by people.
+- **Traces (AYOT).** The BF16 model answers 160 UltraChat first-turn prompts, from rows 5,000 to 5,999, with its own chat template (rows below 5,000 hold the extended suite's chat-NLL prompts). Decoding is greedy, without thinking, up to 512 tokens. The ScaleQ paper calls this "attend to your own thoughts": the compressed model is fitted on the text the model actually produces, not only on text written by people.
 - **Calibration (quantize and endpoints).** 256 blocks of 2,048 tokens: 128 from WikiText-2 *train*, 96 UltraChat conversations from row 6,000 on (rendered with the chat template), and 32 from the traces.
 - **Distillation.** 2,048 sequences of 2,048 tokens (4.2M tokens): 512 WikiText-2 *train*, 24 traces and 1,512 UltraChat.
 
@@ -126,7 +126,7 @@ The run: a teacher pass stores the top-64 log-probabilities of 4.2M tokens (abou
 
 The final state goes into Prism's PTQ1_0 GGUF: 28 bytes per 128 weights, Prism's `prism.hadamard.*` metadata, F32 norms and Gated DeltaNet tensors, and the model's tokenizer and chat template. For the 9B config the tensor layout and metadata keys equal the official Ternary-Bonsai-2-9B file, and both files are 1,997,486,976 bytes. The export then re-reads the file and checks it: every block decoded against the state, every F32 tensor bit for bit, and a function check in FP64 through the runtime's own transform. Format details: [formats.md](formats.md).
 
-In Prism's llama.cpp (CPU, WikiText-2 test, 8 chunks of 512 tokens), the result has perplexity 11.93, against 16.51 for the official model; the same in-domain caveat applies. Prism's runtime matches our PyTorch reference of the same weights with a mean KL of 0.0028 nats and 95% top-1 agreement. It quantizes activations to 8 bits, so the two are not identical. The perplexity logs are local (run `2026-10-27-gguf-shared-v1`) and not yet copied into `research/runs/`; the KL check's log is not in the repository either.
+In Prism's llama.cpp (CPU, WikiText-2 test, 8 chunks of 512 tokens), the result has perplexity 11.93, against 16.51 for the official model; the same in-domain caveat applies. Prism's runtime also matches our PyTorch reference of the same weights with a mean KL of 0.0028 nats and 95% top-1 agreement over 508 scored tokens (4 chunks of 256, WikiText-2 test), but that check ran on the exporter's synthetic test state (round-to-nearest codes with edge cases, perplexity about 13,700, so not a usable model; `research/runs/gguf-test/runtime-parity/`), not on the distilled model. Prism quantizes activations to 8 bits, so the two are not identical. The perplexity logs and the export report are in `research/runs/2026-10-27-gguf-shared-v1/`.
 
 ## What did not work
 

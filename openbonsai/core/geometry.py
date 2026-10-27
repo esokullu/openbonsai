@@ -5,10 +5,11 @@ that divides every rotated input width. One sign vector per width. Prism's
 PTQ1_0 runtime stores exactly one ``block_size`` and one sign vector per width,
 so a model whose widths would need mixed blocks is not representable.
 
-Prism's runtime builds its rotation for any power-of-two block, but it has
-only been run with block 4096 (Ternary-Bonsai-2-9B and our 9B export);
-``block_note`` says so for any other block (quantize logs it, the export
-records it).
+Prism's runtime builds its rotation for any power-of-two block. It has run
+real models only at block 4096 (the official Ternary-Bonsai-2-9B and our 9B
+export), and tiny random models at block 128 in our tests; other blocks, such
+as 2048 for Llama 3.1 8B, are untested on real weights. ``block_note`` says so
+for any block other than 4096 (quantize logs it, the export records it).
 """
 from __future__ import annotations
 
@@ -22,7 +23,7 @@ from .hadamard import seeded_signs, validate_rotation
 
 MAX_BLOCK = 4096
 GROUP = 128
-PRISM_VERIFIED_BLOCK = 4096   # the only Hadamard block Prism's runtime has been verified with
+PRISM_VERIFIED_BLOCK = 4096   # the only Hadamard block Prism's runtime has run real models at
 
 
 class UnsupportedGeometry(ValueError):
@@ -63,11 +64,12 @@ def derive_block(widths, *, group: int = GROUP, max_block: int = MAX_BLOCK) -> i
 
 
 def block_note(block: int) -> str | None:
-    """A note for a block Prism's runtime has not been verified with (None for 4096)."""
+    """A note for a block Prism's runtime has not run a real model at (None for 4096)."""
     if int(block) == PRISM_VERIFIED_BLOCK:
         return None
-    return (f"Hadamard block {block}: Prism's runtime has been verified with block {PRISM_VERIFIED_BLOCK} only "
-            "(it accepts any power of two; check the exported model in Prism)")
+    return (f"Hadamard block {block}: Prism's runtime accepts any power-of-two block, but it has run real models "
+            f"only at block {PRISM_VERIFIED_BLOCK} (and tiny random models at 128 in our tests); block {block} is "
+            "untested on real weights, so check the exported model in Prism")
 
 
 def derive_geometry(widths, hidden: int, *, group: int = GROUP, max_block: int = MAX_BLOCK) -> Geometry:

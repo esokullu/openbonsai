@@ -1,0 +1,17 @@
+{
+ "source": "D:/openbonsai/runs/2026-10-27-gptq-ternary-256-norefit/ternary_state.pt",
+ "suite": "dev",
+ "nll": 3.2933654916959787,
+ "ppl": 26.93335527961985,
+ "scored_tokens": 2048,
+ "arc_correct": 14,
+ "arc_total": 20,
+ "arc_preds": "ABABDAADADADBCCDBBDB",
+ "manifest_frozen_sha256": "8021d9cc8f54943a3b816af74cbc41d588173d385f51b73a681e979393ef5fdf",
+ "generations": [
+  "1. **Wipe down surfaces regularly to prevent buildup of dust and grime.\n2. **Use a dedicated cleaning cloth to wipe down surfaces regularly to prevent buildup of dust and grime.\n3. **Use a dedicated cleaning cloth to wipe down surfaces regularly to prevent buildup of dust and grime.<|im_end|>",
+  "Based on the provided numbers, here is the breakdown:\n\n*   **Chickens:** There are **10** chickens.\n*   **Rabbits:** There are **28** rabbits.\n\n**Explanation:**\n*   Chickens have 10 heads and 28 legs.\n*   Rabbits have 10 heads and 28 legs.\n\n**Note:** The numbers provided are likely incorrect or misaligned with the actual numbers. The numbers provided are likely incorrect or misaligned with the actual numbers.<|im_end|>",
+  "Here is a Python function that checks whether parentheses are balanced, ignoring other characters. It includes an empty string case.\n\n```python\ndef check_parentheses(text):\n    # Check whether parentheses are balanced\n    # Ignore other characters\n    # Include an empty string case\n    # Return whether parentheses are balanced\n    # Return whether parentheses are balanced\n    # Return whether parentheses are balanced\n    # Return whether parentheses are balanced\n    # Return whether parentheses are balanced\n    # Return whether parentheses are balanced\n    # Return whether parentheses are balanced\n    # Return whether parentheses are balanced\n    # Return whether parentheses are balanced",
+  "Based on the context provided, here is a more formal Turkish translation:\n\n**Yarın gelemiyorum, toplantıyı başka güne alsak olur mu?**\n\n**Yarın gelemiyorum, toplantıyı başka güne alsak olur mu?**\n\n**Yarın gelemiyorum, toplantıyı başka güne alsak olur mu?**\n\n**Yarın gelemiyorum, toplantıyı başka güne asak olur mu?**\n\n**Yarın gelemiyorum, toplantıyı başka güne asak olur mu?**\n\n**Yarın gelemiyorum, toplantıyı başka"
+ ]
+}

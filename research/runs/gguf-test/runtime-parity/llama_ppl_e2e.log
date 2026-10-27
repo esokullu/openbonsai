@@ -1,0 +1,11 @@
+0.00.992.502 I cmn          init: llama threadpool init, n_threads = 12
+0.01.348.038 I 
+0.01.348.090 I system_info: n_threads = 12 (n_threads_batch = 12) / 32 | CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | LLAMAFILE = 1 | OPENMP = 1 | REPACK = 1 | 
+0.01.348.578 I perplexity: saving all logits to C:/Users/esoku/AppData/Local/Temp/claude/D--openbonsai/a378e74a-dcb3-49cb-a9bc-29dd6c56e1f4/scratchpad/fixcheck/llama_e2e_c256x4.kld
+0.01.348.605 I perplexity: tokenizing the input ..
+0.01.351.335 I perplexity: tokenization took 2.726 ms
+0.01.351.361 I perplexity: calculating perplexity over 4 chunks, n_ctx=256, batch_size=256, n_seq=1
+0.11.462.972 I perplexity: 10.08 seconds per pass - ETA 0.67 minutes
+[1]14401.5890,[2]17539.4107,[3]16022.9984,[4]13701.3152,
+0.42.101.346 I Final estimate: PPL = 13701.3152 +/- 1989.72291
+
