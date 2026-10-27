@@ -4,6 +4,8 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import sys
+import time
 
 import pytest
 import torch
@@ -36,6 +38,15 @@ ROOT = Path(__file__).resolve().parents[1]
     ("Final Answer: -7 degrees", "-7", "answer is"),
     ("So the answer is −5.", "-5", "answer is"),
     ("The answer is 12 apples, not 13.", "12", "answer is"),
+    # The marker's own clause: the number after its last "=", else its first number.
+    ("Answer: 16 - 3 - 4 = 9 ... 18", "9", "answer is"),
+    ("So the answer is: 3 + 4 = 7. Check: 7 - 4 = 3", "7", "answer is"),
+    ("The answer is 18 (6 boxes of 3).", "18", "answer is"),
+    ("**Answer:**\n\n18", "18", "answer is"),
+    ("The answer is 1,080.", "1080", "answer is"),
+    ("The answer is $3.50 per day.", "3.5", "answer is"),
+    ("The answer is 5 + 3 = 8, so she keeps 8 of 10.", "8", "answer is"),
+    ("The answer is x = ?\n42", "42", "answer is"),
     ("Step 1: 5 eggs. Step 2: 10 eggs. So 20 eggs in total.", "20", "last number"),
     ("x = 5-3 = 2", "2", "last number"),
     ("between 1,2,3 and 4", "4", "last number"),
@@ -56,9 +67,20 @@ def test_marker_precedence_boxed_over_hash_over_answer_is_over_last_number():
 @pytest.mark.parametrize("raw, norm", [("18", "18"), ("18.0", "18"), ("18.", "18"), ("1,080", "1080"),
                                        ("$1,080.00", "1080"), ("+5", "5"), ("-0", "0"), ("-0.50", "-0.5"),
                                        ("−12", "-12"), ("007", "7"), ("abc", None), ("", None),
-                                       ("inf", None), ("nan", None)])
+                                       ("inf", None), ("nan", None), ("9" * 64, "9" * 64), ("9" * 65, None),
+                                       ("1" * 5000, None)])
 def test_normalize_number(raw, norm):
     assert SC.normalize_number(raw) == norm
+
+
+def test_a_looping_digit_run_is_scored_wrong_not_a_crash():
+    """str(int(x)) refuses more than 4300 digits; such a run is a looping generation, never an answer."""
+    loop = "The total is " + "1234567890" * 600
+    assert SC.extract_answer(loop) == (None, "last number")
+    assert SC.extract_answer("The answer is " + "7" * 5000) == (None, "answer is")
+    assert SC.extract_answer(r"\boxed{12} then \boxed{" + "3" * 5000 + "}") == ("12", "boxed")
+    scored = R._score_gsm8k([{"id": "x", "row": 0, "answer": "12"}], [loop])
+    assert scored[0]["correct"] is False and scored[0]["pred"] is None
 
 
 def test_gsm8k_reference_parsing():
@@ -127,6 +149,88 @@ def test_executor_runs_in_a_separate_isolated_process(tmp_path):
     assert not (Path.cwd() / "scratch.txt").exists()
     results = SC.run_programs(["assert True\n", "assert False\n", "assert True\n"], workers=3)
     assert [r["status"] for r in results] == ["passed", "failed", "passed"]
+
+
+@pytest.mark.parametrize("completion, mode, dropped", [
+    # A fence indented under a markdown list item is dedented, not taken as a continuation.
+    ("Steps:\n1. Write it:\n   ```python\n   def add(xs):\n       return sum(xs)\n   ```\n", "function", 0),
+    ("1. Body:\n   ```python\n   total = 0\n   for x in xs:\n       total += x\n   return total\n   ```",
+     "continuation", 0),
+    # A future import in the model's code moves to the top of the program.
+    ("```python\nfrom __future__ import annotations\n\ndef add(xs: list[int]) -> int:\n    return sum(xs)\n```",
+     "function", 0),
+    # The model's own (wrong) asserts, prints, example calls and input() never run.
+    ("```python\ndef add(xs):\n    return sum(xs)\n\nassert add([1]) == 2, 'my own wrong test'\nprint(add([1, 2]))\n```",
+     "function", 2),
+    ("```python\ndef add(xs):\n    n = len(xs)\n    return sum(xs)\n\nn = int(input())\nfor _ in range(n):\n    pass\n```",
+     "function", 2),
+    ("    return sum(xs)\n\nprint(add([5]))\ninput()\n", "continuation", 2),
+    # Module-level values the definitions read stay (transitively), with their imports.
+    ("```python\nimport math\nBASE = 0\nOFFSET = BASE * 2\nunused = input()\n\ndef add(xs):\n"
+     "    return int(math.fsum(xs)) + OFFSET\n\nresult = add([1])\n```", "function", 2),
+    # Non-ASCII output works on every OS (python -X utf8).
+    ("```python\ndef add(xs):\n    print('→ summing Σ')\n    return sum(xs)\n```", "function", 0),
+])
+def test_humaneval_programs_are_cleaned_like_evalplus(completion, mode, dropped):
+    code, _ = SC.extract_code(completion, "add")
+    p = SC.prepare_program(PROMPT, code, TEST, "add")
+    assert (p["mode"], p["dropped"]) == (mode, dropped)
+    result = SC.run_program(p["program"])
+    assert result["status"] == "passed", (p["program"], result["stderr"])
+    if "__future__" in completion:
+        assert p["program"].startswith("from __future__ import annotations\n")
+    if dropped or "__future__" in completion:      # uncleaned, these fail (the review's reproductions)
+        raw = SC.prepare_program(PROMPT, code, TEST, "add", clean=False)["program"]
+        assert SC.run_program(raw)["status"] != "passed"
+
+
+def test_unparseable_code_is_left_as_written():
+    code = "def add(xs):\n    return sum(xs\n\nprint(1)\n"
+    p = SC.prepare_program(PROMPT, code, TEST, "add")
+    assert p["dropped"] == 0 and "print(1)" in p["program"]
+    assert SC.run_program(p["program"])["status"] == "failed"
+    assert SC.clean_program("x = 1\ny = f(x)\n", 1) == ("", 2)          # no definition reads them
+    assert SC.clean_program("def f():\n    return x\nx = 1\n", 1) == ("def f():\n    return x\nx = 1\n", 0)
+    # Lines before first_line (the problem's prompt) are never touched.
+    assert SC.clean_program("print(1)\ndef f(): pass\nprint(2)\n", 2) == ("print(1)\ndef f(): pass\n", 1)
+
+
+def test_executor_kills_every_process_the_program_starts(tmp_path):
+    psutil = pytest.importorskip("psutil")
+    pid_file = tmp_path / "pids.json"
+    spawn = ("import json, os, subprocess, sys, time\n"
+             "p = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)'])\n"
+             f"open({str(pid_file)!r}, 'w').write(json.dumps([os.getpid(), p.pid]))\n")
+    for tail, status in (("", "passed"), ("time.sleep(60)\n", "timeout")):
+        pid_file.unlink(missing_ok=True)
+        t0 = time.monotonic()
+        result = SC.run_program(spawn + tail, timeout=3)
+        assert result["status"] == status and time.monotonic() - t0 < 15
+        pids = json.loads(pid_file.read_text())
+        deadline = time.monotonic() + 3
+        while any(_alive(psutil, p) for p in pids) and time.monotonic() < deadline:
+            time.sleep(0.05)
+        assert not any(_alive(psutil, p) for p in pids), f"left running after a {status}: {pids}"
+
+
+def _alive(psutil, pid) -> bool:
+    try:
+        return psutil.Process(pid).status() != psutil.STATUS_ZOMBIE
+    except psutil.NoSuchProcess:
+        return False
+
+
+def test_executor_limits_output_and_memory():
+    t0 = time.monotonic()
+    flood = SC.run_program("import sys\nwhile True:\n    sys.stdout.write('x' * 65536)\n", timeout=20,
+                           output_limit=2**20)
+    assert flood["status"] == "failed" and "bytes of output" in flood["stderr"] and time.monotonic() - t0 < 10
+    loud = SC.run_program("print('y' * 100000)\n", output_limit=2**20)      # under the limit: fine
+    assert loud["status"] == "passed"
+    if os.name == "nt" or sys.platform.startswith("linux"):
+        hog = SC.run_program("x = bytearray(3 * 2**30)\n", memory_limit=256 * 2**20)
+        assert hog["status"] == "failed" and "MemoryError" in hog["stderr"]
+    assert SC.run_program("x = bytearray(16 * 2**20)\n", memory_limit=256 * 2**20)["status"] == "passed"
 
 
 def test_humaneval_canonical_solutions_pass_and_wrong_ones_fail():
