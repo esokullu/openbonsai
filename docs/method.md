@@ -41,6 +41,8 @@ Three datasets feed the pipeline, all at pinned revisions. The numbers below are
 - **Calibration (quantize and endpoints).** 256 blocks of 2,048 tokens: 128 from WikiText-2 *train*, 96 UltraChat conversations from row 6,000 on (rendered with the chat template), and 32 from the traces.
 - **Distillation.** 2,048 sequences of 2,048 tokens (4.2M tokens): 512 WikiText-2 *train*, 24 traces and 1,512 UltraChat.
 
+`examples/qwen3_5-9b-reasoning.yaml` (not measured yet) moves the data toward reasoning, as the ScaleQ paper suggests: traces from GSM8K, MATH, MBPP and OpenCodeInstruct *training* prompts answered with thinking on, plus UltraChat without thinking (`traces.sources`), then 128 of 256 calibration blocks and 640 of 1,536 distillation sequences from those traces.
+
 The reasoning suites' test problems are refused everywhere (see [evaluation.md](evaluation.md#reasoning-suites-gsm8k-humaneval)). WikiText-2 *train* in the data makes our WikiText *test* numbers partly in-domain. The measured runs took their traces from a fixed set of 128 prompts, disjoint from the chat-NLL prompts; the example config's sampled prompts are not (see [evaluation.md](evaluation.md#keeping-test-data-out)).
 
 ## 1. Rotation

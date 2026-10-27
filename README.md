@@ -102,6 +102,14 @@ openbonsai run --config examples/qwen3_5-9b.yaml --out runs/qwen3_5-9b
 
 This downloads Qwen3.5-9B and the calibration data at pinned revisions, then runs every stage into one run directory: traces, calibrate, quantize, endpoints, distill, export and eval. The result is `runs/qwen3_5-9b/export/OpenBonsai-Qwen3.5-9B-PTQ1_0.gguf`. Each stage is skipped when its output is current and resumes after an interruption (per layer, per teacher shard, per checkpoint). `--until STAGE`, `--force STAGE` and `--set SECTION.KEY=VALUE` control a run. A run checks many settings that a later stage would refuse before the first stage starts, and errors print one line (`--debug` shows the traceback, which a failed stage also writes to `logs/<stage>.log` in the run directory); `openbonsai inspect runs/qwen3_5-9b` shows what has finished.
 
+### Calibrating on the model's own math and code answers
+
+```
+openbonsai run --config examples/qwen3_5-9b-reasoning.yaml --out runs/qwen3_5-9b-reasoning
+```
+
+The same pipeline, with traces from several prompt sources (`traces.sources`), each with its own sample count, seed, thinking switch, token cap and batch: about 1,260 prompts from training splits (GSM8K, MATH, MBPP, OpenCodeInstruct, with thinking on and a 1,536-token cap; UltraChat with thinking off). Half of the calibration blocks and 42% of the distillation tokens come from these traces. Expect about 1.4M generated tokens, 2.1-2.7 h on one RTX 5090 at 150-190 tokens/s, and 3.6-4.2 h for the whole run (estimates; the config's comments break them down). The traces stage caches every batch, so an interrupted run resumes; test problems and near duplicates of them are kept out ([docs/evaluation.md](docs/evaluation.md#keeping-test-data-out)). The prompt kinds and record fields are documented in `openbonsai/stages/traces.py`. This config has not been measured yet.
+
 ### Your own fine-tune
 
 ```

@@ -1,11 +1,14 @@
 """AYOT trace generation: prompt parsing, batched greedy generation, resumable parts."""
 import json
+from pathlib import Path
 import warnings
 
 import pytest
 import torch
 
 from openbonsai.stages.traces import generate_batch, read_prompts
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def write_jsonl(path, rows):
@@ -43,7 +46,7 @@ def test_batched_generation_keeps_prompt_and_stops_at_eos(tiny_dir):
         assert rec["input_ids"][:rec["prompt_token_count"]] == prompt_ids
         gen = rec["input_ids"][rec["prompt_token_count"]:]
         assert len(gen) == rec["generated_token_count"] <= 12 and rec["attention_mask"] == [1] * len(rec["input_ids"])
-        assert rec["hit_generation_limit"] == (gen[-1] not in eos)
+        assert rec["hit_cap"] == (gen[-1] not in eos)
         assert not any(t in eos for t in gen[:-1])
     # The longest prompt has no padding, so it matches unbatched greedy decoding.
     alone = generate_batch(model, tok, prompts[1:], chat_kwargs=adapter.chat_kwargs(thinking=False), eos_ids=eos,
@@ -56,23 +59,31 @@ def test_trace_stage_resumes_by_batch(make_ctx, tmp_path):
     ctx = make_ctx(tmp_path / "run", "traces.batch=1")
     assert execute(ctx, "traces") == "ran"
     d = ctx.run.stage_dir("traces")
-    parts = sorted((d / "parts").glob("*.jsonl"))
+    parts = sorted((d / "cache").glob("*.json"))
     assert len(parts) == 2
     first = (d / "traces.jsonl").read_bytes()
-    # Interrupted after batch 0: the rerun resumes and regenerates only batch 1.
-    parts[1].unlink()
+    # Interrupted after one batch: the rerun resumes and regenerates only the other.
+    kept, lost = sorted(parts, key=lambda p: json.loads(p.read_text())["prompt_tokens"])
+    lost.unlink()
     ctx.run.clear_done("traces")
-    stamp = parts[0].stat().st_mtime_ns
-    assert execute(ctx, "traces") == "ran"
-    assert (d / "traces.jsonl").read_bytes() == first and parts[0].stat().st_mtime_ns == stamp
-    # --force regenerates every batch.
+    stamp = kept.stat().st_mtime_ns
     msgs = []
     log = ctx.log
     ctx.log = lambda stage: (lambda m: (msgs.append(m), log(stage)(m)))
+    assert execute(ctx, "traces") == "ran"
+    assert (d / "traces.jsonl").read_bytes() == first and kept.stat().st_mtime_ns == stamp
+    assert sum(": batch " in m for m in msgs) == 1 and lost.exists()
+    # --force regenerates every batch.
+    msgs.clear()
     assert execute(ctx, "traces", force=True) == "ran"
-    assert sum(m.startswith("batch ") for m in msgs) == 2 and (d / "traces.jsonl").read_bytes() == first
+    assert sum(": batch " in m for m in msgs) == 2 and (d / "traces.jsonl").read_bytes() == first
     summary = json.loads((d / "summary.json").read_text())
-    assert summary["records"] == 2 and summary["max_new_tokens"] == 24
+    assert summary["records"] == 2 and summary["max_new_tokens"] == 24 and summary["form"] == "prompts"
+    # The original form keeps prompt order and records what each trace is.
+    prompts = [json.loads(line)["prompt"] for line in (ROOT / "examples" / "prompts.jsonl").read_text().splitlines()]
+    rows = [json.loads(line) for line in (d / "traces.jsonl").read_text(encoding="utf-8").splitlines()]
+    assert [r["prompt"] for r in rows] == prompts[:2] and [r["row"] for r in rows] == [1, 2]
+    assert {(r["source"], r["kind"], r["thinking"], r["max_new_tokens"]) for r in rows} == {("jsonl", "jsonl", False, 24)}
 
 
 @pytest.mark.parametrize("multimodal", [False, True])

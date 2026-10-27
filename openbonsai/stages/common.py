@@ -55,7 +55,8 @@ class StageContext:
         return self.digests().tree(path) if path.is_dir() else None
 
     def file_digests(self, paths) -> dict:
-        return {p: self.digests().file(p) for p in paths}
+        """SHA-256 of each file (of each folder's files, for a folder ``path``)."""
+        return {p: self.digests().tree(p) if Path(p).is_dir() else self.digests().file(p) for p in paths}
 
     def stage_hash(self, stage: str) -> str:
         """Config sections, named file contents, model contents, upstream [config hash, output digest]."""

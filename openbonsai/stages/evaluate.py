@@ -234,9 +234,12 @@ def check_test_problems_absent(ctx, source: str, suites) -> None:
     if not stored:
         return
     probes = []
+    modes = R.thinking_modes(r.get("thinking", "off"))
     for suite in suites:
         sc = r.get(suite) or {}
-        _, problems = R.load_problems(suite, sc.get("n"), path=sc.get("path"),
+        # the larger of the modes' subsets (each is the first n of the same selection order)
+        size = max(R.FROZEN[suite]["n"] if n is None else n for n in (suite_size(r, suite, m) for m in modes))
+        _, problems = R.load_problems(suite, size, path=sc.get("path"),
                                       local_files_only=bool(ctx.cfg["model"].get("local_files_only")))
         probes += heldout.problem_needles(suite, problems)
     memo_path = ctx.run.stage_dir("eval") / "heldout-checked.json"
@@ -272,6 +275,21 @@ def check_thinking_modes(cfg, adapter) -> list[str]:
     return modes
 
 
+def suite_size(r: dict, suite: str, mode: str) -> int | None:
+    """``eval.reasoning.<suite>.n``, or ``n_thinking`` with thinking on when it is set (None: the frozen subset)."""
+    sc = r.get(suite) or {}
+    if mode == "on" and sc.get("n_thinking") is not None:
+        return int(sc["n_thinking"])
+    return None if sc.get("n") is None else int(sc["n"])
+
+
+def suite_batch(r: dict, mode: str) -> int:
+    """``eval.reasoning.batch``, or ``batch_thinking`` with thinking on when it is set."""
+    if mode == "on" and r.get("batch_thinking"):
+        return int(r["batch_thinking"])
+    return int(r.get("batch") or 16)
+
+
 def run_reasoning(ctx, model, tok, source: str, label: str, suites, *, identity: str, weights: str) -> dict:
     """The gsm8k/humaneval suites in every ``eval.reasoning.thinking`` mode; one result file each."""
     r = ctx.cfg["eval"]["reasoning"]
@@ -288,8 +306,8 @@ def run_reasoning(ctx, model, tok, source: str, label: str, suites, *, identity:
             memory_mb = sc.get("memory_mb", 2048)
             try:
                 res = R.run_suite(
-                    suite, model, tok, ctx.adapter(), thinking=mode, n=sc.get("n"), max_new_tokens=cap,
-                    batch=int(r.get("batch") or 16), device=ctx.device, log=log, cache_dir=cache,
+                    suite, model, tok, ctx.adapter(), thinking=mode, n=suite_size(r, suite, mode),
+                    max_new_tokens=cap, batch=suite_batch(r, mode), device=ctx.device, log=log, cache_dir=cache,
                     cache_key=identity, timeout=float(sc.get("timeout") or 10.0),
                     workers=int(sc.get("workers") or 4), path=sc.get("path"),
                     memory_limit=int(memory_mb) * 2**20 if memory_mb else None,

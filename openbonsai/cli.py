@@ -42,10 +42,12 @@ from . import __version__
 from .config import STAGES, ConfigError, load_config, stage_enabled
 from .rundir import RunDir, StageNotReady
 
-# Resumable units that are valid only for the inputs they were made from.
+# Resumable units that are valid only for the inputs they were made from. (The traces stage keys its
+# cached batches by content in traces/cache/, which survives config edits; parts/ is the old layout.)
 _RESUMABLE = {"traces": ("parts",), "quantize": ("layers",)}
 # Everything --force discards before rerunning a stage.
-_FORCE_RESET = {**_RESUMABLE, "distill": ("checkpoint.pt", "train.jsonl", "TRAIN_INPUTS.json")}
+_FORCE_RESET = {**_RESUMABLE, "traces": ("parts", "cache"),
+                "distill": ("checkpoint.pt", "train.jsonl", "TRAIN_INPUTS.json")}
 _TEACHER = ("teacher", "TEACHER_INPUTS.json")
 
 
@@ -227,9 +229,12 @@ def preflight(ctx, stages=STAGES) -> None:
     if endpoints_on and "endpoints" in stages:
         ternary_endpoints(ctx.cfg, adapter)    # unknown modes; ternary for a tied table
     if stage_enabled(ctx.cfg, "traces") and "traces" in stages:
-        from .stages.traces import checked_chat_kwargs
+        from .stages.traces import checked_chat_kwargs, trace_sources
         check_chat_template(ctx)
-        checked_chat_kwargs(adapter, bool(ctx.cfg["traces"].get("thinking")), "traces.thinking")
+        for src in trace_sources(ctx.cfg):        # also every source's kind-specific settings
+            checked_chat_kwargs(adapter, src["thinking"], "traces.thinking" if src["legacy"]
+                                else f"{src['where']}.thinking")
+    check_trace_supply(ctx, stages)
     if stage_enabled(ctx.cfg, "eval") and "eval" in stages:
         from .eval.reasoning import SUITES
         from .stages.evaluate import check_thinking_modes
@@ -253,6 +258,20 @@ def preflight(ctx, stages=STAGES) -> None:
                 raise ConfigError(EXPORT_NEEDS_DISTILLED_ENDPOINTS)
 
 
+def check_trace_supply(ctx, stages) -> None:
+    """The traces, when current, hold the blocks every stage of ``stages`` reads from them (they are
+    never capped; stages/traces.py)."""
+    from .stages.traces import check_trace_supply as check, trace_demands, trace_tokens
+    wanted = [s for s in ("calibrate", "distill") if s in stages]
+    if not wanted or not stage_enabled(ctx.cfg, "traces") or not trace_demands(ctx.cfg, wanted):
+        return
+    if ctx.stale_reason("traces") is not None:
+        return                     # checked again once the traces stage has run
+    tokens = trace_tokens(ctx.run.stage_dir("traces", create=False))
+    if tokens is not None:
+        check(ctx.cfg, tokens, ctx.adapter().bos_id(ctx.load_tokenizer()), stages=wanted)
+
+
 def cmd_run(args) -> int:
     from .stages.common import StageContext
     run = RunDir(args.out)
@@ -261,12 +280,15 @@ def cmd_run(args) -> int:
     preflight(ctx, [s for s in STAGES[:stop + 1] if s not in (args.skip or ())])
     forced = set(args.force or ())
     statuses = {}
+    planned = [s for s in STAGES[:stop + 1] if s not in (args.skip or ())]
     for i, stage in enumerate(STAGES[:stop + 1]):
         if stage in (args.skip or ()):
             statuses[stage] = "skipped by --skip"
             continue
         force = True if stage in forced else ("downstream" if any(STAGES.index(f) < i for f in forced) else False)
         statuses[stage] = execute(ctx, stage, force=force)
+        if stage == "traces":
+            check_trace_supply(ctx, planned[planned.index(stage) + 1:])   # before hours of later stages
     print(json.dumps({"run": str(run.root), "stages": statuses}, indent=1))
     return 0
 

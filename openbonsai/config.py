@@ -36,10 +36,15 @@ DEFAULTS: dict = {
     },
     "traces": {
         "enabled": True,
+        # one prompt source (kind jsonl or ultrachat), answered with max_new_tokens, thinking and batch below
         "prompts": {"kind": "jsonl", "path": None, "n": None},
+        # several prompt sources instead of prompts: a list of mappings, each with its own kind, n, seed,
+        # thinking, max_new_tokens and batch (defaults: the values below); stages/traces.py lists the kinds
+        "sources": None,
         "max_new_tokens": 512,
         "thinking": False,
         "batch": 8,
+        "seed": 0,                 # sources only: seeds the interleaving of the sources in traces.jsonl
     },
     "calibrate": {
         "seq_len": 2048,
@@ -100,12 +105,15 @@ DEFAULTS: dict = {
             "max_new_tokens": 512,         # cap with thinking off
             "max_new_tokens_thinking": 4096,  # cap with thinking on; rows reaching a cap are counted
             "batch": 16,                   # prompts per left-padded generate call (KV cache)
+            "batch_thinking": None,        # batch with thinking on (None: batch)
             "batch_check": 0,              # regenerate this many (most padded) rows of the first new batch alone; compare
             "dense": True,                 # ternary sources generate with dense dequantized weights (faster)
             "cache": True,                 # keep generations per batch in eval/generations/ (resume, rescore)
-            "gsm8k": {"n": 100, "path": None},   # first n of the frozen 100; path: local test parquet
+            # first n of the frozen 100; n_thinking: first n with thinking on (None: n); path: local test parquet
+            "gsm8k": {"n": 100, "n_thinking": None, "path": None},
             # timeout: seconds per program; memory_mb: memory of each program and what it starts
-            "humaneval": {"n": 50, "path": None, "timeout": 10.0, "workers": 4, "memory_mb": 2048},
+            "humaneval": {"n": 50, "n_thinking": None, "path": None, "timeout": 10.0, "workers": 4,
+                          "memory_mb": 2048},
         },
     },
 }
@@ -130,8 +138,28 @@ def deep_merge(base: dict, override: dict) -> dict:
 # depends on its ``kind``.
 SOURCE_KEYS = frozenset({"kind", "n", "path", "seed", "min_row", "repo", "revision", "file", "shuffle"})
 PROMPT_KEYS = frozenset({"kind", "path", "n", "rows", "seed", "repo", "revision", "file"})
+# traces.sources entries (stages/traces.py documents each key and kind).
+TRACE_KINDS = ("ultrachat", "gsm8k_train", "math_train", "mbpp_train", "opencodeinstruct", "parquet", "jsonl")
+TRACE_SOURCE_KEYS = frozenset({"kind", "name", "n", "seed", "shuffle", "thinking", "max_new_tokens", "batch",
+                               "path", "repo", "revision", "file", "column", "instruction", "max_chars", "rows",
+                               "subjects", "levels"})
 _SOURCE_LISTS = {("calibrate", "sources"), ("distill", "teacher", "sources"), ("eval", "compare", "sources")}
 _PROMPTS = ("traces", "prompts")
+_TRACE_SOURCES = ("traces", "sources")
+
+
+def _check_trace_sources(value, path: tuple) -> None:
+    where = ".".join(path)
+    if value is None:
+        return
+    if not isinstance(value, list) or not value or not all(isinstance(s, dict) for s in value):
+        raise ConfigError(f"{where} must be a nonempty list of mappings (or null for traces.prompts)")
+    for i, src in enumerate(value):
+        unknown = sorted(set(src) - TRACE_SOURCE_KEYS)
+        if unknown:
+            raise ConfigError(f"unknown keys in {where}.{i}: {unknown}; known: {sorted(TRACE_SOURCE_KEYS)}")
+        if src.get("kind") not in TRACE_KINDS:
+            raise ConfigError(f"{where}.{i}: kind must be one of {list(TRACE_KINDS)}, not {src.get('kind')!r}")
 
 
 def _check_sources(value, path: tuple) -> None:
@@ -162,6 +190,8 @@ def _check_mapping(value, schema: dict, path: tuple) -> None:
         sub = path + (key,)
         if sub in _SOURCE_LISTS:
             _check_sources(item, sub)
+        elif sub == _TRACE_SOURCES:
+            _check_trace_sources(item, sub)
         elif sub == _PROMPTS:
             if item is not None:
                 _check_mapping(item, {}, sub)
@@ -286,6 +316,10 @@ def stage_inputs(cfg: dict, stage: str) -> dict:
         if s == "distill" and not (value.get("train") or {}).get("small"):
             value.pop("lr_small", None)
             value.pop("lr_small_mat", None)
+        if s == "traces":
+            # Only the form in use: a single-source config hashes as it did before sources existed.
+            for key in (("sources", "seed") if value.get("sources") is None else ("prompts",)):
+                value.pop(key, None)
         out[s] = value
     return out
 
@@ -295,11 +329,14 @@ def _source_paths(sources) -> list[str]:
 
 
 def input_paths(cfg: dict, stage: str) -> list[str]:
-    """Local files a stage reads through ``path:`` entries (their contents are part of its hash)."""
+    """Local files (or folders) a stage reads through ``path:`` entries (their contents are part of its hash)."""
     paths = []
     if stage == "traces":
-        prompts = cfg["traces"].get("prompts") or {}
-        paths += [str(prompts["path"])] if prompts.get("path") else []
+        if cfg["traces"].get("sources") is not None:
+            paths += _source_paths(cfg["traces"]["sources"])
+        else:
+            prompts = cfg["traces"].get("prompts") or {}
+            paths += [str(prompts["path"])] if prompts.get("path") else []
     elif stage == "calibrate":
         paths += _source_paths(cfg["calibrate"]["sources"])
     if stage in ("quantize", "endpoints", "distill"):

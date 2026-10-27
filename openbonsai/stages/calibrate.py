@@ -175,7 +175,11 @@ def build(tok, sources, *, seq_len=2048, seed=0, chat_kwargs=None, bos=None, tra
             got = jsonl_blocks(tok, path, seq_len, n, s_seed, chat_kwargs=chat_kwargs, bos=bos,
                                shuffle=bool(src.get("shuffle", False)))
         if len(got) != n:
-            raise ValueError(f"{kind}: only {len(got)} blocks of {seq_len} tokens available, {n} requested")
+            advice = ""
+            if kind == "traces":
+                from .traces import SUPPLY_ADVICE
+                advice = f" ({path}); {SUPPLY_ADVICE}"
+            raise ValueError(f"{kind}: only {len(got)} blocks of {seq_len} tokens available, {n} requested{advice}")
         heldout.check_blocks(tok, got, f"{where} source {k} ({kind})", bos=bos, probes=probes)
         blocks += got
         report.append({"kind": kind, "blocks": n, "path": str(path), "sha256": file_sha256(path),

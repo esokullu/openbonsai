@@ -1,0 +1,142 @@
+# Qwen3.5-9B -> ternary, calibrated and distilled on the model's OWN answers to math and code
+# prompts. ScaleQ's finding (AYOT): calibration on generic text keeps perplexity but loses
+# reasoning. Our generic run (examples/qwen3_5-9b.yaml: WikiText-2, UltraChat and 32 blocks of
+# chat traces) scored GSM8K 30/100 and HumanEval 6/50 with thinking off, against 77/100 and 44/50
+# for BF16. Rotation, GPTQ, endpoints and export are the same as there; the data changes:
+#
+#   traces     1,260 prompts from TRAINING splits, answered greedily in the model's own chat template:
+#              math 640 (400 GSM8K + 240 MATH levels 1-3) and code 420 (140 MBPP + 280
+#              OpenCodeInstruct) with thinking on and a 1,536-token cap; 200 UltraChat first turns
+#              with thinking off and a 512-token cap
+#   calibrate  256 blocks of 2,048 tokens: 64 WikiText-2, 64 UltraChat, 128 traces (half)
+#   distill    1,536 teacher sequences: 256 WikiText-2, 640 UltraChat, 640 traces (42%); also the
+#              high-precision tensors (train.small)
+#   eval       dev, extended, compare, gsm8k, humaneval; thinking off (100/50 problems, batch 16)
+#              and on (the first 50/25, 4,096-token cap, batch 8)
+#
+#   openbonsai run --config examples/qwen3_5-9b-reasoning.yaml --out runs/qwen3_5-9b-reasoning
+#
+# Trace volume (estimates, not measurements). The BF16 model's thinking-on GSM8K TEST answers
+# (research/runs/2026-10-27-reasoning-v1) average 1,361 generated tokens when cut at 1,536, and 30
+# of 50 reach that cap; its HumanEval ones average 885. Assuming GSM8K 1,361, MATH 1,450 (harder,
+# mostly cut), MBPP 900, OpenCodeInstruct 1,200 (longer specs) and UltraChat 420 (thinking off, 512):
+#
+#   source             n   thinking  cap    tokens (est.)
+#   gsm8k_train      400   on        1536     544K
+#   math_train       240   on        1536     348K
+#   mbpp_train       140   on        1536     126K
+#   opencodeinstruct 280   on        1536     336K
+#   ultrachat        200   off        512      84K
+#   generated                               ~1.44M  (math 62%, code 32%, chat 6%)
+#   + prompts (~160K)                       ~1.6M trace tokens = ~780 blocks of 2,048
+#
+# At the 150-190 tokens/s that batched BF16 generation reaches on one RTX 5090, 1.44M generated
+# tokens take 2.1-2.7 h. A batch runs until its longest row stops, and most thinking batches run to
+# the cap, so the time is close to (prompts / batch) x cap / decode steps per second; the log shows
+# tokens/s and an ETA after every batch. Every batch is cached (traces/cache/), so an interrupted
+# run resumes where it stopped; a batch that runs out of GPU memory is split in two and retried.
+#
+# Batch per cap: batch 8 x 4,096 new tokens peaked at ~28.7 GB on the 32 GB card (9B BF16). 16 x
+# 1,536 and 32 x 512 hold fewer tokens in flight (~27K and ~20K against ~34K), so they fit too.
+#
+# The traces stop short? Trace-backed blocks are never capped: calibrate and the distillation
+# teacher read their n blocks from the start of traces/traces.jsonl (interleaved across the sources,
+# so any prefix holds every source in proportion) and refuse a file that is too short. openbonsai
+# run checks that right after the traces stage (and before the first stage on a rerun), naming each
+# count and the blocks available, before quantize starts. If the traces make fewer than the
+# teacher's 640 blocks, lower distill.teacher.sources.2.n (traces) to the blocks available and
+# raise distill.teacher.sources.1.n (UltraChat) by the same amount (e.g. 576 and 704), then rerun
+# the same command: the traces stage is complete and is skipped.
+#
+# Expected GPU time on one RTX 5090 (the other stages as measured in the package's 9B acceptance
+# run, research/runs/2026-10-27-framework-acceptance, scaled to these sizes):
+#   traces 2.1-2.7 h | calibrate <1 min | quantize ~12 min | endpoints ~2 min
+#   distill: teacher ~6 min + training ~35 min (192 steps of ~10.5 s) | export and verify ~2 min
+#   eval: dev, extended, compare ~3 min; gsm8k + humaneval thinking off ~5 min, on ~25 min
+#   total about 3.6-4.2 h
+#
+# Contamination: these are TRAINING splits. GSM8K TEST and HumanEval problems (the reasoning
+# suites) and the extended suite's chat-NLL prompts are refused (openbonsai/eval/heldout.py), and
+# training rows that share a 13-word run with a test problem (4 GSM8K train questions written from a
+# test question's template; 3 OpenCodeInstruct inputs of the first shard, two of them restating
+# HumanEval/123's Collatz description) are skipped while sampling and listed in traces/summary.json.
+model:
+  path: Qwen/Qwen3.5-9B
+  revision: c202236235762e1c871ad0ccb60c8ee5ba337b9a
+  dtype: bfloat16
+  device: auto
+  attn: sdpa
+rotation:
+  group: 128
+  max_block: 4096
+  signs: {mode: seeded, seed: width}
+  impl: dense
+traces:
+  # Each source: n prompts in a seeded order (a larger n extends a smaller one), its own thinking
+  # switch, cap and batch; prompts are sorted by length within a source. Pinned files: openai/gsm8k
+  # @ 740312a main train; EleutherAI/hendrycks_math @ 21a5633 <subject>/train (7 subjects);
+  # google-research-datasets/mbpp @ 4bb6404 full train; nvidia/OpenCodeInstruct @ 8f3ba5b shard 0;
+  # HuggingFaceH4/ultrachat_200k @ 8049631 (rows 5,000-5,999, below the calibration rows).
+  seed: 0                  # interleaving of the sources in traces.jsonl
+  sources:
+    # GSM8K and MATH prompts end with the GSM8K suite's line (Qwen's math prompt): reason step by step,
+    # final answer in \boxed{}. MATH levels 4-5 would mostly run out of tokens mid-thought at 1,536.
+    - {kind: gsm8k_train, n: 400, seed: 1, thinking: on, max_new_tokens: 1536, batch: 16}
+    - {kind: math_train, n: 240, seed: 2, levels: [1, 2, 3], thinking: on, max_new_tokens: 1536, batch: 16}
+    # MBPP: its task text and first test, in MBPP's own prompt. OpenCodeInstruct: the input as
+    # written; inputs over 2,000 characters (about 1%) are skipped.
+    - {kind: mbpp_train, n: 140, seed: 3, thinking: on, max_new_tokens: 1536, batch: 16}
+    - {kind: opencodeinstruct, n: 280, seed: 4, max_chars: 2000, thinking: on, max_new_tokens: 1536, batch: 16}
+    - {kind: ultrachat, n: 200, rows: [5000, 6000], seed: 5090, thinking: off, max_new_tokens: 512, batch: 32}
+calibrate:
+  seq_len: 2048
+  seed: 0
+  sources:
+    - {kind: wikitext2, n: 64}                 # Salesforce/wikitext @ b08601e, train split
+    - {kind: ultrachat, n: 64, min_row: 6000}  # HuggingFaceH4/ultrachat_200k @ 8049631, train_sft shard 0
+    - {kind: traces, n: 128}                   # the first 128 blocks of traces/traces.jsonl (~16% of it)
+quantize:
+  damp: 0.01
+  batch: 4
+endpoints:
+  head: ternary
+  embedding: ternary
+  damp: 0.01
+  chunk: 16384
+  batch: 4
+distill:
+  teacher:
+    n_seq: 1536            # the sources below sum to it
+    seq_len: 2048
+    seed: 1
+    shard: 64
+    topk: 64
+    sources:
+      - {kind: wikitext2, n: 256}
+      - {kind: ultrachat, n: 640, min_row: 6000}
+      - {kind: traces, n: 640}                 # the first 640 blocks of traces.jsonl (~1.31M tokens)
+  train: {scales: true, small: true}
+  lr: 1.0e-3
+  lr_small: 1.0e-4
+  lr_small_mat: 2.0e-5
+  epochs: 1
+  accum: 8
+  warmup: 10
+  chunk: 512
+  log_every: 5
+  ckpt_every: 16
+export:
+  format: ptq1_0-gguf
+  verify: true
+eval:
+  from: auto
+  suites: [dev, extended, compare, gsm8k, humaneval]
+  reasoning:
+    thinking: [off, on]
+    max_new_tokens: 512
+    max_new_tokens_thinking: 4096
+    batch: 16
+    batch_thinking: 8
+    gsm8k: {n: 100, n_thinking: 50}
+    humaneval: {n: 50, n_thinking: 25}
+  generations: true
