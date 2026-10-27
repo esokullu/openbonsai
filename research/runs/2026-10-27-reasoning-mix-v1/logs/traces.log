@@ -1,0 +1,193 @@
+[19:17:48] traces: gsm8k_train: 400 prompts, thinking on, cap 1536, batch 16 and at most 32768 tokens in flight: 25 batches of 16 to 16 prompts
+[19:17:48] traces: math_train: 240 prompts, thinking on, cap 1536, batch 16 and at most 32768 tokens in flight: 16 batches of 3 to 16 prompts
+[19:17:48] traces: mbpp_train: 140 prompts, thinking on, cap 1536, batch 16 and at most 32768 tokens in flight: 9 batches of 12 to 16 prompts
+[19:17:48] traces: opencodeinstruct: 280 prompts, thinking on, cap 1536, batch 16 and at most 32768 tokens in flight: 18 batches of 9 to 16 prompts
+[19:17:48] traces: ultrachat: 200 prompts, thinking off, cap 512, batch 32 and at most 32768 tokens in flight: 7 batches of 12 to 32 prompts
+[19:17:48] traces: gsm8k_train_off: 160 prompts, thinking off, cap 768, batch 16 and at most 32768 tokens in flight: 10 batches of 16 to 16 prompts
+[19:17:48] traces: mbpp_train_off: 100 prompts, thinking off, cap 768, batch 16 and at most 32768 tokens in flight: 7 batches of 4 to 16 prompts
+[19:21:25] traces: gsm8k_train: batch 1/25: 24576 new tokens in 217.4 s = 113.1 tok/s, hit cap 16/16; ETA 4h40m
+[19:24:56] traces: gsm8k_train: batch 2/25: 24371 new tokens in 211.2 s = 115.4 tok/s, hit cap 15/16; ETA 4h33m
+[19:26:01] traces: gsm8k_train: 400 prompts, thinking on, cap 1536, batch 16 and at most 32768 tokens in flight: 25 batches of 16 to 16 prompts
+[19:26:01] traces: math_train: 240 prompts, thinking on, cap 1536, batch 16 and at most 32768 tokens in flight: 16 batches of 3 to 16 prompts
+[19:26:01] traces: mbpp_train: 140 prompts, thinking on, cap 1536, batch 16 and at most 32768 tokens in flight: 9 batches of 12 to 16 prompts
+[19:26:01] traces: opencodeinstruct: 280 prompts, thinking on, cap 1536, batch 16 and at most 32768 tokens in flight: 18 batches of 9 to 16 prompts
+[19:26:01] traces: ultrachat: 200 prompts, thinking off, cap 512, batch 32 and at most 32768 tokens in flight: 7 batches of 12 to 32 prompts
+[19:26:01] traces: gsm8k_train_off: 160 prompts, thinking off, cap 768, batch 16 and at most 32768 tokens in flight: 10 batches of 16 to 16 prompts
+[19:26:01] traces: mbpp_train_off: 100 prompts, thinking off, cap 768, batch 16 and at most 32768 tokens in flight: 7 batches of 4 to 16 prompts
+[19:36:39] traces: gsm8k_train: 400 prompts, thinking on, cap 1536, batch 16 and at most 14000 tokens in flight: 50 batches of 8 to 8 prompts
+[19:36:39] traces: math_train: 240 prompts, thinking on, cap 1536, batch 16 and at most 14000 tokens in flight: 31 batches of 4 to 8 prompts
+[19:36:39] traces: mbpp_train: 140 prompts, thinking on, cap 1536, batch 16 and at most 14000 tokens in flight: 18 batches of 5 to 8 prompts
+[19:36:39] traces: opencodeinstruct: 280 prompts, thinking on, cap 1536, batch 16 and at most 14000 tokens in flight: 38 batches of 6 to 8 prompts
+[19:36:39] traces: ultrachat: 200 prompts, thinking off, cap 512, batch 32 and at most 14000 tokens in flight: 12 batches of 5 to 25 prompts
+[19:36:39] traces: gsm8k_train_off: 160 prompts, thinking off, cap 768, batch 16 and at most 14000 tokens in flight: 11 batches of 3 to 16 prompts
+[19:36:39] traces: mbpp_train_off: 100 prompts, thinking off, cap 768, batch 16 and at most 14000 tokens in flight: 7 batches of 6 to 16 prompts
+[19:38:00] traces: gsm8k_train: batch 1/50: 12288 new tokens in 81.0 s = 151.8 tok/s, hit cap 8/8; ETA 3h30m
+[19:39:07] traces: gsm8k_train: batch 2/50: 11804 new tokens in 66.1 s = 178.6 tok/s, hit cap 6/8; ETA 3h10m
+[19:40:12] traces: gsm8k_train: batch 3/50: 12148 new tokens in 65.9 s = 184.4 tok/s, hit cap 7/8; ETA 3h02m
+[19:41:22] traces: gsm8k_train: batch 4/50: 12288 new tokens in 68.6 s = 179.2 tok/s, hit cap 8/8; ETA 2h59m
+[19:42:35] traces: gsm8k_train: batch 5/50: 11458 new tokens in 73.6 s = 155.6 tok/s, hit cap 6/8; ETA 3h00m
+[19:43:53] traces: gsm8k_train: batch 6/50: 11383 new tokens in 77.2 s = 147.5 tok/s, hit cap 4/8; ETA 3h01m
+[19:45:12] traces: gsm8k_train: batch 7/50: 11234 new tokens in 78.8 s = 142.6 tok/s, hit cap 6/8; ETA 3h02m
+[19:46:18] traces: gsm8k_train: batch 8/50: 10990 new tokens in 66.2 s = 165.9 tok/s, hit cap 5/8; ETA 2h59m
+[19:47:24] traces: gsm8k_train: batch 9/50: 10873 new tokens in 65.6 s = 165.7 tok/s, hit cap 4/8; ETA 2h56m
+[19:48:36] traces: gsm8k_train: batch 10/50: 10747 new tokens in 70.6 s = 152.3 tok/s, hit cap 4/8; ETA 2h54m
+[19:49:51] traces: gsm8k_train: batch 11/50: 11059 new tokens in 74.7 s = 148.1 tok/s, hit cap 5/8; ETA 2h54m
+[19:51:07] traces: gsm8k_train: batch 12/50: 11955 new tokens in 75.8 s = 157.7 tok/s, hit cap 6/8; ETA 2h54m
+[19:52:28] traces: gsm8k_train: batch 13/50: 11067 new tokens in 81.2 s = 136.2 tok/s, hit cap 3/8; ETA 2h54m
+[19:53:50] traces: gsm8k_train: batch 14/50: 11624 new tokens in 81.5 s = 142.7 tok/s, hit cap 6/8; ETA 2h54m
+[19:55:14] traces: gsm8k_train: batch 15/50: 12093 new tokens in 84.1 s = 143.8 tok/s, hit cap 6/8; ETA 2h55m
+[19:56:26] traces: gsm8k_train: batch 16/50: 10927 new tokens in 72.1 s = 151.5 tok/s, hit cap 4/8; ETA 2h53m
+[19:57:55] traces: gsm8k_train: batch 17/50: 11323 new tokens in 89.4 s = 126.6 tok/s, hit cap 5/8; ETA 2h54m
+[19:59:22] traces: gsm8k_train: batch 18/50: 11692 new tokens in 86.3 s = 135.4 tok/s, hit cap 7/8; ETA 2h54m
+[20:00:51] traces: gsm8k_train: batch 19/50: 11706 new tokens in 89.0 s = 131.6 tok/s, hit cap 4/8; ETA 2h55m
+[20:02:05] traces: gsm8k_train: batch 20/50: 11550 new tokens in 74.3 s = 155.4 tok/s, hit cap 6/8; ETA 2h53m
+[20:03:09] traces: gsm8k_train: batch 21/50: 11433 new tokens in 63.9 s = 179.0 tok/s, hit cap 5/8; ETA 2h51m
+[20:04:11] traces: gsm8k_train: batch 22/50: 11715 new tokens in 62.1 s = 188.8 tok/s, hit cap 6/8; ETA 2h48m
+[20:05:04] traces: gsm8k_train: batch 23/50: 11113 new tokens in 53.3 s = 208.4 tok/s, hit cap 3/8; ETA 2h45m
+[20:06:00] traces: gsm8k_train: batch 24/50: 11999 new tokens in 55.7 s = 215.4 tok/s, hit cap 7/8; ETA 2h42m
+[20:06:57] traces: gsm8k_train: batch 25/50: 11720 new tokens in 57.3 s = 204.4 tok/s, hit cap 7/8; ETA 2h39m
+[20:07:56] traces: gsm8k_train: batch 26/50: 10820 new tokens in 57.9 s = 187.0 tok/s, hit cap 5/8; ETA 2h37m
+[20:08:53] traces: gsm8k_train: batch 27/50: 11688 new tokens in 57.3 s = 203.8 tok/s, hit cap 6/8; ETA 2h34m
+[20:09:49] traces: gsm8k_train: batch 28/50: 11230 new tokens in 55.1 s = 203.8 tok/s, hit cap 4/8; ETA 2h32m
+[20:10:45] traces: gsm8k_train: batch 29/50: 10825 new tokens in 56.8 s = 190.5 tok/s, hit cap 6/8; ETA 2h30m
+[20:11:44] traces: gsm8k_train: batch 30/50: 11539 new tokens in 58.1 s = 198.5 tok/s, hit cap 4/8; ETA 2h28m
+[20:12:45] traces: gsm8k_train: batch 31/50: 11279 new tokens in 60.9 s = 185.1 tok/s, hit cap 5/8; ETA 2h26m
+[20:13:44] traces: gsm8k_train: batch 32/50: 10642 new tokens in 58.7 s = 181.4 tok/s, hit cap 5/8; ETA 2h24m
+[20:14:44] traces: gsm8k_train: batch 33/50: 10741 new tokens in 58.9 s = 182.4 tok/s, hit cap 4/8; ETA 2h22m
+[20:15:45] traces: gsm8k_train: batch 34/50: 11110 new tokens in 61.3 s = 181.1 tok/s, hit cap 4/8; ETA 2h21m
+[20:16:43] traces: gsm8k_train: batch 35/50: 11241 new tokens in 57.7 s = 194.8 tok/s, hit cap 5/8; ETA 2h19m
+[20:17:38] traces: gsm8k_train: batch 36/50: 9058 new tokens in 54.6 s = 166.0 tok/s, hit cap 4/8; ETA 2h17m
+[20:18:34] traces: gsm8k_train: batch 37/50: 9163 new tokens in 56.5 s = 162.3 tok/s, hit cap 2/8; ETA 2h15m
+[20:19:30] traces: gsm8k_train: batch 38/50: 11000 new tokens in 55.9 s = 196.9 tok/s, hit cap 3/8; ETA 2h13m
+[20:20:24] traces: gsm8k_train: batch 39/50: 9996 new tokens in 54.3 s = 183.9 tok/s, hit cap 3/8; ETA 2h12m
+[20:21:19] traces: gsm8k_train: batch 40/50: 10582 new tokens in 54.5 s = 194.2 tok/s, hit cap 5/8; ETA 2h10m
+[20:22:15] traces: gsm8k_train: batch 41/50: 9481 new tokens in 56.4 s = 168.1 tok/s, hit cap 4/8; ETA 2h08m
+[20:23:13] traces: gsm8k_train: batch 42/50: 10233 new tokens in 56.9 s = 180.0 tok/s, hit cap 3/8; ETA 2h07m
+[20:24:10] traces: gsm8k_train: batch 43/50: 9027 new tokens in 56.5 s = 159.9 tok/s, hit cap 2/8; ETA 2h05m
+[20:25:06] traces: gsm8k_train: batch 44/50: 11786 new tokens in 56.3 s = 209.4 tok/s, hit cap 7/8; ETA 2h04m
+[20:26:04] traces: gsm8k_train: batch 45/50: 10552 new tokens in 58.4 s = 180.7 tok/s, hit cap 3/8; ETA 2h02m
+[20:27:14] traces: gsm8k_train: batch 46/50: 10961 new tokens in 69.4 s = 158.0 tok/s, hit cap 5/8; ETA 2h01m
+[20:28:13] traces: gsm8k_train: batch 47/50: 10792 new tokens in 58.3 s = 185.1 tok/s, hit cap 5/8; ETA 2h00m
+[20:29:12] traces: gsm8k_train: batch 48/50: 11723 new tokens in 59.0 s = 198.6 tok/s, hit cap 5/8; ETA 1h59m
+[20:30:10] traces: gsm8k_train: batch 49/50: 9930 new tokens in 58.4 s = 170.0 tok/s, hit cap 3/8; ETA 1h57m
+[20:31:08] traces: gsm8k_train: batch 50/50: 9402 new tokens in 58.0 s = 162.0 tok/s, hit cap 4/8; ETA 1h56m
+[20:32:21] traces: math_train: batch 1/31: 7680 new tokens in 71.7 s = 107.2 tok/s, hit cap 5/5; ETA 1h56m
+[20:33:55] traces: math_train: batch 2/31: 10752 new tokens in 94.7 s = 113.6 tok/s, hit cap 7/7; ETA 1h57m
+[20:35:18] traces: math_train: batch 3/31: 12288 new tokens in 82.9 s = 148.3 tok/s, hit cap 8/8; ETA 1h56m
+[20:37:17] traces: math_train: batch 4/31: 12288 new tokens in 118.7 s = 103.5 tok/s, hit cap 8/8; ETA 1h57m
+[20:39:05] traces: math_train: batch 5/31: 12288 new tokens in 108.2 s = 113.5 tok/s, hit cap 8/8; ETA 1h57m
+[20:40:33] traces: math_train: batch 6/31: 12288 new tokens in 87.5 s = 140.5 tok/s, hit cap 8/8; ETA 1h56m
+[20:41:55] traces: math_train: batch 7/31: 12288 new tokens in 82.2 s = 149.6 tok/s, hit cap 8/8; ETA 1h55m
+[20:43:25] traces: math_train: batch 8/31: 12288 new tokens in 90.0 s = 136.5 tok/s, hit cap 8/8; ETA 1h55m
+[20:45:05] traces: math_train: batch 9/31: 12288 new tokens in 98.9 s = 124.3 tok/s, hit cap 8/8; ETA 1h55m
+[20:46:39] traces: math_train: batch 10/31: 12288 new tokens in 93.6 s = 131.3 tok/s, hit cap 8/8; ETA 1h54m
+[20:47:52] traces: math_train: batch 11/31: 12288 new tokens in 73.5 s = 167.3 tok/s, hit cap 8/8; ETA 1h53m
+[20:49:10] traces: math_train: batch 12/31: 12288 new tokens in 77.2 s = 159.3 tok/s, hit cap 8/8; ETA 1h52m
+[20:50:24] traces: math_train: batch 13/31: 11606 new tokens in 73.5 s = 157.8 tok/s, hit cap 6/8; ETA 1h51m
+[20:51:33] traces: math_train: batch 14/31: 11114 new tokens in 69.0 s = 161.1 tok/s, hit cap 6/8; ETA 1h50m
+[20:52:32] traces: math_train: batch 15/31: 12120 new tokens in 59.1 s = 205.1 tok/s, hit cap 7/8; ETA 1h48m
+[20:53:29] traces: math_train: batch 16/31: 10721 new tokens in 57.2 s = 187.3 tok/s, hit cap 6/8; ETA 1h47m
+[20:54:25] traces: math_train: batch 17/31: 11702 new tokens in 56.2 s = 208.1 tok/s, hit cap 5/8; ETA 1h45m
+[20:55:26] traces: math_train: batch 18/31: 11535 new tokens in 60.4 s = 191.1 tok/s, hit cap 7/8; ETA 1h44m
+[20:56:25] traces: math_train: batch 19/31: 11545 new tokens in 58.6 s = 197.0 tok/s, hit cap 5/8; ETA 1h42m
+[20:57:20] traces: math_train: batch 20/31: 11701 new tokens in 55.5 s = 210.7 tok/s, hit cap 6/8; ETA 1h41m
+[20:58:18] traces: math_train: batch 21/31: 12288 new tokens in 56.3 s = 218.1 tok/s, hit cap 8/8; ETA 1h40m
+[20:59:14] traces: math_train: batch 22/31: 12288 new tokens in 56.2 s = 218.8 tok/s, hit cap 8/8; ETA 1h38m
+[21:00:11] traces: math_train: batch 23/31: 12101 new tokens in 56.5 s = 214.0 tok/s, hit cap 7/8; ETA 1h37m
+[21:01:10] traces: math_train: batch 24/31: 11348 new tokens in 58.6 s = 193.6 tok/s, hit cap 6/8; ETA 1h35m
+[21:02:08] traces: math_train: batch 25/31: 10941 new tokens in 57.8 s = 189.2 tok/s, hit cap 4/8; ETA 1h34m
+[21:03:05] traces: math_train: batch 26/31: 12118 new tokens in 57.0 s = 212.6 tok/s, hit cap 5/8; ETA 1h33m
+[21:03:59] traces: math_train: batch 27/31: 12288 new tokens in 54.3 s = 226.1 tok/s, hit cap 8/8; ETA 1h31m
+[21:04:54] traces: math_train: batch 28/31: 11514 new tokens in 55.2 s = 208.7 tok/s, hit cap 7/8; ETA 1h30m
+[21:05:48] traces: math_train: batch 29/31: 11807 new tokens in 53.8 s = 219.3 tok/s, hit cap 5/8; ETA 1h29m
+[21:06:44] traces: math_train: batch 30/31: 10807 new tokens in 56.0 s = 192.8 tok/s, hit cap 5/8; ETA 1h27m
+[21:07:42] traces: math_train: batch 31/31: 5934 new tokens in 57.5 s = 103.3 tok/s, hit cap 3/4; ETA 1h27m
+[21:08:32] traces: mbpp_train: batch 1/18: 7460 new tokens in 50.1 s = 149.0 tok/s, hit cap 0/7; ETA 1h26m
+[21:09:29] traces: mbpp_train: batch 2/18: 8662 new tokens in 56.3 s = 153.8 tok/s, hit cap 1/8; ETA 1h25m
+[21:10:27] traces: mbpp_train: batch 3/18: 8414 new tokens in 56.9 s = 147.9 tok/s, hit cap 1/8; ETA 1h23m
+[21:11:24] traces: mbpp_train: batch 4/18: 8297 new tokens in 57.5 s = 144.2 tok/s, hit cap 2/8; ETA 1h22m
+[21:12:14] traces: mbpp_train: batch 5/18: 7440 new tokens in 49.7 s = 149.6 tok/s, hit cap 0/8; ETA 1h21m
+[21:13:11] traces: mbpp_train: batch 6/18: 6779 new tokens in 56.5 s = 119.9 tok/s, hit cap 1/8; ETA 1h19m
+[21:14:07] traces: mbpp_train: batch 7/18: 8019 new tokens in 56.6 s = 141.6 tok/s, hit cap 1/8; ETA 1h18m
+[21:14:44] traces: mbpp_train: batch 8/18: 4772 new tokens in 36.3 s = 131.5 tok/s, hit cap 0/8; ETA 1h17m
+[21:15:38] traces: mbpp_train: batch 9/18: 7270 new tokens in 54.1 s = 134.5 tok/s, hit cap 0/8; ETA 1h15m
+[21:16:34] traces: mbpp_train: batch 10/18: 7406 new tokens in 56.3 s = 131.6 tok/s, hit cap 1/8; ETA 1h14m
+[21:17:26] traces: mbpp_train: batch 11/18: 7560 new tokens in 51.7 s = 146.3 tok/s, hit cap 0/8; ETA 1h13m
+[21:18:21] traces: mbpp_train: batch 12/18: 7477 new tokens in 55.0 s = 136.1 tok/s, hit cap 1/8; ETA 1h11m
+[21:19:02] traces: mbpp_train: batch 13/18: 4785 new tokens in 41.3 s = 115.9 tok/s, hit cap 0/8; ETA 1h10m
+[21:19:58] traces: mbpp_train: batch 14/18: 7196 new tokens in 55.8 s = 128.9 tok/s, hit cap 1/8; ETA 1h09m
+[21:20:40] traces: mbpp_train: batch 15/18: 6063 new tokens in 41.9 s = 144.6 tok/s, hit cap 0/8; ETA 1h08m
+[21:21:17] traces: mbpp_train: batch 16/18: 5629 new tokens in 37.0 s = 152.3 tok/s, hit cap 0/8; ETA 1h06m
+[21:22:09] traces: mbpp_train: batch 17/18: 6281 new tokens in 51.3 s = 122.3 tok/s, hit cap 0/8; ETA 1h05m
+[21:22:40] traces: mbpp_train: batch 18/18: 3260 new tokens in 31.7 s = 102.8 tok/s, hit cap 0/5; ETA 1h04m
+[21:23:36] traces: opencodeinstruct: batch 1/38: 9178 new tokens in 55.6 s = 165.1 tok/s, hit cap 5/6; ETA 1h03m
+[21:24:31] traces: opencodeinstruct: batch 2/38: 9903 new tokens in 54.2 s = 182.8 tok/s, hit cap 5/7; ETA 1h02m
+[21:25:25] traces: opencodeinstruct: batch 3/38: 9749 new tokens in 53.6 s = 182.0 tok/s, hit cap 4/7; ETA 1h01m
+[21:26:19] traces: opencodeinstruct: batch 4/38: 9534 new tokens in 53.5 s = 178.1 tok/s, hit cap 3/7; ETA 1h00m
+[21:27:13] traces: opencodeinstruct: batch 5/38: 9746 new tokens in 53.7 s = 181.6 tok/s, hit cap 5/7; ETA 59m57s
+[21:28:01] traces: opencodeinstruct: batch 6/38: 8790 new tokens in 48.0 s = 183.0 tok/s, hit cap 0/7; ETA 58m56s
+[21:28:54] traces: opencodeinstruct: batch 7/38: 8965 new tokens in 53.7 s = 167.0 tok/s, hit cap 3/7; ETA 57m57s
+[21:29:48] traces: opencodeinstruct: batch 8/38: 9178 new tokens in 53.2 s = 172.6 tok/s, hit cap 4/7; ETA 56m59s
+[21:30:43] traces: opencodeinstruct: batch 9/38: 8089 new tokens in 55.2 s = 146.7 tok/s, hit cap 1/7; ETA 56m01s
+[21:31:37] traces: opencodeinstruct: batch 10/38: 7026 new tokens in 53.8 s = 130.5 tok/s, hit cap 1/7; ETA 55m03s
+[21:32:27] traces: opencodeinstruct: batch 11/38: 8103 new tokens in 50.7 s = 159.8 tok/s, hit cap 0/7; ETA 54m03s
+[21:33:21] traces: opencodeinstruct: batch 12/38: 9982 new tokens in 53.3 s = 187.1 tok/s, hit cap 3/7; ETA 53m05s
+[21:34:14] traces: opencodeinstruct: batch 13/38: 8121 new tokens in 53.1 s = 152.9 tok/s, hit cap 3/7; ETA 52m07s
+[21:35:11] traces: opencodeinstruct: batch 14/38: 8366 new tokens in 56.7 s = 147.5 tok/s, hit cap 2/7; ETA 51m10s
+[21:36:07] traces: opencodeinstruct: batch 15/38: 8768 new tokens in 56.0 s = 156.7 tok/s, hit cap 2/7; ETA 50m14s
+[21:37:02] traces: opencodeinstruct: batch 16/38: 8512 new tokens in 55.4 s = 153.7 tok/s, hit cap 2/7; ETA 49m16s
+[21:37:56] traces: opencodeinstruct: batch 17/38: 7912 new tokens in 54.0 s = 146.6 tok/s, hit cap 2/7; ETA 48m19s
+[21:38:50] traces: opencodeinstruct: batch 18/38: 8474 new tokens in 54.1 s = 156.7 tok/s, hit cap 3/7; ETA 47m21s
+[21:39:46] traces: opencodeinstruct: batch 19/38: 7285 new tokens in 55.8 s = 130.5 tok/s, hit cap 1/7; ETA 46m24s
+[21:40:44] traces: opencodeinstruct: batch 20/38: 7739 new tokens in 58.3 s = 132.8 tok/s, hit cap 1/7; ETA 45m29s
+[21:41:40] traces: opencodeinstruct: batch 21/38: 8163 new tokens in 55.2 s = 147.8 tok/s, hit cap 2/7; ETA 44m32s
+[21:42:35] traces: opencodeinstruct: batch 22/38: 8349 new tokens in 54.6 s = 152.8 tok/s, hit cap 1/7; ETA 43m34s
+[21:43:30] traces: opencodeinstruct: batch 23/38: 9094 new tokens in 54.4 s = 167.2 tok/s, hit cap 3/7; ETA 42m37s
+[21:44:24] traces: opencodeinstruct: batch 24/38: 8443 new tokens in 54.1 s = 156.0 tok/s, hit cap 1/8; ETA 41m29s
+[21:45:18] traces: opencodeinstruct: batch 25/38: 11941 new tokens in 54.2 s = 220.1 tok/s, hit cap 5/8; ETA 40m21s
+[21:46:12] traces: opencodeinstruct: batch 26/38: 10535 new tokens in 54.1 s = 194.8 tok/s, hit cap 3/8; ETA 39m14s
+[21:47:15] traces: opencodeinstruct: batch 27/38: 9700 new tokens in 62.3 s = 155.6 tok/s, hit cap 3/8; ETA 38m09s
+[21:48:39] traces: opencodeinstruct: batch 28/38: 10155 new tokens in 82.6 s = 123.0 tok/s, hit cap 2/8; ETA 37m10s
+[21:49:46] traces: opencodeinstruct: batch 29/38: 8905 new tokens in 66.8 s = 133.4 tok/s, hit cap 2/8; ETA 36m06s
+[21:50:41] traces: opencodeinstruct: batch 30/38: 8147 new tokens in 54.8 s = 148.5 tok/s, hit cap 1/8; ETA 34m59s
+[21:51:37] traces: opencodeinstruct: batch 31/38: 9740 new tokens in 56.3 s = 173.1 tok/s, hit cap 2/8; ETA 33m52s
+[21:52:35] traces: opencodeinstruct: batch 32/38: 8773 new tokens in 57.3 s = 153.1 tok/s, hit cap 3/8; ETA 32m46s
+[21:53:30] traces: opencodeinstruct: batch 33/38: 9391 new tokens in 55.6 s = 169.0 tok/s, hit cap 3/8; ETA 31m40s
+[21:54:28] traces: opencodeinstruct: batch 34/38: 9341 new tokens in 57.9 s = 161.3 tok/s, hit cap 2/8; ETA 30m34s
+[21:55:30] traces: opencodeinstruct: batch 35/38: 9475 new tokens in 61.8 s = 153.3 tok/s, hit cap 2/8; ETA 29m30s
+[21:56:26] traces: opencodeinstruct: batch 36/38: 8010 new tokens in 55.9 s = 143.4 tok/s, hit cap 2/8; ETA 28m24s
+[21:57:21] traces: opencodeinstruct: batch 37/38: 9446 new tokens in 55.2 s = 171.3 tok/s, hit cap 3/8; ETA 27m18s
+[21:58:14] traces: opencodeinstruct: batch 38/38: 8890 new tokens in 53.2 s = 167.2 tok/s, hit cap 3/8; ETA 26m12s
+[21:58:42] traces: ultrachat: batch 1/12: 1556 new tokens in 26.7 s = 58.4 tok/s, hit cap 2/5; ETA 26m01s
+[21:59:09] traces: ultrachat: batch 2/12: 3082 new tokens in 27.7 s = 111.4 tok/s, hit cap 1/9; ETA 25m38s
+[21:59:28] traces: ultrachat: batch 3/12: 3796 new tokens in 19.2 s = 198.0 tok/s, hit cap 1/12; ETA 25m03s
+[21:59:48] traces: ultrachat: batch 4/12: 3727 new tokens in 19.3 s = 193.0 tok/s, hit cap 1/14; ETA 24m23s
+[22:00:07] traces: ultrachat: batch 5/12: 3399 new tokens in 19.0 s = 179.0 tok/s, hit cap 1/16; ETA 23m37s
+[22:00:28] traces: ultrachat: batch 6/12: 5456 new tokens in 20.9 s = 261.4 tok/s, hit cap 6/19; ETA 22m41s
+[22:00:48] traces: ultrachat: batch 7/12: 9404 new tokens in 20.9 s = 450.8 tok/s, hit cap 17/21; ETA 21m41s
+[22:01:09] traces: ultrachat: batch 8/12: 9149 new tokens in 20.8 s = 440.3 tok/s, hit cap 15/22; ETA 20m37s
+[22:01:30] traces: ultrachat: batch 9/12: 10264 new tokens in 20.6 s = 499.2 tok/s, hit cap 18/23; ETA 19m32s
+[22:01:51] traces: ultrachat: batch 10/12: 10953 new tokens in 20.7 s = 529.1 tok/s, hit cap 18/24; ETA 18m24s
+[22:02:11] traces: ultrachat: batch 11/12: 12247 new tokens in 20.8 s = 588.9 tok/s, hit cap 22/25; ETA 17m14s
+[22:02:31] traces: ultrachat: batch 12/12: 4242 new tokens in 20.0 s = 212.1 tok/s, hit cap 7/10; ETA 16m47s
+[22:03:01] traces: gsm8k_train_off: batch 1/11: 6346 new tokens in 29.4 s = 216.0 tok/s, hit cap 2/14; ETA 15m50s
+[22:03:26] traces: gsm8k_train_off: batch 2/11: 5875 new tokens in 24.9 s = 236.0 tok/s, hit cap 0/15; ETA 14m49s
+[22:03:55] traces: gsm8k_train_off: batch 3/11: 6904 new tokens in 28.7 s = 240.9 tok/s, hit cap 1/16; ETA 13m44s
+[22:04:17] traces: gsm8k_train_off: batch 4/11: 6343 new tokens in 22.3 s = 284.5 tok/s, hit cap 0/16; ETA 12m40s
+[22:04:46] traces: gsm8k_train_off: batch 5/11: 6552 new tokens in 28.9 s = 226.8 tok/s, hit cap 1/16; ETA 11m36s
+[22:05:14] traces: gsm8k_train_off: batch 6/11: 5658 new tokens in 28.7 s = 197.4 tok/s, hit cap 1/16; ETA 10m33s
+[22:05:40] traces: gsm8k_train_off: batch 7/11: 5888 new tokens in 25.6 s = 230.2 tok/s, hit cap 0/16; ETA 9m30s
+[22:06:10] traces: gsm8k_train_off: batch 8/11: 6642 new tokens in 29.3 s = 226.6 tok/s, hit cap 2/16; ETA 8m28s
+[22:06:30] traces: gsm8k_train_off: batch 9/11: 5389 new tokens in 19.9 s = 270.5 tok/s, hit cap 0/16; ETA 7m26s
+[22:06:54] traces: gsm8k_train_off: batch 10/11: 5205 new tokens in 24.2 s = 214.8 tok/s, hit cap 0/16; ETA 6m24s
+[22:07:08] traces: gsm8k_train_off: batch 11/11: 795 new tokens in 14.3 s = 55.7 tok/s, hit cap 0/3; ETA 6m13s
+[22:07:38] traces: mbpp_train_off: batch 1/7: 4673 new tokens in 29.8 s = 156.8 tok/s, hit cap 2/14; ETA 5m20s
+[22:08:08] traces: mbpp_train_off: batch 2/7: 5653 new tokens in 29.6 s = 190.9 tok/s, hit cap 3/16; ETA 4m20s
+[22:08:37] traces: mbpp_train_off: batch 3/7: 4414 new tokens in 29.5 s = 149.7 tok/s, hit cap 2/16; ETA 3m20s
+[22:09:07] traces: mbpp_train_off: batch 4/7: 4661 new tokens in 29.4 s = 158.4 tok/s, hit cap 2/16; ETA 2m20s
+[22:09:36] traces: mbpp_train_off: batch 5/7: 4882 new tokens in 29.4 s = 165.9 tok/s, hit cap 3/16; ETA 1m21s
+[22:10:06] traces: mbpp_train_off: batch 6/7: 5634 new tokens in 29.5 s = 190.8 tok/s, hit cap 3/16; ETA 0m22s
+[22:10:36] traces: mbpp_train_off: batch 7/7: 1205 new tokens in 30.7 s = 39.2 tok/s, hit cap 1/6; ETA 0m00s
+[22:10:37] traces: 1520 traces, 1736153 tokens (1542462 generated, hit cap 684); gsm8k_train 552990, math_train 356790, mbpp_train 122770, opencodeinstruct 339918, ultrachat 77275, gsm8k_train_off 61597, mbpp_train_off 31122
+[22:10:37] traces: calibrate.sources.2.n: 128 of the 847 blocks of 2048 tokens the traces make
+[22:10:37] traces: distill.teacher.sources.2.n: 640 of the 847 blocks of 2048 tokens the traces make

@@ -1,0 +1,32 @@
+[23:41:28] refine: 128 training and 8 held-out calibration blocks (training blocks per source {0: 32, 1: 32, 2: 64}); embedding ternary
+[23:41:28] refine: failed:
+Traceback (most recent call last):
+  File "D:\openbonsai\work\refine-pilot-snapshot\openbonsai\cli.py", line 170, in execute
+    result = _stage_module(stage).run(ctx, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\openbonsai\work\refine-pilot-snapshot\openbonsai\stages\refine.py", line 785, in run
+    cap = cap_vram(ctx.device, log)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\openbonsai\work\refine-pilot-snapshot\openbonsai\stages\refine.py", line 753, in cap_vram
+    torch.cuda.set_per_process_memory_fraction(fraction, device)
+  File "D:\openbonsai\.venv\Lib\site-packages\torch\cuda\memory.py", line 192, in set_per_process_memory_fraction
+    device = _get_device_index(device)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\openbonsai\.venv\Lib\site-packages\torch\cuda\_utils.py", line 634, in _get_device_index
+    return _torch_get_device_index(device, optional, allow_cpu)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\openbonsai\.venv\Lib\site-packages\torch\_utils.py", line 919, in _get_device_index
+    raise ValueError(
+ValueError: Expected a torch.device with a specified index or an integer, but got:cuda
+[23:46:29] refine: 128 training and 8 held-out calibration blocks (training blocks per source {0: 32, 1: 32, 2: 64}); embedding ternary
+[23:46:30] refine: VRAM: 30.3 of 31.8 GiB free; this process is capped at 28.8 GiB (an overflow stops the stage instead of spilling to system RAM)
+[23:46:56] refine: captured 128 training and 8 held-out elements of (1, 2048, 4096) (streams: cuda, 4.38 GiB); layers [0, 8), window 1, target original, 8s; setup peak VRAM 17.76 GiB (reserved 18.49)
+[23:47:24] refine: layers [0] (linear_attention) 26.9s: held-out rel err vs target 0.01376 -> 0.006185 (original 0.01376 -> 0.006185); train loss 0.01123 -> 0.006032 over 512 steps; code flips 0.940% (sign 0.000%, zero<->nonzero 0.940%); zeros 45.57% -> 45.37%; scale drift mean |log| 0.0213, max 0.0979; eps-damped 2.94% (latent grad rms 4.13e-08, eps 1e-10); peak VRAM 9.91 GiB (reserved 17.54)
+[23:47:51] refine: layers [1] (linear_attention) 26.6s: held-out rel err vs target 0.01451 -> 0.01127 (original 0.01451 -> 0.01127); train loss 0.01334 -> 0.01118 over 512 steps; code flips 0.462% (sign 0.000%, zero<->nonzero 0.462%); zeros 45.59% -> 45.49%; scale drift mean |log| 0.0190, max 0.0852; eps-damped 0.01% (latent grad rms 2.78e-08, eps 1e-10); peak VRAM 9.91 GiB (reserved 17.54)
+[23:48:19] refine: layers [2] (linear_attention) 26.6s: held-out rel err vs target 0.032 -> 0.0278 (original 0.032 -> 0.0278); train loss 0.03147 -> 0.02816 over 512 steps; code flips 0.274% (sign 0.000%, zero<->nonzero 0.274%); zeros 45.59% -> 45.53%; scale drift mean |log| 0.0148, max 0.0849; eps-damped 0.02% (latent grad rms 5.91e-08, eps 1e-10); peak VRAM 9.91 GiB (reserved 17.54)
+[23:48:48] refine: layers [3] (full_attention) 28.2s: held-out rel err vs target 0.02736 -> 0.02307 (original 0.02736 -> 0.02307); train loss 0.02589 -> 0.02309 over 512 steps; code flips 0.307% (sign 0.000%, zero<->nonzero 0.307%); zeros 45.58% -> 45.51%; scale drift mean |log| 0.0171, max 0.0901; eps-damped 0.00% (latent grad rms 8.42e-08, eps 1e-10); peak VRAM 9.64 GiB (reserved 17.54)
+[23:49:15] refine: layers [4] (linear_attention) 26.7s: held-out rel err vs target 0.03691 -> 0.0336 (original 0.03691 -> 0.0336); train loss 0.03574 -> 0.03343 over 512 steps; code flips 0.204% (sign 0.000%, zero<->nonzero 0.204%); zeros 45.59% -> 45.55%; scale drift mean |log| 0.0152, max 0.0876; eps-damped 0.01% (latent grad rms 3.92e-08, eps 1e-10); peak VRAM 9.91 GiB (reserved 17.54)
+[23:49:43] refine: layers [5] (linear_attention) 26.8s: held-out rel err vs target 0.04326 -> 0.03952 (original 0.04326 -> 0.03952); train loss 0.04269 -> 0.04013 over 512 steps; code flips 0.221% (sign 0.000%, zero<->nonzero 0.221%); zeros 45.60% -> 45.55%; scale drift mean |log| 0.0150, max 0.0911; eps-damped 0.00% (latent grad rms 3.75e-08, eps 1e-10); peak VRAM 9.91 GiB (reserved 17.54)
+[23:50:11] refine: layers [6] (linear_attention) 26.7s: held-out rel err vs target 0.05374 -> 0.04867 (original 0.05374 -> 0.04867); train loss 0.05332 -> 0.05019 over 512 steps; code flips 0.155% (sign 0.000%, zero<->nonzero 0.155%); zeros 45.59% -> 45.55%; scale drift mean |log| 0.0135, max 0.0829; eps-damped 0.01% (latent grad rms 6.59e-08, eps 1e-10); peak VRAM 9.91 GiB (reserved 17.54)
+[23:50:40] refine: layers [7] (full_attention) 28.1s: held-out rel err vs target 0.06037 -> 0.0555 (original 0.06037 -> 0.0555); train loss 0.06042 -> 0.0577 over 512 steps; code flips 0.084% (sign 0.000%, zero<->nonzero 0.084%); zeros 45.59% -> 45.57%; scale drift mean |log| 0.0138, max 0.0850; eps-damped 0.00% (latent grad rms 1.01e-07, eps 1e-10); peak VRAM 9.64 GiB (reserved 17.54)
+[23:51:02] refine: refined layers [0, 8) in 254s; rolled back none
