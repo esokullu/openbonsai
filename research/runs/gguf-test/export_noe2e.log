@@ -1,0 +1,128 @@
+PTQ1_0 codec selftest ok (243/81 digit patterns, random round trip, spec-packer parity, C-ref parity on 64 groups)
+tensor plan: 427 tensors identical to the official names/order/types/ne/offsets
+loaded states (mmap) in 0.0s: 200 modules, endpoints ['embed_tokens', 'lm_head'], e2e scales 0, e2e norms 0
+input: s4096: equals signs_from_seed(4096, 4096) (gptq_ternary --shared-signs); 2053 of 4096 are +1
+input: s12288: equals signs_from_seed(12288, 12288) (gptq_ternary --shared-signs); 6127 of 12288 are +1
+KVs: 49 in official order (0.7s)
+  [note] tokenizer: pre-tokenizer hash d30d75d9059f1aa2... -> qwen35
+  [copied] general.type: 'model' from the official header (not derivable from the HF snapshot)
+  [copied] general.sampling.min_p: 0.0 from the official header (not derivable from the HF snapshot)
+  [differs (by design)] general.name: 'OpenBonsai-Qwen3.5-9B-PTQ1_0' vs 'Ternary-Bonsai-2-9B'
+  [copied] general.size_label: '9B' from the official header (not derivable from the HF snapshot)
+  [differs (by design)] prism.hadamard.sign_values: len 16384 vs 16384, sha256 DIFFERENT
+  [copied] tokenizer.ggml.bos_token_id: 248044 from the official header: the converter's SpecialVocab finds no bos (tokenizer_config bos_token is null, config.json has no bos_token_id); the official file carries it in the trailing post-conversion KV group
+  [copied] general.sampling.temp: 1.0 from the official header (not derivable from the HF snapshot)
+  [copied] general.sampling.top_p: 0.949999988079071 from the official header (not derivable from the HF snapshot)
+  [copied] general.sampling.top_k: 20 from the official header (not derivable from the HF snapshot)
+  [copied] general.sampling.penalty_repeat: 1.0 from the official header (not derivable from the HF snapshot)
+  39 KVs match the official values; MISMATCH: none
+header: 11039597 B, data starts at 11039616 (0.1s)
+  [1/427] output.weight 222.5 MB  t=7s
+  [3/427] token_embd.weight 222.5 MB  t=14s
+  [161/427] blk.11.ffn_up.weight 11.0 MB  t=32s
+wrote D:\openbonsai\runs\gguf-test\openbonsai-synthetic-noe2e-PTQ1_0.gguf : 1,997,486,976 B (+0 vs official) in 57s; 8,946,450,432 ternary weights, 13736 negative-scale groups normalized, 1616 zero-scale groups
+verifying D:\openbonsai\runs\gguf-test\openbonsai-synthetic-noe2e-PTQ1_0.gguf
+structure:
+  PASS  GGUF v3, alignment 32: version 3, alignment 32
+  PASS  KV and tensor counts: 49 KVs / 427 tensors vs 49 / 427
+  PASS  KV keys and order identical to official
+  PASS  KV types identical to official
+  PASS  tensor names, order, types and ne identical to official
+  PASS  tensor data offsets identical to official
+  PASS  file size = data start + tensor data (no trailing bytes): 1997486976 vs 1997486976
+  PASS  data section starts where the official one does: header_end 11039597 (official 11039588), data_start 11039616 (official 11039616)
+  PASS  file size vs official 1,997,486,976 B: 1997486976 B (+0)
+  PASS  202 PTQ1_0 + 225 F32 tensors: 202 + 225
+KV values:
+  PASS  general.architecture
+  PASS  general.type
+  PASS  general.sampling.min_p
+  PASS  general.name: 'OpenBonsai-Qwen3.5-9B-PTQ1_0' (official 'Ternary-Bonsai-2-9B', differs by design)
+  PASS  general.size_label
+  PASS  qwen35.block_count
+  PASS  qwen35.context_length
+  PASS  qwen35.embedding_length
+  PASS  qwen35.feed_forward_length
+  PASS  qwen35.attention.head_count
+  PASS  qwen35.attention.head_count_kv
+  PASS  qwen35.rope.dimension_sections: len 4 vs 4, sha256 equal
+  PASS  qwen35.rope.freq_base
+  PASS  qwen35.attention.layer_norm_rms_epsilon
+  PASS  qwen35.attention.key_length
+  PASS  qwen35.attention.value_length
+  PASS  qwen35.ssm.conv_kernel
+  PASS  qwen35.ssm.state_size
+  PASS  qwen35.ssm.group_count
+  PASS  qwen35.ssm.time_step_rank
+  PASS  qwen35.ssm.inner_size
+  PASS  qwen35.full_attention_interval
+  PASS  qwen35.rope.dimension_count
+  PASS  prism.hadamard.version
+  PASS  prism.hadamard.block_size
+  PASS  prism.hadamard.transform
+  PASS  prism.hadamard.axis
+  PASS  prism.hadamard.sign_mode
+  PASS  prism.hadamard.weight_names: len 201 vs 201, sha256 equal
+  PASS  prism.hadamard.sign_widths: len 2 vs 2, sha256 equal
+  PASS  prism.hadamard.sign_values: equals the state's s4096+s12288 (16384 values); differs from Prism's official vectors (8309 entries differ)
+  PASS  prism.hadamard.inverse_weight_names: len 1 vs 1, sha256 equal
+  PASS  prism.hadamard.gdn_v_grouped
+  PASS  tokenizer.ggml.model
+  PASS  tokenizer.ggml.pre
+  PASS  tokenizer.ggml.tokens: len 248320 vs 248320, sha256 equal
+  PASS  tokenizer.ggml.token_type: len 248320 vs 248320, sha256 equal
+  PASS  tokenizer.ggml.merges: len 247587 vs 247587, sha256 equal
+  PASS  tokenizer.ggml.eos_token_id
+  PASS  tokenizer.ggml.padding_token_id
+  PASS  tokenizer.ggml.add_bos_token
+  PASS  tokenizer.chat_template: prefix(120) and length 7756 vs 7756 (official value truncated in header dump)
+  PASS  general.quantization_version
+  PASS  general.file_type
+  PASS  tokenizer.ggml.bos_token_id
+  PASS  general.sampling.temp
+  PASS  general.sampling.top_p
+  PASS  general.sampling.top_k
+  PASS  general.sampling.penalty_repeat
+  PASS  weight_names (201) + inverse_weight_names (1) cover exactly the 202 PTQ1_0 tensors
+  PASS  weight_names in sorted-HF-name order
+  PASS  sign table covers every folded input width: widths [4096, 12288], 16384 values
+  PASS  general.file_type = 143 (LLAMA_FTYPE_MOSTLY_PTQ1_0)
+  PASS  tokenizer.ggml.tokens == official tokens.json exactly: 248320 tokens
+  PASS  token_type histogram: {"1": 248044, "3": 27, "4": 6, "5": 243}
+  PASS  chat_template == snapshot chat_template.jinja
+PTQ1_0 content (every tensor, every block):
+  PASS  decoded codes and fp16 scale bits == permuted, sign-normalized source (exact): 8,946,450,432 weights in 55s; 13736 negative-scale groups normalized (808 were -0.0), 1616 zero-scale groups; e2e scales used for 0 tensors
+F32 content:
+  PASS  F32 tensors bit-identical to transformed snapshot tensors: 225 tensors; ssm_a vs fp64 -exp max |diff| 3.00e-06
+functional equivalence (fp64):
+  PASS  runtime popcount Hadamard == Sylvester recursion (4096)
+  PASS  function output.weight (16 rows): rel 6.86e-16; cos vs original BF16 W x 0.917
+  PASS  function token_embd.weight (16 rows): lookup s*(H z) vs (C*s)R^T rows: rel 0.00e+00; cos vs original BF16 rows 0.901
+  PASS  function blk.0.attn_gate.weight (16 rows): rel 8.27e-16; cos vs original BF16 W x 0.906; control without un-permuting rows: cos -0.095
+  PASS  function blk.0.attn_qkv.weight (16 rows): rel 7.43e-16; cos vs original BF16 W x 0.902; control without un-permuting rows: cos -0.324
+  PASS  function blk.0.ffn_down.weight (16 rows): rel 7.50e-16; cos vs original BF16 W x 0.911
+  PASS  function blk.0.ffn_gate.weight (16 rows): rel 6.32e-16; cos vs original BF16 W x 0.908
+  PASS  function blk.0.ffn_up.weight (16 rows): rel 6.06e-16; cos vs original BF16 W x 0.919
+  PASS  function blk.0.ssm_out.weight (16 rows): rel 6.52e-16; cos vs original BF16 W x 0.853
+  PASS  function blk.3.attn_k.weight (16 rows): rel 6.79e-16; cos vs original BF16 W x 0.912
+  PASS  function blk.3.attn_output.weight (16 rows): rel 7.08e-16; cos vs original BF16 W x 0.917
+  PASS  function blk.3.attn_q.weight (16 rows): rel 6.86e-16; cos vs original BF16 W x 0.922
+  PASS  function blk.3.attn_v.weight (16 rows): rel 8.76e-16; cos vs original BF16 W x 0.870
+  PASS  function blk.3.ffn_down.weight (16 rows): rel 7.80e-16; cos vs original BF16 W x 0.923
+  PASS  function blk.3.ffn_gate.weight (16 rows): rel 5.90e-16; cos vs original BF16 W x 0.918
+  PASS  function blk.3.ffn_up.weight (16 rows): rel 7.14e-16; cos vs original BF16 W x 0.916
+  PASS  function blk.30.attn_gate.weight (16 rows): rel 6.56e-16; cos vs original BF16 W x 0.904; control without un-permuting rows: cos -0.087
+  PASS  function blk.30.attn_qkv.weight (16 rows): rel 6.33e-16; cos vs original BF16 W x 0.920; control without un-permuting rows: cos -0.285
+  PASS  function blk.30.ffn_down.weight (16 rows): rel 9.05e-16; cos vs original BF16 W x 0.863
+  PASS  function blk.30.ffn_gate.weight (16 rows): rel 6.33e-16; cos vs original BF16 W x 0.920
+  PASS  function blk.30.ffn_up.weight (16 rows): rel 9.24e-16; cos vs original BF16 W x 0.915
+  PASS  function blk.30.ssm_out.weight (16 rows): rel 6.74e-16; cos vs original BF16 W x 0.833
+  PASS  function blk.31.attn_k.weight (16 rows): rel 7.08e-16; cos vs original BF16 W x 0.907
+  PASS  function blk.31.attn_output.weight (16 rows): rel 7.01e-16; cos vs original BF16 W x 0.908
+  PASS  function blk.31.attn_q.weight (16 rows): rel 7.42e-16; cos vs original BF16 W x 0.869
+  PASS  function blk.31.attn_v.weight (16 rows): rel 6.00e-16; cos vs original BF16 W x 0.933
+  PASS  function blk.31.ffn_down.weight (16 rows): rel 6.96e-16; cos vs original BF16 W x 0.891
+  PASS  function blk.31.ffn_gate.weight (16 rows): rel 8.03e-16; cos vs original BF16 W x 0.876
+  PASS  function blk.31.ffn_up.weight (16 rows): rel 7.24e-16; cos vs original BF16 W x 0.873
+verify: 97 passed, 0 failed in 57s
+report: D:\openbonsai\runs\gguf-test\openbonsai-synthetic-noe2e-PTQ1_0.gguf.export.json

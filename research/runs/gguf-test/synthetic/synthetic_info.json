@@ -1,0 +1,1230 @@
+{
+ "args": {
+  "synthetic": true,
+  "method": "rtn",
+  "threshold_ratio": 0.7,
+  "shared_signs": true,
+  "block": 4096,
+  "group": 128,
+  "layers": 32,
+  "edge_cases": true,
+  "seed": 0
+ },
+ "edge_cases": {
+  "layers.0.linear_attn.in_proj_qkv": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.0.linear_attn.in_proj_z": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.0.linear_attn.out_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.0.mlp.gate_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.0.mlp.up_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.0.mlp.down_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.1.linear_attn.in_proj_qkv": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.1.linear_attn.in_proj_z": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.1.linear_attn.out_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.1.mlp.gate_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.1.mlp.up_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.1.mlp.down_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.2.linear_attn.in_proj_qkv": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.2.linear_attn.in_proj_z": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.2.linear_attn.out_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.2.mlp.gate_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.2.mlp.up_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.2.mlp.down_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.3.self_attn.q_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.3.self_attn.k_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.3.self_attn.v_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.3.self_attn.o_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.3.mlp.gate_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.3.mlp.up_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.3.mlp.down_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.4.linear_attn.in_proj_qkv": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.4.linear_attn.in_proj_z": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.4.linear_attn.out_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.4.mlp.gate_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.4.mlp.up_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.4.mlp.down_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.5.linear_attn.in_proj_qkv": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.5.linear_attn.in_proj_z": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.5.linear_attn.out_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.5.mlp.gate_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.5.mlp.up_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.5.mlp.down_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.6.linear_attn.in_proj_qkv": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.6.linear_attn.in_proj_z": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.6.linear_attn.out_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.6.mlp.gate_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.6.mlp.up_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.6.mlp.down_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.7.self_attn.q_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.7.self_attn.k_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.7.self_attn.v_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.7.self_attn.o_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.7.mlp.gate_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.7.mlp.up_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.7.mlp.down_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.8.linear_attn.in_proj_qkv": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.8.linear_attn.in_proj_z": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.8.linear_attn.out_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.8.mlp.gate_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.8.mlp.up_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.8.mlp.down_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.9.linear_attn.in_proj_qkv": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.9.linear_attn.in_proj_z": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.9.linear_attn.out_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.9.mlp.gate_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.9.mlp.up_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.9.mlp.down_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.10.linear_attn.in_proj_qkv": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.10.linear_attn.in_proj_z": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.10.linear_attn.out_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.10.mlp.gate_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.10.mlp.up_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.10.mlp.down_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.11.self_attn.q_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.11.self_attn.k_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.11.self_attn.v_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.11.self_attn.o_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.11.mlp.gate_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.11.mlp.up_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.11.mlp.down_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.12.linear_attn.in_proj_qkv": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.12.linear_attn.in_proj_z": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.12.linear_attn.out_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.12.mlp.gate_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.12.mlp.up_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.12.mlp.down_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.13.linear_attn.in_proj_qkv": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.13.linear_attn.in_proj_z": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.13.linear_attn.out_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.13.mlp.gate_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.13.mlp.up_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.13.mlp.down_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.14.linear_attn.in_proj_qkv": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.14.linear_attn.in_proj_z": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.14.linear_attn.out_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.14.mlp.gate_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.14.mlp.up_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.14.mlp.down_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.15.self_attn.q_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.15.self_attn.k_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.15.self_attn.v_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.15.self_attn.o_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.15.mlp.gate_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.15.mlp.up_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.15.mlp.down_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.16.linear_attn.in_proj_qkv": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.16.linear_attn.in_proj_z": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.16.linear_attn.out_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.16.mlp.gate_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.16.mlp.up_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.16.mlp.down_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.17.linear_attn.in_proj_qkv": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.17.linear_attn.in_proj_z": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.17.linear_attn.out_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.17.mlp.gate_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.17.mlp.up_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.17.mlp.down_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.18.linear_attn.in_proj_qkv": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.18.linear_attn.in_proj_z": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.18.linear_attn.out_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.18.mlp.gate_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.18.mlp.up_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.18.mlp.down_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.19.self_attn.q_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.19.self_attn.k_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.19.self_attn.v_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.19.self_attn.o_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.19.mlp.gate_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.19.mlp.up_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.19.mlp.down_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.20.linear_attn.in_proj_qkv": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.20.linear_attn.in_proj_z": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.20.linear_attn.out_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.20.mlp.gate_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.20.mlp.up_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.20.mlp.down_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.21.linear_attn.in_proj_qkv": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.21.linear_attn.in_proj_z": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.21.linear_attn.out_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.21.mlp.gate_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.21.mlp.up_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.21.mlp.down_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.22.linear_attn.in_proj_qkv": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.22.linear_attn.in_proj_z": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.22.linear_attn.out_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.22.mlp.gate_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.22.mlp.up_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.22.mlp.down_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.23.self_attn.q_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.23.self_attn.k_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.23.self_attn.v_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.23.self_attn.o_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.23.mlp.gate_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.23.mlp.up_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.23.mlp.down_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.24.linear_attn.in_proj_qkv": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.24.linear_attn.in_proj_z": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.24.linear_attn.out_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.24.mlp.gate_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.24.mlp.up_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.24.mlp.down_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.25.linear_attn.in_proj_qkv": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.25.linear_attn.in_proj_z": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.25.linear_attn.out_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.25.mlp.gate_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.25.mlp.up_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.25.mlp.down_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.26.linear_attn.in_proj_qkv": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.26.linear_attn.in_proj_z": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.26.linear_attn.out_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.26.mlp.gate_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.26.mlp.up_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.26.mlp.down_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.27.self_attn.q_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.27.self_attn.k_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.27.self_attn.v_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.27.self_attn.o_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.27.mlp.gate_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.27.mlp.up_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.27.mlp.down_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.28.linear_attn.in_proj_qkv": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.28.linear_attn.in_proj_z": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.28.linear_attn.out_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.28.mlp.gate_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.28.mlp.up_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.28.mlp.down_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.29.linear_attn.in_proj_qkv": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.29.linear_attn.in_proj_z": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.29.linear_attn.out_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.29.mlp.gate_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.29.mlp.up_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.29.mlp.down_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.30.linear_attn.in_proj_qkv": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.30.linear_attn.in_proj_z": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.30.linear_attn.out_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.30.mlp.gate_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.30.mlp.up_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.30.mlp.down_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.31.self_attn.q_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.31.self_attn.k_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.31.self_attn.v_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.31.self_attn.o_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.31.mlp.gate_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.31.mlp.up_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "layers.31.mlp.down_proj": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "lm_head": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  },
+  "embed_tokens": {
+   "flipped": 64,
+   "neg_zero": 4,
+   "zeroed": 4
+  }
+ },
+ "rel_mse": {
+  "layers.0.linear_attn.in_proj_qkv": 0.18903551474147653,
+  "layers.0.linear_attn.in_proj_z": 0.18915889187684326,
+  "layers.0.linear_attn.out_proj": 0.18957131967412358,
+  "layers.0.mlp.gate_proj": 0.18919338089587345,
+  "layers.0.mlp.up_proj": 0.18912168475957553,
+  "layers.0.mlp.down_proj": 0.18914463256876404,
+  "layers.1.linear_attn.in_proj_qkv": 0.18913208091404998,
+  "layers.1.linear_attn.in_proj_z": 0.18912513985428964,
+  "layers.1.linear_attn.out_proj": 0.1890344983989588,
+  "layers.1.mlp.gate_proj": 0.18920996720242778,
+  "layers.1.mlp.up_proj": 0.18918102562953676,
+  "layers.1.mlp.down_proj": 0.1891324019168076,
+  "layers.2.linear_attn.in_proj_qkv": 0.1892238456192012,
+  "layers.2.linear_attn.in_proj_z": 0.18919803576553845,
+  "layers.2.linear_attn.out_proj": 0.1892024334613847,
+  "layers.2.mlp.gate_proj": 0.1891416031453915,
+  "layers.2.mlp.up_proj": 0.18913278190527533,
+  "layers.2.mlp.down_proj": 0.18920629455647767,
+  "layers.3.self_attn.q_proj": 0.18907523338638324,
+  "layers.3.self_attn.k_proj": 0.18929570631165124,
+  "layers.3.self_attn.v_proj": 0.1889965365994253,
+  "layers.3.self_attn.o_proj": 0.18914594043650182,
+  "layers.3.mlp.gate_proj": 0.18916313744267155,
+  "layers.3.mlp.up_proj": 0.18912713531563463,
+  "layers.3.mlp.down_proj": 0.18920720247276607,
+  "layers.4.linear_attn.in_proj_qkv": 0.18920106970500528,
+  "layers.4.linear_attn.in_proj_z": 0.18916228987540276,
+  "layers.4.linear_attn.out_proj": 0.18927367867391864,
+  "layers.4.mlp.gate_proj": 0.18918428804828857,
+  "layers.4.mlp.up_proj": 0.18918754065307333,
+  "layers.4.mlp.down_proj": 0.18920002295444519,
+  "layers.5.linear_attn.in_proj_qkv": 0.18916976581210185,
+  "layers.5.linear_attn.in_proj_z": 0.1892080116540264,
+  "layers.5.linear_attn.out_proj": 0.18918500393432866,
+  "layers.5.mlp.gate_proj": 0.18910722969813806,
+  "layers.5.mlp.up_proj": 0.189217100671768,
+  "layers.5.mlp.down_proj": 0.18911008067573915,
+  "layers.6.linear_attn.in_proj_qkv": 0.1891078085953326,
+  "layers.6.linear_attn.in_proj_z": 0.18905950733919977,
+  "layers.6.linear_attn.out_proj": 0.1891523537483032,
+  "layers.6.mlp.gate_proj": 0.18915391835915327,
+  "layers.6.mlp.up_proj": 0.1891372609940628,
+  "layers.6.mlp.down_proj": 0.18913260110327618,
+  "layers.7.self_attn.q_proj": 0.1891526160429713,
+  "layers.7.self_attn.k_proj": 0.1892436897211009,
+  "layers.7.self_attn.v_proj": 0.18895403692722684,
+  "layers.7.self_attn.o_proj": 0.18906140198101612,
+  "layers.7.mlp.gate_proj": 0.1891364259329302,
+  "layers.7.mlp.up_proj": 0.18915785833372892,
+  "layers.7.mlp.down_proj": 0.1891530459563218,
+  "layers.8.linear_attn.in_proj_qkv": 0.189140889941712,
+  "layers.8.linear_attn.in_proj_z": 0.18908337882513343,
+  "layers.8.linear_attn.out_proj": 0.18911852334960996,
+  "layers.8.mlp.gate_proj": 0.18922580520036192,
+  "layers.8.mlp.up_proj": 0.18913201540764155,
+  "layers.8.mlp.down_proj": 0.189192823760662,
+  "layers.9.linear_attn.in_proj_qkv": 0.1891407133368014,
+  "layers.9.linear_attn.in_proj_z": 0.18922715051259023,
+  "layers.9.linear_attn.out_proj": 0.18925984151600772,
+  "layers.9.mlp.gate_proj": 0.18915133761833083,
+  "layers.9.mlp.up_proj": 0.1891347734905133,
+  "layers.9.mlp.down_proj": 0.18919310994670527,
+  "layers.10.linear_attn.in_proj_qkv": 0.18911765004096467,
+  "layers.10.linear_attn.in_proj_z": 0.18918436858789317,
+  "layers.10.linear_attn.out_proj": 0.18906576794011204,
+  "layers.10.mlp.gate_proj": 0.18918150601703426,
+  "layers.10.mlp.up_proj": 0.1891156287757065,
+  "layers.10.mlp.down_proj": 0.18912899236842842,
+  "layers.11.self_attn.q_proj": 0.18914311827295793,
+  "layers.11.self_attn.k_proj": 0.1891868509112801,
+  "layers.11.self_attn.v_proj": 0.18886404414986924,
+  "layers.11.self_attn.o_proj": 0.1890530131876681,
+  "layers.11.mlp.gate_proj": 0.18911217439750846,
+  "layers.11.mlp.up_proj": 0.18915360672041212,
+  "layers.11.mlp.down_proj": 0.18912388729053253,
+  "layers.12.linear_attn.in_proj_qkv": 0.18910842525916735,
+  "layers.12.linear_attn.in_proj_z": 0.1892080371652336,
+  "layers.12.linear_attn.out_proj": 0.18919360971100901,
+  "layers.12.mlp.gate_proj": 0.18913081843636237,
+  "layers.12.mlp.up_proj": 0.1891710904097225,
+  "layers.12.mlp.down_proj": 0.18919033523827977,
+  "layers.13.linear_attn.in_proj_qkv": 0.18915156647390965,
+  "layers.13.linear_attn.in_proj_z": 0.18914791553103927,
+  "layers.13.linear_attn.out_proj": 0.18916860018460677,
+  "layers.13.mlp.gate_proj": 0.18914863935021078,
+  "layers.13.mlp.up_proj": 0.18916018881914337,
+  "layers.13.mlp.down_proj": 0.18917160639173602,
+  "layers.14.linear_attn.in_proj_qkv": 0.18923774613042982,
+  "layers.14.linear_attn.in_proj_z": 0.18895021123207123,
+  "layers.14.linear_attn.out_proj": 0.18918737622282625,
+  "layers.14.mlp.gate_proj": 0.18915414455202365,
+  "layers.14.mlp.up_proj": 0.18916647090624142,
+  "layers.14.mlp.down_proj": 0.1891960241211248,
+  "layers.15.self_attn.q_proj": 0.18907356279106943,
+  "layers.15.self_attn.k_proj": 0.18907580415502875,
+  "layers.15.self_attn.v_proj": 0.18905946638396962,
+  "layers.15.self_attn.o_proj": 0.18912174113737476,
+  "layers.15.mlp.gate_proj": 0.18910508024491976,
+  "layers.15.mlp.up_proj": 0.1891048402262198,
+  "layers.15.mlp.down_proj": 0.18915364375735566,
+  "layers.16.linear_attn.in_proj_qkv": 0.18910848628695703,
+  "layers.16.linear_attn.in_proj_z": 0.18914975477387344,
+  "layers.16.linear_attn.out_proj": 0.18905052842366035,
+  "layers.16.mlp.gate_proj": 0.18916413013694355,
+  "layers.16.mlp.up_proj": 0.18913819682920335,
+  "layers.16.mlp.down_proj": 0.18909572566624622,
+  "layers.17.linear_attn.in_proj_qkv": 0.18910417226766546,
+  "layers.17.linear_attn.in_proj_z": 0.18916372441058676,
+  "layers.17.linear_attn.out_proj": 0.18926596666975823,
+  "layers.17.mlp.gate_proj": 0.18916632175519082,
+  "layers.17.mlp.up_proj": 0.1891493133961061,
+  "layers.17.mlp.down_proj": 0.18915877543494114,
+  "layers.18.linear_attn.in_proj_qkv": 0.18924674880153894,
+  "layers.18.linear_attn.in_proj_z": 0.18923367907964464,
+  "layers.18.linear_attn.out_proj": 0.1891113218596101,
+  "layers.18.mlp.gate_proj": 0.1891088735183486,
+  "layers.18.mlp.up_proj": 0.1891121405493888,
+  "layers.18.mlp.down_proj": 0.18918392353504734,
+  "layers.19.self_attn.q_proj": 0.1892169519268201,
+  "layers.19.self_attn.k_proj": 0.18910999584362737,
+  "layers.19.self_attn.v_proj": 0.18917538259461653,
+  "layers.19.self_attn.o_proj": 0.18909190348545873,
+  "layers.19.mlp.gate_proj": 0.18917397195928334,
+  "layers.19.mlp.up_proj": 0.18915581252389246,
+  "layers.19.mlp.down_proj": 0.18912493579529968,
+  "layers.20.linear_attn.in_proj_qkv": 0.18916894366822562,
+  "layers.20.linear_attn.in_proj_z": 0.18918416709574606,
+  "layers.20.linear_attn.out_proj": 0.18916829494286133,
+  "layers.20.mlp.gate_proj": 0.1891045877356992,
+  "layers.20.mlp.up_proj": 0.18915063229394996,
+  "layers.20.mlp.down_proj": 0.1891526773204564,
+  "layers.21.linear_attn.in_proj_qkv": 0.18920627872990853,
+  "layers.21.linear_attn.in_proj_z": 0.18912119541671593,
+  "layers.21.linear_attn.out_proj": 0.18917887285375368,
+  "layers.21.mlp.gate_proj": 0.18907210926164655,
+  "layers.21.mlp.up_proj": 0.18922750340007305,
+  "layers.21.mlp.down_proj": 0.18917517576415135,
+  "layers.22.linear_attn.in_proj_qkv": 0.1891165758343073,
+  "layers.22.linear_attn.in_proj_z": 0.18918934789091982,
+  "layers.22.linear_attn.out_proj": 0.1891415050517663,
+  "layers.22.mlp.gate_proj": 0.1891022005702093,
+  "layers.22.mlp.up_proj": 0.18917881260000588,
+  "layers.22.mlp.down_proj": 0.18915103013108228,
+  "layers.23.self_attn.q_proj": 0.1891744116980814,
+  "layers.23.self_attn.k_proj": 0.18936310603890935,
+  "layers.23.self_attn.v_proj": 0.18896618400605456,
+  "layers.23.self_attn.o_proj": 0.1891065352657337,
+  "layers.23.mlp.gate_proj": 0.1890702938122544,
+  "layers.23.mlp.up_proj": 0.18912299331808816,
+  "layers.23.mlp.down_proj": 0.18914941723319584,
+  "layers.24.linear_attn.in_proj_qkv": 0.18907897022688883,
+  "layers.24.linear_attn.in_proj_z": 0.18917180323056199,
+  "layers.24.linear_attn.out_proj": 0.1892023854930889,
+  "layers.24.mlp.gate_proj": 0.1892008933684105,
+  "layers.24.mlp.up_proj": 0.18919699333773268,
+  "layers.24.mlp.down_proj": 0.18922295943859838,
+  "layers.25.linear_attn.in_proj_qkv": 0.1891279104339696,
+  "layers.25.linear_attn.in_proj_z": 0.1891417525038669,
+  "layers.25.linear_attn.out_proj": 0.18907005292068013,
+  "layers.25.mlp.gate_proj": 0.18922050754212713,
+  "layers.25.mlp.up_proj": 0.1891326041924152,
+  "layers.25.mlp.down_proj": 0.18917264275584986,
+  "layers.26.linear_attn.in_proj_qkv": 0.18915977511137633,
+  "layers.26.linear_attn.in_proj_z": 0.18922270184014706,
+  "layers.26.linear_attn.out_proj": 0.18919092087027345,
+  "layers.26.mlp.gate_proj": 0.1891765004921953,
+  "layers.26.mlp.up_proj": 0.18918747273644565,
+  "layers.26.mlp.down_proj": 0.18911546809683155,
+  "layers.27.self_attn.q_proj": 0.1891361247821552,
+  "layers.27.self_attn.k_proj": 0.18916285996108032,
+  "layers.27.self_attn.v_proj": 0.1890302498771044,
+  "layers.27.self_attn.o_proj": 0.18912769228480086,
+  "layers.27.mlp.gate_proj": 0.18917355608269776,
+  "layers.27.mlp.up_proj": 0.18919683250770863,
+  "layers.27.mlp.down_proj": 0.1891718038462101,
+  "layers.28.linear_attn.in_proj_qkv": 0.18914334357717127,
+  "layers.28.linear_attn.in_proj_z": 0.18912149967946262,
+  "layers.28.linear_attn.out_proj": 0.1892209555853722,
+  "layers.28.mlp.gate_proj": 0.1891405463966001,
+  "layers.28.mlp.up_proj": 0.18916020612551074,
+  "layers.28.mlp.down_proj": 0.1891442804645207,
+  "layers.29.linear_attn.in_proj_qkv": 0.18918142801489726,
+  "layers.29.linear_attn.in_proj_z": 0.18910699590922012,
+  "layers.29.linear_attn.out_proj": 0.18925462508494234,
+  "layers.29.mlp.gate_proj": 0.18921226933301966,
+  "layers.29.mlp.up_proj": 0.18918799971234448,
+  "layers.29.mlp.down_proj": 0.18910675913110475,
+  "layers.30.linear_attn.in_proj_qkv": 0.18913616657173507,
+  "layers.30.linear_attn.in_proj_z": 0.18903119546506478,
+  "layers.30.linear_attn.out_proj": 0.18916019578482204,
+  "layers.30.mlp.gate_proj": 0.1891478912173846,
+  "layers.30.mlp.up_proj": 0.1891838184591901,
+  "layers.30.mlp.down_proj": 0.18914403381582662,
+  "layers.31.self_attn.q_proj": 0.1891101972005846,
+  "layers.31.self_attn.k_proj": 0.18898792313957188,
+  "layers.31.self_attn.v_proj": 0.1889154787365823,
+  "layers.31.self_attn.o_proj": 0.18898549824670527,
+  "layers.31.mlp.gate_proj": 0.1890899309185259,
+  "layers.31.mlp.up_proj": 0.18913179288048712,
+  "layers.31.mlp.down_proj": 0.18918119526712288,
+  "lm_head": 0.1891694508388547,
+  "embed_tokens": 0.1891698367402623
+ },
+ "seconds": 122.40141320228577
+}

@@ -1,0 +1,409 @@
+...............................F........................................ [ 88%]
+......EEE                                                                [100%]
+=================================== ERRORS ====================================
+_ ERROR at setup of test_historical_exact_selection_native_cache_and_attribution _
+
+tmp_path_factory = TempPathFactory(_given_basetemp=WindowsPath('D:/openbonsai/runs/2026-10-27-5090-head-rotation-pair-v1/analysis/native-...runs/2026-10-27-5090-head-rotation-pair-v1/analysis/native-CPU-fixtures'), _retention_count=3, _retention_policy='all')
+
+    @pytest.fixture(scope='module')
+    def historical_chain(tmp_path_factory):
+        root = tmp_path_factory.mktemp('historical-pipeline')
+        torch.set_num_threads(2)
+        native = tiny_model(seed=910, multimodal=True).bfloat16().eval().requires_grad_(False)
+        for name, parameter in native.named_parameters():
+            if name.endswith('A_log'):
+                parameter.data = parameter.data.float().fill_(.1234567)
+        native.save_pretrained(root / 'source')
+        backend = Tokenizer(models.WordLevel({f't{i}': i for i in range(256)}, unk_token='t3'))
+        backend.pre_tokenizer = pre_tokenizers.Whitespace()
+        tokenizer = PreTrainedTokenizerFast(tokenizer_object=backend, pad_token='t0',
+            eos_token='t2', unk_token='t3', additional_special_tokens=['t4'])
+        tokenizer.chat_template = "{% for m in messages %}{{ m['content'] }}{% endfor %}\r\n"
+        tokenizer.save_pretrained(root / 'tokenizer')
+        source_before = local_directory_identity(root / 'source')
+        tokenizer_before = local_directory_identity(root / 'tokenizer')
+        token_identity = sources.tokenizer_identity(root / 'tokenizer')
+        history = root / 'history'
+        history.mkdir()
+        specs, expected_records, raw_files = {}, {}, {}
+        for role, start in [('calibration', 10), ('search_validation', 30)]:
+            rows = [
+                {'record_id': role + '-0', 'prompt': 'historical fixture first prefix',
+                 'input_ids': [start, start + 1, start + 2, start + 3, 2],
+                 'attention_mask': [1, 1, 1, 1, 1], 'prompt_token_count': 3,
+                 'generated_token_count': 2, 'stop_reason': 'eos', 'eos_ids': [2, 4]},
+                {'record_id': role + '-1', 'prompt': 'historical fixture second prefix',
+                 'input_ids': [start + 5, start + 6, start + 7, 4, 0],
+                 'attention_mask': [1, 1, 1, 1, 0], 'prompt_token_count': 2,
+                 'generated_token_count': 2, 'stop_reason': 'eos', 'eos_ids': [2, 4]},
+                {'record_id': role + '-unused', 'input_ids': [start + 8, start + 9, 2],
+                 'attention_mask': [1, 1, 1], 'unused_suffix': True},
+            ]
+            # Preserve noncanonical bytes, line endings, metadata, and an unconsumed
+            # third row. The selected-prefix digest is independently constructed.
+            lines = [(json.dumps(row, ensure_ascii=False, indent=None) + '\r\n').encode()
+                     for row in rows]
+            consumed = lines[0] + b'\r\n' + lines[1]
+            trace = history / (role + '.jsonl')
+            trace.write_bytes(consumed + lines[2])
+            producer = write_json(history / (role + '.producer.json'), {
+                'kind': 'historical-synthetic-token-fixture', 'role': role,
+                'description': 'Authored historical fixture; import does not prove original generation.',
+                'source_content_sha256': source_before['sha256'],
+                'tokenizer_content_sha256': token_identity['sha256'],
+                'source_jsonl_sha256': sha(trace),
+                'historical_claims': {'source_run': 'tiny-native-fixture',
+                    'generation_executed_by_this_import': False, 'retained_metadata': True}})
+            normalized = [{'input_ids': row['input_ids'] + [0] * 3,
+                           'attention_mask': row['attention_mask'] + [0] * 3} for row in rows[:2]]
+            selection = {'num_records': 2,
+                'consumed_jsonl_sha256': hashlib.sha256(consumed).hexdigest(),
+                'record_sha256s': [sources.json_sha256(row) for row in normalized],
+                'raw_token_record_sha256s': [sources.json_sha256({key: row[key]
+                    for key in ('input_ids', 'attention_mask')}) for row in rows[:2]]}
+            specs[role] = {'historical': {'traces': reference(trace), 'producer': reference(producer),
+                                       'expected_selection': selection},
+                           'sequence_length': 8, 'max_samples': 2}
+            expected_records[role] = normalized
+            raw_files[role] = {'trace': trace.read_bytes(), 'producer': producer.read_bytes(), 'rows': rows}
+        history_before = local_directory_identity(history)
+        recipes = explicit_recipes()
+        recipes['head']['cache']['shard_positions'] = 3
+        parameters = {'model_directory': str(root / 'source'),
+            'tokenizer_directory': str(root / 'tokenizer'), 'traces_by_role': specs, **recipes}
+>       sealed = invoke(root, 'historical-seal', 'seal', parameters)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_pipeline_historical_command.py:85: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+root = WindowsPath('D:/openbonsai/runs/2026-10-27-5090-head-rotation-pair-v1/analysis/native-CPU-fixtures/historical-pipeline0')
+name = 'historical-seal', stage = 'seal'
+parameters = {'model_directory': 'D:\\openbonsai\\runs\\2026-10-27-5090-head-rotation-pair-v1\\analysis\\native-CPU-fixtures\\histo...igmoid', ...}, 'packing': 'auto', 'training': {'epochs': 1, 'batch_size': 1, 'window_size': 4, 'stride': 4, ...}}, ...}
+expected_success = True
+
+    def invoke(root, name, stage, parameters, *, expected_success=True):
+        request = write_json(root / (name + '.request.json'),
+            {'format': pipeline.REQUEST_FORMAT, 'stage': stage, 'parameters': parameters})
+        output = root / name
+        command = [sys.executable, '-m', 'openbonsai', 'pipeline', '--run',
+            '--request', str(request), '--expected-request-sha256', sha(request),
+            '--output', str(output), '--device', 'cpu', '--threads', '2',
+            '--max-seconds', '120', '--minimum-free-cuda-bytes', '0']
+        process = subprocess.run(command, cwd=ROOT, env=ENV, capture_output=True, text=True, timeout=150)
+        # Retain subprocess evidence independently of its own stage completion.
+        (root / (name + '.stdout.txt')).write_text(process.stdout)
+        (root / (name + '.stderr.txt')).write_text(process.stderr)
+        result = read_json(output / 'result.json') if (output / 'result.json').exists() else None
+        if expected_success:
+            child = read_json(output / 'child-status.json') if (output / 'child-status.json').exists() else None
+>           assert process.returncode == 0, (process.stdout, process.stderr, result, child)
+E           AssertionError: ('{
+E               "format": "openbonsai.pipeline-result.v1",
+E               "stage": "seal",
+E               "status": "failed",
+E               "supervision": {
+E                 ... 'format': 'openbonsai.pipeline-result.v1', 'maximum_whole_process_seconds': 120.0, 'quality_claim': False, ...}, None)
+E           assert 1 == 0
+E            +  where 1 = CompletedProcess(args=['D:\\openbonsai\\.venv\\Scripts\\python.exe', '-m', 'openbonsai', 'pipeline', '--run', '--reque...ss_seconds": 120.0,\n  "quality_claim": false,\n  "whole_process_elapsed_seconds": 2.4220000002533197\n}\n', stderr='').returncode
+
+tests\test_pipeline_command.py:67: AssertionError
+---------------------------- Captured stderr setup ----------------------------
+\rWriting model shards:   0%|          | 0/1 [00:00<?, ?it/s]\rWriting model shards: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00, 390.17it/s]
+_ ERROR at setup of test_historical_mismatch_has_no_successful_handoff[selection-order] _
+
+tmp_path_factory = TempPathFactory(_given_basetemp=WindowsPath('D:/openbonsai/runs/2026-10-27-5090-head-rotation-pair-v1/analysis/native-...runs/2026-10-27-5090-head-rotation-pair-v1/analysis/native-CPU-fixtures'), _retention_count=3, _retention_policy='all')
+
+    @pytest.fixture(scope='module')
+    def historical_chain(tmp_path_factory):
+        root = tmp_path_factory.mktemp('historical-pipeline')
+        torch.set_num_threads(2)
+        native = tiny_model(seed=910, multimodal=True).bfloat16().eval().requires_grad_(False)
+        for name, parameter in native.named_parameters():
+            if name.endswith('A_log'):
+                parameter.data = parameter.data.float().fill_(.1234567)
+        native.save_pretrained(root / 'source')
+        backend = Tokenizer(models.WordLevel({f't{i}': i for i in range(256)}, unk_token='t3'))
+        backend.pre_tokenizer = pre_tokenizers.Whitespace()
+        tokenizer = PreTrainedTokenizerFast(tokenizer_object=backend, pad_token='t0',
+            eos_token='t2', unk_token='t3', additional_special_tokens=['t4'])
+        tokenizer.chat_template = "{% for m in messages %}{{ m['content'] }}{% endfor %}\r\n"
+        tokenizer.save_pretrained(root / 'tokenizer')
+        source_before = local_directory_identity(root / 'source')
+        tokenizer_before = local_directory_identity(root / 'tokenizer')
+        token_identity = sources.tokenizer_identity(root / 'tokenizer')
+        history = root / 'history'
+        history.mkdir()
+        specs, expected_records, raw_files = {}, {}, {}
+        for role, start in [('calibration', 10), ('search_validation', 30)]:
+            rows = [
+                {'record_id': role + '-0', 'prompt': 'historical fixture first prefix',
+                 'input_ids': [start, start + 1, start + 2, start + 3, 2],
+                 'attention_mask': [1, 1, 1, 1, 1], 'prompt_token_count': 3,
+                 'generated_token_count': 2, 'stop_reason': 'eos', 'eos_ids': [2, 4]},
+                {'record_id': role + '-1', 'prompt': 'historical fixture second prefix',
+                 'input_ids': [start + 5, start + 6, start + 7, 4, 0],
+                 'attention_mask': [1, 1, 1, 1, 0], 'prompt_token_count': 2,
+                 'generated_token_count': 2, 'stop_reason': 'eos', 'eos_ids': [2, 4]},
+                {'record_id': role + '-unused', 'input_ids': [start + 8, start + 9, 2],
+                 'attention_mask': [1, 1, 1], 'unused_suffix': True},
+            ]
+            # Preserve noncanonical bytes, line endings, metadata, and an unconsumed
+            # third row. The selected-prefix digest is independently constructed.
+            lines = [(json.dumps(row, ensure_ascii=False, indent=None) + '\r\n').encode()
+                     for row in rows]
+            consumed = lines[0] + b'\r\n' + lines[1]
+            trace = history / (role + '.jsonl')
+            trace.write_bytes(consumed + lines[2])
+            producer = write_json(history / (role + '.producer.json'), {
+                'kind': 'historical-synthetic-token-fixture', 'role': role,
+                'description': 'Authored historical fixture; import does not prove original generation.',
+                'source_content_sha256': source_before['sha256'],
+                'tokenizer_content_sha256': token_identity['sha256'],
+                'source_jsonl_sha256': sha(trace),
+                'historical_claims': {'source_run': 'tiny-native-fixture',
+                    'generation_executed_by_this_import': False, 'retained_metadata': True}})
+            normalized = [{'input_ids': row['input_ids'] + [0] * 3,
+                           'attention_mask': row['attention_mask'] + [0] * 3} for row in rows[:2]]
+            selection = {'num_records': 2,
+                'consumed_jsonl_sha256': hashlib.sha256(consumed).hexdigest(),
+                'record_sha256s': [sources.json_sha256(row) for row in normalized],
+                'raw_token_record_sha256s': [sources.json_sha256({key: row[key]
+                    for key in ('input_ids', 'attention_mask')}) for row in rows[:2]]}
+            specs[role] = {'historical': {'traces': reference(trace), 'producer': reference(producer),
+                                       'expected_selection': selection},
+                           'sequence_length': 8, 'max_samples': 2}
+            expected_records[role] = normalized
+            raw_files[role] = {'trace': trace.read_bytes(), 'producer': producer.read_bytes(), 'rows': rows}
+        history_before = local_directory_identity(history)
+        recipes = explicit_recipes()
+        recipes['head']['cache']['shard_positions'] = 3
+        parameters = {'model_directory': str(root / 'source'),
+            'tokenizer_directory': str(root / 'tokenizer'), 'traces_by_role': specs, **recipes}
+>       sealed = invoke(root, 'historical-seal', 'seal', parameters)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_pipeline_historical_command.py:85: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+root = WindowsPath('D:/openbonsai/runs/2026-10-27-5090-head-rotation-pair-v1/analysis/native-CPU-fixtures/historical-pipeline0')
+name = 'historical-seal', stage = 'seal'
+parameters = {'model_directory': 'D:\\openbonsai\\runs\\2026-10-27-5090-head-rotation-pair-v1\\analysis\\native-CPU-fixtures\\histo...igmoid', ...}, 'packing': 'auto', 'training': {'epochs': 1, 'batch_size': 1, 'window_size': 4, 'stride': 4, ...}}, ...}
+expected_success = True
+
+    def invoke(root, name, stage, parameters, *, expected_success=True):
+        request = write_json(root / (name + '.request.json'),
+            {'format': pipeline.REQUEST_FORMAT, 'stage': stage, 'parameters': parameters})
+        output = root / name
+        command = [sys.executable, '-m', 'openbonsai', 'pipeline', '--run',
+            '--request', str(request), '--expected-request-sha256', sha(request),
+            '--output', str(output), '--device', 'cpu', '--threads', '2',
+            '--max-seconds', '120', '--minimum-free-cuda-bytes', '0']
+        process = subprocess.run(command, cwd=ROOT, env=ENV, capture_output=True, text=True, timeout=150)
+        # Retain subprocess evidence independently of its own stage completion.
+        (root / (name + '.stdout.txt')).write_text(process.stdout)
+        (root / (name + '.stderr.txt')).write_text(process.stderr)
+        result = read_json(output / 'result.json') if (output / 'result.json').exists() else None
+        if expected_success:
+            child = read_json(output / 'child-status.json') if (output / 'child-status.json').exists() else None
+>           assert process.returncode == 0, (process.stdout, process.stderr, result, child)
+E           AssertionError: ('{
+E               "format": "openbonsai.pipeline-result.v1",
+E               "stage": "seal",
+E               "status": "failed",
+E               "supervision": {
+E                 ... 'format': 'openbonsai.pipeline-result.v1', 'maximum_whole_process_seconds': 120.0, 'quality_claim': False, ...}, None)
+E           assert 1 == 0
+E            +  where 1 = CompletedProcess(args=['D:\\openbonsai\\.venv\\Scripts\\python.exe', '-m', 'openbonsai', 'pipeline', '--run', '--reque...ss_seconds": 120.0,\n  "quality_claim": false,\n  "whole_process_elapsed_seconds": 2.4220000002533197\n}\n', stderr='').returncode
+
+tests\test_pipeline_command.py:67: AssertionError
+_ ERROR at setup of test_historical_mismatch_has_no_successful_handoff[trace-hash] _
+
+tmp_path_factory = TempPathFactory(_given_basetemp=WindowsPath('D:/openbonsai/runs/2026-10-27-5090-head-rotation-pair-v1/analysis/native-...runs/2026-10-27-5090-head-rotation-pair-v1/analysis/native-CPU-fixtures'), _retention_count=3, _retention_policy='all')
+
+    @pytest.fixture(scope='module')
+    def historical_chain(tmp_path_factory):
+        root = tmp_path_factory.mktemp('historical-pipeline')
+        torch.set_num_threads(2)
+        native = tiny_model(seed=910, multimodal=True).bfloat16().eval().requires_grad_(False)
+        for name, parameter in native.named_parameters():
+            if name.endswith('A_log'):
+                parameter.data = parameter.data.float().fill_(.1234567)
+        native.save_pretrained(root / 'source')
+        backend = Tokenizer(models.WordLevel({f't{i}': i for i in range(256)}, unk_token='t3'))
+        backend.pre_tokenizer = pre_tokenizers.Whitespace()
+        tokenizer = PreTrainedTokenizerFast(tokenizer_object=backend, pad_token='t0',
+            eos_token='t2', unk_token='t3', additional_special_tokens=['t4'])
+        tokenizer.chat_template = "{% for m in messages %}{{ m['content'] }}{% endfor %}\r\n"
+        tokenizer.save_pretrained(root / 'tokenizer')
+        source_before = local_directory_identity(root / 'source')
+        tokenizer_before = local_directory_identity(root / 'tokenizer')
+        token_identity = sources.tokenizer_identity(root / 'tokenizer')
+        history = root / 'history'
+        history.mkdir()
+        specs, expected_records, raw_files = {}, {}, {}
+        for role, start in [('calibration', 10), ('search_validation', 30)]:
+            rows = [
+                {'record_id': role + '-0', 'prompt': 'historical fixture first prefix',
+                 'input_ids': [start, start + 1, start + 2, start + 3, 2],
+                 'attention_mask': [1, 1, 1, 1, 1], 'prompt_token_count': 3,
+                 'generated_token_count': 2, 'stop_reason': 'eos', 'eos_ids': [2, 4]},
+                {'record_id': role + '-1', 'prompt': 'historical fixture second prefix',
+                 'input_ids': [start + 5, start + 6, start + 7, 4, 0],
+                 'attention_mask': [1, 1, 1, 1, 0], 'prompt_token_count': 2,
+                 'generated_token_count': 2, 'stop_reason': 'eos', 'eos_ids': [2, 4]},
+                {'record_id': role + '-unused', 'input_ids': [start + 8, start + 9, 2],
+                 'attention_mask': [1, 1, 1], 'unused_suffix': True},
+            ]
+            # Preserve noncanonical bytes, line endings, metadata, and an unconsumed
+            # third row. The selected-prefix digest is independently constructed.
+            lines = [(json.dumps(row, ensure_ascii=False, indent=None) + '\r\n').encode()
+                     for row in rows]
+            consumed = lines[0] + b'\r\n' + lines[1]
+            trace = history / (role + '.jsonl')
+            trace.write_bytes(consumed + lines[2])
+            producer = write_json(history / (role + '.producer.json'), {
+                'kind': 'historical-synthetic-token-fixture', 'role': role,
+                'description': 'Authored historical fixture; import does not prove original generation.',
+                'source_content_sha256': source_before['sha256'],
+                'tokenizer_content_sha256': token_identity['sha256'],
+                'source_jsonl_sha256': sha(trace),
+                'historical_claims': {'source_run': 'tiny-native-fixture',
+                    'generation_executed_by_this_import': False, 'retained_metadata': True}})
+            normalized = [{'input_ids': row['input_ids'] + [0] * 3,
+                           'attention_mask': row['attention_mask'] + [0] * 3} for row in rows[:2]]
+            selection = {'num_records': 2,
+                'consumed_jsonl_sha256': hashlib.sha256(consumed).hexdigest(),
+                'record_sha256s': [sources.json_sha256(row) for row in normalized],
+                'raw_token_record_sha256s': [sources.json_sha256({key: row[key]
+                    for key in ('input_ids', 'attention_mask')}) for row in rows[:2]]}
+            specs[role] = {'historical': {'traces': reference(trace), 'producer': reference(producer),
+                                       'expected_selection': selection},
+                           'sequence_length': 8, 'max_samples': 2}
+            expected_records[role] = normalized
+            raw_files[role] = {'trace': trace.read_bytes(), 'producer': producer.read_bytes(), 'rows': rows}
+        history_before = local_directory_identity(history)
+        recipes = explicit_recipes()
+        recipes['head']['cache']['shard_positions'] = 3
+        parameters = {'model_directory': str(root / 'source'),
+            'tokenizer_directory': str(root / 'tokenizer'), 'traces_by_role': specs, **recipes}
+>       sealed = invoke(root, 'historical-seal', 'seal', parameters)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_pipeline_historical_command.py:85: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+root = WindowsPath('D:/openbonsai/runs/2026-10-27-5090-head-rotation-pair-v1/analysis/native-CPU-fixtures/historical-pipeline0')
+name = 'historical-seal', stage = 'seal'
+parameters = {'model_directory': 'D:\\openbonsai\\runs\\2026-10-27-5090-head-rotation-pair-v1\\analysis\\native-CPU-fixtures\\histo...igmoid', ...}, 'packing': 'auto', 'training': {'epochs': 1, 'batch_size': 1, 'window_size': 4, 'stride': 4, ...}}, ...}
+expected_success = True
+
+    def invoke(root, name, stage, parameters, *, expected_success=True):
+        request = write_json(root / (name + '.request.json'),
+            {'format': pipeline.REQUEST_FORMAT, 'stage': stage, 'parameters': parameters})
+        output = root / name
+        command = [sys.executable, '-m', 'openbonsai', 'pipeline', '--run',
+            '--request', str(request), '--expected-request-sha256', sha(request),
+            '--output', str(output), '--device', 'cpu', '--threads', '2',
+            '--max-seconds', '120', '--minimum-free-cuda-bytes', '0']
+        process = subprocess.run(command, cwd=ROOT, env=ENV, capture_output=True, text=True, timeout=150)
+        # Retain subprocess evidence independently of its own stage completion.
+        (root / (name + '.stdout.txt')).write_text(process.stdout)
+        (root / (name + '.stderr.txt')).write_text(process.stderr)
+        result = read_json(output / 'result.json') if (output / 'result.json').exists() else None
+        if expected_success:
+            child = read_json(output / 'child-status.json') if (output / 'child-status.json').exists() else None
+>           assert process.returncode == 0, (process.stdout, process.stderr, result, child)
+E           AssertionError: ('{
+E               "format": "openbonsai.pipeline-result.v1",
+E               "stage": "seal",
+E               "status": "failed",
+E               "supervision": {
+E                 ... 'format': 'openbonsai.pipeline-result.v1', 'maximum_whole_process_seconds': 120.0, 'quality_claim': False, ...}, None)
+E           assert 1 == 0
+E            +  where 1 = CompletedProcess(args=['D:\\openbonsai\\.venv\\Scripts\\python.exe', '-m', 'openbonsai', 'pipeline', '--run', '--reque...ss_seconds": 120.0,\n  "quality_claim": false,\n  "whole_process_elapsed_seconds": 2.4220000002533197\n}\n', stderr='').returncode
+
+tests\test_pipeline_command.py:67: AssertionError
+================================== FAILURES ===================================
+______ test_supervised_missing_model_pad_historical_seal_to_native_cache ______
+
+tmp_path = WindowsPath('D:/openbonsai/runs/2026-10-27-5090-head-rotation-pair-v1/analysis/native-CPU-fixtures/test_supervised_missing_model_0')
+
+    def test_supervised_missing_model_pad_historical_seal_to_native_cache(tmp_path):
+        """Real subprocess handoffs preserve frozen IDs and original native outputs."""
+        import torch
+        from openbonsai.pipeline_endpoints import load_head_cache_stage
+        from test_pipeline_command import invoke, reference, read_json
+    
+        torch.set_num_threads(2)
+        params, _ = inputs(tmp_path, multimodal=True)
+        history = tmp_path / 'history'
+        history.mkdir()
+        trace = history / 'traces.jsonl'
+        rows = [
+            {'id': 'materialized-0', 'input_ids': [10, 11, 2, 0, 5, 5],
+             'attention_mask': [1, 1, 1, 0, 0, 0], 'eos_ids': [2, 4], 'claim': 'already padded'},
+            {'id': 'materialized-1', 'input_ids': [12, 13, 14, 4, 5, 5],
+             'attention_mask': [1, 1, 1, 1, 0, 0], 'eos_ids': [2, 4], 'claim': 'historical stop'},
+        ]
+        raw = b'\r\n' + b''.join((json.dumps(row) + '\r\n').encode() for row in rows)
+        trace.write_bytes(raw)
+        receipt_ref = producer(history / 'producer.json', params['model_directory'], params['tokenizer_directory'], trace,
+                               role='calibration', historical_dtype='bf16-cast', generated_by_import=False)
+        expected_rows = [{key: row[key] for key in ('input_ids', 'attention_mask')} for row in rows]
+        hashes = [sources.json_sha256(row) for row in expected_rows]
+        selection = dict(num_records=2, consumed_jsonl_sha256=hashlib.sha256(raw).hexdigest(),
+                         record_sha256s=hashes, raw_token_record_sha256s=hashes)
+        params['traces_by_role'] = {'calibration': {
+            'historical': {'traces': reference(trace), 'producer': receipt_ref, 'expected_selection': selection},
+            'sequence_length': 6, 'max_samples': 2}}
+        params['model_directory'] = str(params['model_directory'])
+        params['tokenizer_directory'] = str(params['tokenizer_directory'])
+        params['head']['cache']['shard_positions'] = 2
+        before = originals(params)
+        producer_bytes = Path(receipt_ref['path']).read_bytes()
+>       sealed = invoke(tmp_path, 'sealed-command', 'seal', params)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_pipeline_padding.py:259: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+root = WindowsPath('D:/openbonsai/runs/2026-10-27-5090-head-rotation-pair-v1/analysis/native-CPU-fixtures/test_supervised_missing_model_0')
+name = 'sealed-command', stage = 'seal'
+parameters = {'model_directory': 'D:\\openbonsai\\runs\\2026-10-27-5090-head-rotation-pair-v1\\analysis\\native-CPU-fixtures\\test_...ank': 2, ...}, 'training': {'epochs': 2, 'batch_size': 1, 'window_size': 1, 'stride': 1, ...}, 'packing': 'auto'}, ...}
+expected_success = True
+
+    def invoke(root, name, stage, parameters, *, expected_success=True):
+        request = write_json(root / (name + '.request.json'),
+            {'format': pipeline.REQUEST_FORMAT, 'stage': stage, 'parameters': parameters})
+        output = root / name
+        command = [sys.executable, '-m', 'openbonsai', 'pipeline', '--run',
+            '--request', str(request), '--expected-request-sha256', sha(request),
+            '--output', str(output), '--device', 'cpu', '--threads', '2',
+            '--max-seconds', '120', '--minimum-free-cuda-bytes', '0']
+        process = subprocess.run(command, cwd=ROOT, env=ENV, capture_output=True, text=True, timeout=150)
+        # Retain subprocess evidence independently of its own stage completion.
+        (root / (name + '.stdout.txt')).write_text(process.stdout)
+        (root / (name + '.stderr.txt')).write_text(process.stderr)
+        result = read_json(output / 'result.json') if (output / 'result.json').exists() else None
+        if expected_success:
+            child = read_json(output / 'child-status.json') if (output / 'child-status.json').exists() else None
+>           assert process.returncode == 0, (process.stdout, process.stderr, result, child)
+E           AssertionError: ('{
+E               "format": "openbonsai.pipeline-result.v1",
+E               "stage": "seal",
+E               "status": "failed",
+E               "supervision": {
+E                 ... 'format': 'openbonsai.pipeline-result.v1', 'maximum_whole_process_seconds': 120.0, 'quality_claim': False, ...}, None)
+E           assert 1 == 0
+E            +  where 1 = CompletedProcess(args=['D:\\openbonsai\\.venv\\Scripts\\python.exe', '-m', 'openbonsai', 'pipeline', '--run', '--reque...ess_seconds": 120.0,\n  "quality_claim": false,\n  "whole_process_elapsed_seconds": 2.391000000294298\n}\n', stderr='').returncode
+
+tests\test_pipeline_command.py:67: AssertionError
+---------------------------- Captured stderr call -----------------------------
+\rWriting model shards:   0%|          | 0/1 [00:00<?, ?it/s]\rWriting model shards: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:00<00:00, 478.69it/s]
+=========================== short test summary info ===========================
+FAILED tests/test_pipeline_padding.py::test_supervised_missing_model_pad_historical_seal_to_native_cache
+ERROR tests/test_pipeline_historical_command.py::test_historical_exact_selection_native_cache_and_attribution
+ERROR tests/test_pipeline_historical_command.py::test_historical_mismatch_has_no_successful_handoff[selection-order]
+ERROR tests/test_pipeline_historical_command.py::test_historical_mismatch_has_no_successful_handoff[trace-hash]
+1 failed, 77 passed, 3 errors in 31.52s

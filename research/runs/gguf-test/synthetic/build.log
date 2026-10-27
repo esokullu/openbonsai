@@ -1,0 +1,37 @@
+layer 0 (linear_attention) 3.6s in_proj_qkv=0.189 in_proj_z=0.189 out_proj=0.190 gate_proj=0.189 up_proj=0.189 down_proj=0.189
+layer 1 (linear_attention) 2.8s in_proj_qkv=0.189 in_proj_z=0.189 out_proj=0.189 gate_proj=0.189 up_proj=0.189 down_proj=0.189
+layer 2 (linear_attention) 2.7s in_proj_qkv=0.189 in_proj_z=0.189 out_proj=0.189 gate_proj=0.189 up_proj=0.189 down_proj=0.189
+layer 3 (full_attention) 2.7s q_proj=0.189 k_proj=0.189 v_proj=0.189 o_proj=0.189 gate_proj=0.189 up_proj=0.189 down_proj=0.189
+layer 4 (linear_attention) 2.8s in_proj_qkv=0.189 in_proj_z=0.189 out_proj=0.189 gate_proj=0.189 up_proj=0.189 down_proj=0.189
+layer 5 (linear_attention) 2.8s in_proj_qkv=0.189 in_proj_z=0.189 out_proj=0.189 gate_proj=0.189 up_proj=0.189 down_proj=0.189
+layer 6 (linear_attention) 2.8s in_proj_qkv=0.189 in_proj_z=0.189 out_proj=0.189 gate_proj=0.189 up_proj=0.189 down_proj=0.189
+layer 7 (full_attention) 2.7s q_proj=0.189 k_proj=0.189 v_proj=0.189 o_proj=0.189 gate_proj=0.189 up_proj=0.189 down_proj=0.189
+layer 8 (linear_attention) 2.8s in_proj_qkv=0.189 in_proj_z=0.189 out_proj=0.189 gate_proj=0.189 up_proj=0.189 down_proj=0.189
+layer 9 (linear_attention) 2.8s in_proj_qkv=0.189 in_proj_z=0.189 out_proj=0.189 gate_proj=0.189 up_proj=0.189 down_proj=0.189
+layer 10 (linear_attention) 2.8s in_proj_qkv=0.189 in_proj_z=0.189 out_proj=0.189 gate_proj=0.189 up_proj=0.189 down_proj=0.189
+layer 11 (full_attention) 2.6s q_proj=0.189 k_proj=0.189 v_proj=0.189 o_proj=0.189 gate_proj=0.189 up_proj=0.189 down_proj=0.189
+layer 12 (linear_attention) 2.8s in_proj_qkv=0.189 in_proj_z=0.189 out_proj=0.189 gate_proj=0.189 up_proj=0.189 down_proj=0.189
+layer 13 (linear_attention) 2.8s in_proj_qkv=0.189 in_proj_z=0.189 out_proj=0.189 gate_proj=0.189 up_proj=0.189 down_proj=0.189
+layer 14 (linear_attention) 2.8s in_proj_qkv=0.189 in_proj_z=0.189 out_proj=0.189 gate_proj=0.189 up_proj=0.189 down_proj=0.189
+layer 15 (full_attention) 2.7s q_proj=0.189 k_proj=0.189 v_proj=0.189 o_proj=0.189 gate_proj=0.189 up_proj=0.189 down_proj=0.189
+layer 16 (linear_attention) 2.7s in_proj_qkv=0.189 in_proj_z=0.189 out_proj=0.189 gate_proj=0.189 up_proj=0.189 down_proj=0.189
+layer 17 (linear_attention) 2.8s in_proj_qkv=0.189 in_proj_z=0.189 out_proj=0.189 gate_proj=0.189 up_proj=0.189 down_proj=0.189
+layer 18 (linear_attention) 2.8s in_proj_qkv=0.189 in_proj_z=0.189 out_proj=0.189 gate_proj=0.189 up_proj=0.189 down_proj=0.189
+layer 19 (full_attention) 2.7s q_proj=0.189 k_proj=0.189 v_proj=0.189 o_proj=0.189 gate_proj=0.189 up_proj=0.189 down_proj=0.189
+layer 20 (linear_attention) 2.8s in_proj_qkv=0.189 in_proj_z=0.189 out_proj=0.189 gate_proj=0.189 up_proj=0.189 down_proj=0.189
+layer 21 (linear_attention) 2.8s in_proj_qkv=0.189 in_proj_z=0.189 out_proj=0.189 gate_proj=0.189 up_proj=0.189 down_proj=0.189
+layer 22 (linear_attention) 2.8s in_proj_qkv=0.189 in_proj_z=0.189 out_proj=0.189 gate_proj=0.189 up_proj=0.189 down_proj=0.189
+layer 23 (full_attention) 2.7s q_proj=0.189 k_proj=0.189 v_proj=0.189 o_proj=0.189 gate_proj=0.189 up_proj=0.189 down_proj=0.189
+layer 24 (linear_attention) 2.8s in_proj_qkv=0.189 in_proj_z=0.189 out_proj=0.189 gate_proj=0.189 up_proj=0.189 down_proj=0.189
+layer 25 (linear_attention) 2.8s in_proj_qkv=0.189 in_proj_z=0.189 out_proj=0.189 gate_proj=0.189 up_proj=0.189 down_proj=0.189
+layer 26 (linear_attention) 2.8s in_proj_qkv=0.189 in_proj_z=0.189 out_proj=0.189 gate_proj=0.189 up_proj=0.189 down_proj=0.189
+layer 27 (full_attention) 2.7s q_proj=0.189 k_proj=0.189 v_proj=0.189 o_proj=0.189 gate_proj=0.189 up_proj=0.189 down_proj=0.189
+layer 28 (linear_attention) 2.8s in_proj_qkv=0.189 in_proj_z=0.189 out_proj=0.189 gate_proj=0.189 up_proj=0.189 down_proj=0.189
+layer 29 (linear_attention) 2.7s in_proj_qkv=0.189 in_proj_z=0.189 out_proj=0.189 gate_proj=0.189 up_proj=0.189 down_proj=0.189
+layer 30 (linear_attention) 2.7s in_proj_qkv=0.189 in_proj_z=0.189 out_proj=0.189 gate_proj=0.189 up_proj=0.189 down_proj=0.189
+layer 31 (full_attention) 2.7s q_proj=0.189 k_proj=0.189 v_proj=0.189 o_proj=0.189 gate_proj=0.189 up_proj=0.189 down_proj=0.189
+saved ternary_state.pt (200 modules) in 5s
+lm_head (248320, 4096) rel_mse=0.189 13.1s
+embed_tokens (248320, 4096) rel_mse=0.189 13.0s
+saved e2e_state.pt (202 scale tensors)
+done in 122s

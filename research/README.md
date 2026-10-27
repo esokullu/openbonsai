@@ -21,9 +21,25 @@ To run the old code, check out a tag or commit:
 |---|---|
 | Staged pipeline, CAT-Q, mixed formats, endpoint calibration, RCO, diagnostics, smoke and preflight modules, and all their tests | tag `legacy-staged-pipeline` (2fadacf): `git checkout legacy-staged-pipeline && python -m pytest` |
 | `experiments/` scripts (GPTQ ternary, endpoints, KD, quick eval) | commit 5373d45, at `experiments/` |
+| `experiments/export_gguf.py`, `make_synthetic_state.py`, `ref/` and the endpoints `requires_grad_(False)` fix | branch `research/scaleq-recovery` (c2dc532, 5eba901), at `experiments/`; applied here under `research/experiments/` with the same content |
 
 Paths inside `docs/`, `validation/` and `runs/` refer to the layout at those
 commits (for example `docs/...`, `openbonsai/pipeline.py`, `tools/...`).
+
+### Following file history across the move
+
+Most moves were pure renames, so `git log --follow <new path>` reaches the old
+history. Two renames in commit c331407 are misleading: the renamed files were
+then rewritten (323884c) as ports of different code, so their followed history
+belongs to unrelated predecessors:
+
+| New path | `git log --follow` shows | Real ancestor |
+|---|---|---|
+| `openbonsai/stages/calibrate.py` | the old `openbonsai/calibration.py` (a token-ID loader) | `research/experiments/calib_data.py` |
+| `tests/test_traces.py` | the old `tests/test_calibration.py` | only that file's `openbonsai/prepare.py` tests (prompt reading, generation) are ancestors; its token-ID loader tests went with `calibration.py` |
+
+For those, read the ancestor's history directly
+(`git log -- research/experiments/calib_data.py experiments/calib_data.py`).
 
 ## Layout
 
@@ -40,7 +56,7 @@ commits (for example `docs/...`, `openbonsai/pipeline.py`, `tools/...`).
 | `docs/` | 21 findings documents, plus `research-log.md`, the former root README. | `docs/`, `README.md` |
 | `validation/` | 27 validation receipts. | repo root |
 | `papers/` | The ScaleQ-1.58 paper (arXiv:2608.01078) and its provenance. | `papers/` |
-| `runs/<run>/` | Small reports copied from the local `runs/` directory: `REPORT.md`/`report.md`, `results.json`, `experiment-plan.json`, `summary.md`, `analysis/*.md`, `log.txt`, `eval.json`. No checkpoints, tensors, caches or receipts. | local `runs/` |
+| `runs/<run>/` | Small reports copied from the local `runs/` directory: `REPORT.md`/`report.md`, `results.json`, `experiment-plan.json`, `summary.md`, `analysis/*.md`, `log.txt`, `eval.json`, and for the 2026-10-27 GPTQ/endpoint/Bonsai-start runs their logs (`stdout.log` is the run's `runs/<name>.stdout`). No checkpoints, tensors, caches or receipts. `2026-10-27-e2e-kd-shared-v1` was still training when these were copied and is not included yet. | local `runs/` |
 
 The optional Prism CPU manifest runner moved to `tools/prism/` (outside
 `research/`), and its tests to `tests/prism/`. Its admission forecast,
@@ -66,6 +82,8 @@ These exist only at tag `legacy-staged-pipeline`:
 | Result | Source |
 |---|---|
 | GPTQ ternary decoder, 256 calibration samples, no scale refit: dev NLL 3.2954, ARC 13/20 (BF16: 2.424, ARC 19/20) | `runs/2026-10-27-gptq-ternary-256-norefit/` |
+| The same with one shared sign vector per width (Prism's layout): dev NLL 3.3183, ARC 15/20 | `runs/2026-10-27-gptq-shared-256/` |
+| Ternary endpoints on the shared-sign decoder: head only 3.3831 (ARC 16/20), embedding only 3.4161 (11/20), both 3.4793 (13/20) | `runs/2026-10-27-endpoints-shared-256/stdout.log` |
 | 128 samples: with scale refit NLL 5.149 (ARC 8/20), without 3.319 (ARC 9/20) | `runs/2026-10-27-gptq-ternary-v1/`, `runs/2026-10-27-gptq-ternary-norefit/` |
 | Official Bonsai baseline: dev NLL 3.192, ARC 16/20 | `docs/official-bonsai-development-result.md` |
 | Fake-quant sweep (which layer types are most sensitive) | `experiments/out/` |

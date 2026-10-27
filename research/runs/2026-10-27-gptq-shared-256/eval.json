@@ -1,0 +1,15 @@
+{
+ "nll": 3.3183112722263854,
+ "ppl": 27.6136791750229,
+ "arc_correct": 15,
+ "arc_preds": "CBABDCAABCADBCCBBBBB",
+ "generations": [
+  "1. Store fresh produce in airtight containers to prevent spoilage.\n2. Clean surfaces with a mild detergent to remove grease and dust.\n3. Organize shelves to keep items neatly arranged for easy access.<|im_end|>",
+  "Based on the provided information, there are **10 heads** and **28 legs**.\n\nSince chickens and rabbits have distinct anatomical structures, we can deduce the number of each animal based on their anatomical features:\n\n- **Chickens**: Chickens have 2 heads and 2 legs.\n- **Rabbits**: Rabbits have 2 heads and 2 legs.\n\nTherefore, there are **10 heads** and **28 legs** in total.\n\n**Explanation:**\n- Chickens have 2 heads and 2 legs.\n- Rabbits have 2 heads and ",
+  "Here is a Python function that checks whether parentheses are balanced, ignoring other characters, and includes an empty-string case.\n\n```python\ndef is_balanced(text):\n    # Check if parentheses are balanced\n    # Ignore other characters\n    # Include empty-string case\n    # Return True if balanced, False if unbalanced\n    # Return False if empty-string case\n    # Return True if balanced\n    # Return False if unbalanced\n    # Return True if balanced\n    # Return False if unbalanced\n    # Return True if balanced\n    # Return False if unbalanced\n    # Return True if balanced\n",
+  "**Yar\u0131n gelemiyorum, toplant\u0131y\u0131 ba\u015fka g\u00fcne alsak olur mu?**\n\n**Yar\u0131n gelemiyorum, toplant\u0131y\u0131 ba\u015fka g\u00fcne asak olur mu?**\n\n**Yar\u0131n gelemiyorum, toplant\u0131y\u0131 ba\u015fka g\u00fcne asak olur mu?**\n\n**Yar\u0131n gelemiyorum, toplant\u0131y\u0131 ba\u015fka g\u00fcne asak olur mu?**\n\n**Yar\u0131n gelemiyorum, toplant\u0131y\u0131 ba\u015fka g\u00fcne asak olur mu?**\n\n**Yar\u0131n gelemiyorum, toplant\u0131y\u0131 ba\u015fka g\u00fcne asak olur mu?**\n\n**Yar\u0131n gelemiyorum"
+ ],
+ "wiki16k_nll": 3.1027483891376155,
+ "arc100": 78,
+ "chat_nll": 1.9644299887156509
+}

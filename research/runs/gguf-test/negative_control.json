@@ -1,0 +1,414 @@
+{
+ "args": {
+  "state": "D:/openbonsai/runs/gguf-test/synthetic/ternary_state.pt",
+  "endpoints": "D:/openbonsai/runs/gguf-test/synthetic/endpoint_state.pt",
+  "e2e": "",
+  "e2e_norms": false,
+  "snapshot": "D:/openbonsai/runs/hf-cache/hub/models--Qwen--Qwen3.5-9B/snapshots/c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+  "out": "D:/openbonsai/runs/gguf-test/openbonsai-synthetic-PTQ1_0.gguf",
+  "name": "OpenBonsai-Qwen3.5-9B-PTQ1_0",
+  "header": "D:\\openbonsai\\work\\scaleq-recovery\\experiments\\ref\\bonsai2_9b_header.json",
+  "tokens_json": "C:\\Users\\esoku\\AppData\\Local\\Temp\\claude\\C--Users-esoku--claude-spares-spare-JGws03\\a378e74a-dcb3-49cb-a9bc-29dd6c56e1f4\\scratchpad\\gguf-header\\tokens.json",
+  "chunk_rows": 16384,
+  "threads": 16,
+  "verify": false,
+  "verify_only": true,
+  "func_layers": "0",
+  "func_rows": 16,
+  "func_vecs": 4,
+  "selftest": false,
+  "report": "D:/openbonsai/runs/gguf-test/negative_control.json"
+ },
+ "kv": [],
+ "notes": [
+  "s4096: equals signs_from_seed(4096, 4096) (gptq_ternary --shared-signs); 2053 of 4096 are +1",
+  "s12288: equals signs_from_seed(12288, 12288) (gptq_ternary --shared-signs); 6127 of 12288 are +1"
+ ],
+ "verify": [
+  {
+   "ok": true,
+   "check": "GGUF v3, alignment 32",
+   "detail": "version 3, alignment 32"
+  },
+  {
+   "ok": true,
+   "check": "KV and tensor counts",
+   "detail": "49 KVs / 427 tensors vs 49 / 427"
+  },
+  {
+   "ok": true,
+   "check": "KV keys and order identical to official",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "KV types identical to official",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "tensor names, order, types and ne identical to official",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "tensor data offsets identical to official",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "file size = data start + tensor data (no trailing bytes)",
+   "detail": "1997486976 vs 1997486976"
+  },
+  {
+   "ok": true,
+   "check": "data section starts where the official one does",
+   "detail": "header_end 11039597 (official 11039588), data_start 11039616 (official 11039616)"
+  },
+  {
+   "ok": true,
+   "check": "file size vs official 1,997,486,976 B",
+   "detail": "1997486976 B (+0)"
+  },
+  {
+   "ok": true,
+   "check": "202 PTQ1_0 + 225 F32 tensors",
+   "detail": "202 + 225"
+  },
+  {
+   "ok": true,
+   "check": "general.architecture",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "general.type",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "general.sampling.min_p",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "general.name",
+   "detail": "'OpenBonsai-Qwen3.5-9B-PTQ1_0' (official 'Ternary-Bonsai-2-9B', differs by design)"
+  },
+  {
+   "ok": true,
+   "check": "general.size_label",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "qwen35.block_count",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "qwen35.context_length",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "qwen35.embedding_length",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "qwen35.feed_forward_length",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "qwen35.attention.head_count",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "qwen35.attention.head_count_kv",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "qwen35.rope.dimension_sections",
+   "detail": "len 4 vs 4, sha256 equal"
+  },
+  {
+   "ok": true,
+   "check": "qwen35.rope.freq_base",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "qwen35.attention.layer_norm_rms_epsilon",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "qwen35.attention.key_length",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "qwen35.attention.value_length",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "qwen35.ssm.conv_kernel",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "qwen35.ssm.state_size",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "qwen35.ssm.group_count",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "qwen35.ssm.time_step_rank",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "qwen35.ssm.inner_size",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "qwen35.full_attention_interval",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "qwen35.rope.dimension_count",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "prism.hadamard.version",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "prism.hadamard.block_size",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "prism.hadamard.transform",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "prism.hadamard.axis",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "prism.hadamard.sign_mode",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "prism.hadamard.weight_names",
+   "detail": "len 201 vs 201, sha256 equal"
+  },
+  {
+   "ok": true,
+   "check": "prism.hadamard.sign_widths",
+   "detail": "len 2 vs 2, sha256 equal"
+  },
+  {
+   "ok": true,
+   "check": "prism.hadamard.sign_values",
+   "detail": "equals the state's s4096+s12288 (16384 values); differs from Prism's official vectors (8309 entries differ)"
+  },
+  {
+   "ok": true,
+   "check": "prism.hadamard.inverse_weight_names",
+   "detail": "len 1 vs 1, sha256 equal"
+  },
+  {
+   "ok": true,
+   "check": "prism.hadamard.gdn_v_grouped",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "tokenizer.ggml.model",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "tokenizer.ggml.pre",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "tokenizer.ggml.tokens",
+   "detail": "len 248320 vs 248320, sha256 equal"
+  },
+  {
+   "ok": true,
+   "check": "tokenizer.ggml.token_type",
+   "detail": "len 248320 vs 248320, sha256 equal"
+  },
+  {
+   "ok": true,
+   "check": "tokenizer.ggml.merges",
+   "detail": "len 247587 vs 247587, sha256 equal"
+  },
+  {
+   "ok": true,
+   "check": "tokenizer.ggml.eos_token_id",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "tokenizer.ggml.padding_token_id",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "tokenizer.ggml.add_bos_token",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "tokenizer.chat_template",
+   "detail": "prefix(120) and length 7756 vs 7756 (official value truncated in header dump)"
+  },
+  {
+   "ok": true,
+   "check": "general.quantization_version",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "general.file_type",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "tokenizer.ggml.bos_token_id",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "general.sampling.temp",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "general.sampling.top_p",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "general.sampling.top_k",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "general.sampling.penalty_repeat",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "weight_names (201) + inverse_weight_names (1) cover exactly the 202 PTQ1_0 tensors",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "weight_names in sorted-HF-name order",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "sign table covers every folded input width",
+   "detail": "widths [4096, 12288], 16384 values"
+  },
+  {
+   "ok": true,
+   "check": "general.file_type = 143 (LLAMA_FTYPE_MOSTLY_PTQ1_0)",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "tokenizer.ggml.tokens == official tokens.json exactly",
+   "detail": "248320 tokens"
+  },
+  {
+   "ok": true,
+   "check": "token_type histogram",
+   "detail": "{\"1\": 248044, \"3\": 27, \"4\": 6, \"5\": 243}"
+  },
+  {
+   "ok": true,
+   "check": "chat_template == snapshot chat_template.jinja",
+   "detail": ""
+  },
+  {
+   "ok": false,
+   "check": "decoded codes and fp16 scale bits == permuted, sign-normalized source (exact)",
+   "detail": "0 weights in 131s; 13608 negative-scale groups normalized (800 were -0.0), 1601 zero-scale groups; e2e scales used for 0 tensors; MISMATCH in ['output.weight row 0 col 0', 'token_embd.weight row 0 col 0', 'blk.0.attn_gate.weight row 0 col 0']"
+  },
+  {
+   "ok": true,
+   "check": "F32 tensors bit-identical to transformed snapshot tensors",
+   "detail": "225 tensors; ssm_a vs fp64 -exp max |diff| 3.00e-06"
+  },
+  {
+   "ok": true,
+   "check": "runtime popcount Hadamard == Sylvester recursion (4096)",
+   "detail": ""
+  },
+  {
+   "ok": false,
+   "check": "function output.weight (16 rows)",
+   "detail": "rel 1.86e-02; cos vs original BF16 W x 0.917"
+  },
+  {
+   "ok": false,
+   "check": "function token_embd.weight (16 rows)",
+   "detail": "lookup s*(H z) vs (C*s)R^T rows: rel 2.03e-02; cos vs original BF16 rows 0.901"
+  },
+  {
+   "ok": false,
+   "check": "function blk.0.attn_gate.weight (16 rows)",
+   "detail": "rel 2.06e-02; cos vs original BF16 W x 0.907; control without un-permuting rows: cos -0.096"
+  },
+  {
+   "ok": false,
+   "check": "function blk.0.attn_qkv.weight (16 rows)",
+   "detail": "rel 2.10e-02; cos vs original BF16 W x 0.902; control without un-permuting rows: cos -0.327"
+  },
+  {
+   "ok": false,
+   "check": "function blk.0.ffn_down.weight (16 rows)",
+   "detail": "rel 2.08e-02; cos vs original BF16 W x 0.909"
+  },
+  {
+   "ok": false,
+   "check": "function blk.0.ffn_gate.weight (16 rows)",
+   "detail": "rel 1.78e-02; cos vs original BF16 W x 0.905"
+  },
+  {
+   "ok": false,
+   "check": "function blk.0.ffn_up.weight (16 rows)",
+   "detail": "rel 1.83e-02; cos vs original BF16 W x 0.919"
+  },
+  {
+   "ok": false,
+   "check": "function blk.0.ssm_out.weight (16 rows)",
+   "detail": "rel 2.49e-02; cos vs original BF16 W x 0.853"
+  }
+ ]
+}
