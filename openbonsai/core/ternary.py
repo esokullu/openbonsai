@@ -3,7 +3,10 @@
 ``TernaryLinear`` and ``TernaryEmbedding`` are the modules of
 research/experiments/e2e_kd.py, unchanged in arithmetic: BF16 signs, a shared
 BF16 dense Hadamard block, and scales ``s0 * exp(log_mult)``. The forward is
-what Prism's runtime computes: y = (C * s) (R x) with R = diag(signs) H.
+what Prism's runtime computes: y = (C * s) (R x) with R = blockdiag(H) diag(signs)
+in column-vector form (signs first, then H; core/hadamard.py writes the same
+rotation for row vectors as x D H). The one addition: a Linear's bias, if it
+has one, is kept as a frozen buffer and added (the scripts' Qwen3.5 has none).
 
 ``dense_weight`` is the experiments' ``apply_state`` arithmetic: it writes
 the dequantized weight (C * s) R^T back into an ordinary Linear, which is
@@ -19,9 +22,9 @@ from .hadamard import hadamard_matrix, rotation_matrix
 
 
 class TernaryLinear(torch.nn.Module):
-    """y = (C * s) (R x) with R = blockdiag(H) diag(signs); s = s0 * exp(u)."""
+    """y = (C * s) (R x) + b with R = blockdiag(H) diag(signs); s = s0 * exp(u)."""
 
-    def __init__(self, codes, scales, signs, block, h):
+    def __init__(self, codes, scales, signs, block, h, bias=None):
         super().__init__()
         self.out_features, self.in_features = codes.shape
         self.group = self.in_features // scales.shape[1]
@@ -30,6 +33,7 @@ class TernaryLinear(torch.nn.Module):
         self.register_buffer("s0", scales.float(), persistent=False)
         self.register_buffer("signs", signs.to(torch.bfloat16), persistent=False)
         self.h = h  # shared [block, block] BF16 Hadamard, not a parameter
+        self.register_buffer("bias", None if bias is None else bias.detach().clone(), persistent=False)
         self.log_mult = torch.nn.Parameter(torch.zeros_like(self.s0))
 
     def scales(self):
@@ -43,7 +47,7 @@ class TernaryLinear(torch.nn.Module):
     def forward(self, x):
         shape = x.shape
         xr = (x * self.signs).view(*shape[:-1], self.in_features // self.block, self.block) @ self.h
-        return F.linear(xr.view(shape), self.weight_deq())
+        return F.linear(xr.view(shape), self.weight_deq(), self.bias)
 
 
 class TernaryEmbedding(torch.nn.Module):

@@ -163,7 +163,8 @@ def install_ternary(adapter: ModelAdapter, model, records, device) -> list:
             new = TernaryEmbedding(*args)
             adapter.set_embedding(model, new)
         else:
-            new = TernaryLinear(*args)
+            bias = getattr(module, "bias", None)
+            new = TernaryLinear(*args, bias=None if bias is None else bias.to(device))
             if key == "lm_head":
                 adapter.set_head(model, new)
             else:
