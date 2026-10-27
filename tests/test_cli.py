@@ -65,7 +65,23 @@ def test_examples_are_valid_configs():
     big = load_config(ROOT / "examples" / "qwen3_5-9b.yaml")
     assert [(s["kind"], s["n"]) for s in big["calibrate"]["sources"]] == [("wikitext2", 128), ("ultrachat", 96), ("traces", 32)]
     assert big["calibrate"]["seq_len"] == 2048 and big["quantize"]["damp"] == 0.01 and big["rotation"]["max_block"] == 4096
-    assert big["distill"]["train"] == ["scales"] and "refit" not in json.dumps(big)
+    assert big["distill"]["train"] == {"scales": True, "small": False} and "refit" not in json.dumps(big)
+    assert big["export"]["format"] == "ptq1_0-gguf" and big["export"]["verify"] is True
+
+
+def test_distill_train_accepts_the_list_form_and_hashes_small_lrs_only_when_used():
+    cfg = load_config(None, ["distill.train=[scales, small]"])
+    assert cfg["distill"]["train"] == {"scales": True, "small": True}
+    with pytest.raises(ConfigError, match="norms"):
+        load_config(None, ["distill.train=[scales, norms]"])
+    with pytest.raises(ConfigError, match="smal"):
+        load_config(None, ["distill.train.smal=true"])
+    off = load_config(None, ["distill.lr_small=0.5"])
+    assert stage_inputs(off, "distill") == stage_inputs(load_config(), "distill")
+    on = load_config(None, ["distill.train.small=true"])
+    assert stage_inputs(on, "distill") != stage_inputs(load_config(None, ["distill.train.small=true",
+                                                                         "distill.lr_small=0.5"]), "distill")
+    assert stage_inputs(load_config(None, ["export.chunk_rows=7"]), "export") == stage_inputs(load_config(), "export")
 
 
 def test_end_to_end_run_on_cpu_then_skip_and_rerun(tiny_dir, tmp_path, monkeypatch, capsys):

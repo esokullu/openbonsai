@@ -56,9 +56,14 @@ DEFAULTS: dict = {
     "distill": {
         "enabled": True,
         "teacher": {"n_seq": 2048, "seq_len": 2048, "seed": 1, "shard": 64, "topk": 64, "sources": None},
-        "train": ["scales"],
+        # scales: the group scales (log multipliers; always on). small: also every high-precision
+        # decoder tensor (norms, conv1d, in_proj_a/b, A_log, dt_bias, final norm) through FP32
+        # masters, as e2e_kd.py --train-small; the export writes them. (The list form [scales] is accepted.)
+        "train": {"scales": True, "small": False},
         "endpoints": True,         # train endpoint scales too when the endpoints are ternary
         "lr": 1.0e-3,              # every measured 9B run used e2e_kd.py --lr 1e-3 (the script default was 2e-3)
+        "lr_small": 1.0e-4,        # vector-like small tensors (norms, A_log, dt_bias)
+        "lr_small_mat": 2.0e-5,    # matrix-like small tensors (conv1d, in_proj_a, in_proj_b)
         "epochs": 1,
         "accum": 8,
         "warmup": 10,
@@ -67,7 +72,15 @@ DEFAULTS: dict = {
         "ckpt_every": 16,
         "max_steps": None,         # train only this many optimizer steps; the cosine schedule ends there
     },
-    "export": {"format": "ptq1_0-gguf"},
+    "export": {
+        "enabled": True,
+        "format": "ptq1_0-gguf",   # Prism's PTQ1_0 GGUF (runs in Prism's llama.cpp fork)
+        "out": None,               # default: <run>/export/<name>.gguf
+        "name": None,              # general.name; default OpenBonsai-<model name>-PTQ1_0
+        "size_label": None,        # general.size_label; default from the model name (e.g. 9B)
+        "verify": True,            # re-read the file: structure, exact codes/scales/F32, function check
+        "chunk_rows": 16384,
+    },
     "eval": {
         "from": "auto",            # auto = the last stage whose output is current
         "suites": ["dev", "extended", "compare"],  # dev/extended need the Qwen3.5 tokenizer; compare works for any
@@ -138,9 +151,23 @@ def _check_mapping(value, schema: dict, path: tuple) -> None:
             raise ConfigError(f"{'.'.join(sub)} must be a value, not a mapping")
 
 
+_TRAIN_KEYS = ("scales", "small")
+
+
+def _normalize(cfg: dict) -> None:
+    """Accept older spellings: ``distill.train: [scales, small]`` -> {scales: true, small: true}."""
+    d = cfg.get("distill")
+    if isinstance(d, dict) and isinstance(d.get("train"), (list, tuple)):
+        unknown = sorted(set(d["train"]) - set(_TRAIN_KEYS))
+        if unknown:
+            raise ConfigError(f"unknown distill.train entries {unknown}; known: {list(_TRAIN_KEYS)}")
+        d["train"] = {k: k in d["train"] for k in _TRAIN_KEYS}
+
+
 def check_keys(cfg: dict) -> dict:
     """Reject unknown sections and keys at every level (typos), and values whose
     shape (mapping, list of sources, scalar) does not match the defaults."""
+    _normalize(cfg)
     for section, value in cfg.items():
         if section not in DEFAULTS:
             raise ConfigError(f"unknown config section {section!r}; known: {sorted(DEFAULTS)}")
@@ -209,8 +236,8 @@ def canonical_hash(value) -> str:
 
 
 _MODEL_IDENTITY = ("path", "revision", "adapter", "dtype", "attn")
-# Settings that cannot change a stage's output (logging and checkpoint cadence).
-_UNHASHED = {"distill": ("log_every", "ckpt_every")}
+# Settings that cannot change a stage's output (logging and checkpoint cadence, write chunking).
+_UNHASHED = {"distill": ("log_every", "ckpt_every"), "export": ("chunk_rows",)}
 
 
 def stage_enabled(cfg: dict, stage: str) -> bool:
@@ -235,6 +262,9 @@ def stage_inputs(cfg: dict, stage: str) -> dict:
         value = copy.deepcopy(cfg[s])
         for key in _UNHASHED.get(s, ()):
             value.pop(key, None)
+        if s == "distill" and not (value.get("train") or {}).get("small"):
+            value.pop("lr_small", None)
+            value.pop("lr_small_mat", None)
         out[s] = value
     return out
 

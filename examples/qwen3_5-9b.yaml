@@ -52,14 +52,19 @@ endpoints:
   batch: 4
 distill:
   teacher: {n_seq: 2048, seq_len: 2048, seed: 1, shard: 64, topk: 64}
-  train: [scales]
+  train: {scales: true, small: false}   # small: also norms, conv1d, in_proj_a/b, A_log, dt_bias (e2e_kd.py --train-small)
   lr: 1.0e-3               # every measured run (stage3-5 scripts: e2e_kd.py --lr 1e-3)
+  lr_small: 1.0e-4         # used with small: true (vector-like tensors)
+  lr_small_mat: 2.0e-5     # used with small: true (conv1d, in_proj_a/b)
   epochs: 1
   accum: 8
   warmup: 10
   chunk: 512
   log_every: 5
   ckpt_every: 16
+export:
+  format: ptq1_0-gguf      # ~2 GB for 9B; same layout as Ternary-Bonsai-2-9B-PTQ1_0.gguf
+  verify: true
 eval:
   from: auto
   suites: [dev, extended, compare]   # compare also scores fine-tunes with another tokenizer

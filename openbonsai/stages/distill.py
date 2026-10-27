@@ -5,7 +5,16 @@ from GPTQ stay fixed; every (row, group) scale gets a trainable log
 multiplier, trained through the whole model against the original BF16
 model's top-k next-token distribution (cross-entropy on the top-k plus a
 tail bucket for the remaining mass). This targets cross-layer error that
-layer-local reconstruction cannot see. Norm training is not wired yet.
+layer-local reconstruction cannot see.
+
+``train.small`` (e2e_kd.py ``--train-small``) also trains every high-precision
+decoder tensor that is not ternary (norms, conv1d, in_proj_a/b, A_log,
+dt_bias, the final norm): each gets an FP32 master behind a parametrization
+that casts it to its original dtype on every access, so the forward is
+unchanged; vector-like tensors use ``lr_small``, matrix-like ones
+``lr_small_mat``. The masters are saved with the scales (``small::<name>``,
+names relative to the text model) and the export writes the values the
+model computed with.
 
 Two phases, both resumable:
 
@@ -138,9 +147,64 @@ def run_teacher(ctx) -> dict:
     return {"rows": int(data.shape[0]), "seq_len": int(data.shape[1])}
 
 
+class _CastTo(torch.nn.Module):
+    """Parametrization: FP32 master -> the tensor's original dtype on every access."""
+
+    def __init__(self, dtype):
+        super().__init__()
+        self.dtype = dtype
+
+    def forward(self, x):
+        return x.to(self.dtype)
+
+
+def make_small_trainable(lm):
+    """Give every non-ternary decoder tensor (norms, conv1d, in_proj_a/b, A_log, dt_bias, final
+    norm) an FP32 master; returns {name: master} split into (vector-like, matrix-like) dicts.
+
+    e2e_kd.py's make_small_params_trainable, unchanged (same tensors, same order)."""
+    import torch.nn.utils.parametrize as parametrize
+    vec, mat = {}, {}
+    targets = []  # collect first: registering parametrizations adds submodules
+    for mname, mod in lm.named_modules():
+        if isinstance(mod, (TernaryLinear, TernaryEmbedding)) or "parametrizations" in mname:
+            continue
+        for pname, p in mod.named_parameters(recurse=False):
+            full = f"{mname}.{pname}" if mname else pname
+            if full.startswith("layers.") or full == "norm.weight":
+                targets.append((mod, pname, full, p))
+    for mod, pname, full, p in targets:
+        dtype = p.dtype
+        mod._parameters[pname] = torch.nn.Parameter(p.detach().float())
+        parametrize.register_parametrization(mod, pname, _CastTo(dtype), unsafe=True)
+        master = mod.parametrizations[pname].original
+        master.requires_grad_(True)
+        (mat if master.dim() >= 2 else vec)[full] = master
+    return vec, mat
+
+
+def trained_small(model, adapter) -> tuple[dict[str, torch.Tensor], dict[str, str]]:
+    """(FP32 masters, compute dtype names) of the tensors ``make_small_trainable`` wrapped."""
+    import torch.nn.utils.parametrize as parametrize
+    masters, dtypes = {}, {}
+    for mname, mod in adapter.text_model(model).named_modules():
+        if "parametrizations" in mname or not parametrize.is_parametrized(mod):
+            continue
+        for pname, plist in mod.parametrizations.items():
+            casts = [c for c in plist if isinstance(c, _CastTo)]
+            if not casts:
+                continue
+            full = f"{mname}.{pname}" if mname else pname
+            masters[full] = plist.original.detach().float().cpu()
+            dtypes[full] = str(casts[0].dtype).removeprefix("torch.")
+    return masters, dtypes
+
+
 def train(model, adapter, ids, tidx_all, tlogp_all, out_dir, *, lr=1e-3, epochs=1, accum=8, warmup=10,
-          chunk=512, log_every=5, ckpt_every=16, max_steps=None, device, log=print, stop_after=None):
-    """Train every TernaryLinear/TernaryEmbedding log multiplier; returns the per-step loss history.
+          chunk=512, log_every=5, ckpt_every=16, max_steps=None, small=False, lr_small=1e-4, lr_small_mat=2e-5,
+          device, log=print, stop_after=None):
+    """Train every TernaryLinear/TernaryEmbedding log multiplier (and, with ``small``, the
+    high-precision decoder tensors); returns the per-step loss history.
 
     ``max_steps`` ends training (and the cosine schedule) early; ``stop_after``
     (tests) raises KeyboardInterrupt after that step, as a crash would."""
@@ -150,13 +214,23 @@ def train(model, adapter, ids, tidx_all, tlogp_all, out_dir, *, lr=1e-3, epochs=
     scale_params = [m.log_mult for m in model.modules() if isinstance(m, (TernaryLinear, TernaryEmbedding))]
     for p in scale_params:
         p.requires_grad_(True)
-    log(f"trainable: {sum(p.numel() for p in scale_params)} scale params")
     lm = adapter.text_model(model)
+    small_vec, small_mat = make_small_trainable(lm) if small else ({}, {})
+    small_params = list(small_vec.values()) + list(small_mat.values())
+    log(f"trainable: {sum(p.numel() for p in scale_params)} scale params, "
+        f"{sum(p.numel() for p in small_params)} small high-precision params "
+        f"({len(small_vec)} vector, {len(small_mat)} matrix tensors)")
     lm.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
     model.config.use_cache = False
     head = adapter.head(model)
     n = ids.shape[0]
-    opt = torch.optim.AdamW([{"params": scale_params, "lr": lr}], betas=(0.9, 0.95), weight_decay=0.0, eps=1e-12)
+    groups = [{"params": scale_params, "lr": lr}]
+    if small_vec:
+        groups.append({"params": list(small_vec.values()), "lr": lr_small})
+    if small_mat:
+        groups.append({"params": list(small_mat.values()), "lr": lr_small_mat})
+    opt = torch.optim.AdamW(groups, betas=(0.9, 0.95), weight_decay=0.0, eps=1e-12)
+    trainable = scale_params + small_params
     total_steps = max(1, epochs * n // accum)
     if max_steps is not None:
         total_steps = min(total_steps, max(1, int(max_steps)))
@@ -170,7 +244,9 @@ def train(model, adapter, ids, tidx_all, tlogp_all, out_dir, *, lr=1e-3, epochs=
     step, start_it = 0, 0
     if ckpt.exists():
         ck = torch.load(ckpt, map_location=device, weights_only=False)
-        for p, v in zip(scale_params, ck["params"]):
+        if len(ck["params"]) != len(trainable):
+            raise ValueError(f"{ckpt} holds {len(ck['params'])} tensors, this run trains {len(trainable)}")
+        for p, v in zip(trainable, ck["params"]):
             p.data.copy_(v)
         opt.load_state_dict(ck["opt"])
         sched.load_state_dict(ck["sched"])
@@ -203,7 +279,7 @@ def train(model, adapter, ids, tidx_all, tlogp_all, out_dir, *, lr=1e-3, epochs=
         step_loss += loss.item()
         step_tok += tlen
         if (it + 1) % accum == 0:
-            torch.nn.utils.clip_grad_norm_(scale_params, 1.0)
+            torch.nn.utils.clip_grad_norm_(trainable, 1.0)
             opt.step()
             sched.step()
             opt.zero_grad(set_to_none=True)
@@ -221,7 +297,7 @@ def train(model, adapter, ids, tidx_all, tlogp_all, out_dir, *, lr=1e-3, epochs=
                                 "mult_absmax": lm_abs.max().item()}))
                 run_loss, run_tok, t0 = 0.0, 0, time.time()
             if step % ckpt_every == 0:
-                durable_save({"params": [p.detach() for p in scale_params], "opt": opt.state_dict(),
+                durable_save({"params": [p.detach() for p in trainable], "opt": opt.state_dict(),
                               "sched": sched.state_dict(), "step": step, "it": it + 1}, ckpt)
             if stop_after is not None and step >= stop_after:
                 raise KeyboardInterrupt(f"stopped after step {step}")
@@ -242,8 +318,10 @@ def trained_scales(model, adapter) -> dict[str, torch.Tensor]:
 
 def run_train(ctx) -> dict:
     d = ctx.cfg["distill"]
-    if list(d.get("train") or ["scales"]) != ["scales"]:
-        raise NotImplementedError(f"distill.train {d.get('train')}: only [scales] is implemented")
+    what = d.get("train") or {}
+    if not what.get("scales", True):
+        raise NotImplementedError("distill.train.scales: false is not supported (the scales are always trained)")
+    small = bool(what.get("small"))
     log = ctx.log("distill")
     out = ctx.run.stage_dir("distill")
     adapter = ctx.adapter()
@@ -259,11 +337,14 @@ def run_train(ctx) -> dict:
                     accum=int(d["accum"]), warmup=int(d["warmup"]), chunk=int(d["chunk"]),
                     log_every=int(d["log_every"]), ckpt_every=int(d["ckpt_every"]),
                     max_steps=None if d.get("max_steps") is None else int(d["max_steps"]),
+                    small=small, lr_small=float(d["lr_small"]), lr_small_mat=float(d["lr_small_mat"]),
                     device=ctx.device, log=log)
     scales = trained_scales(model, adapter)
+    masters, dtypes = trained_small(model, adapter) if small else ({}, {})
     save_scales(out / "scales.safetensors", scales,
-                {"stage": "distill", "steps_this_run": len(history), "base": ctx.distill_base()})
-    return {"scales": len(scales), "steps_this_run": len(history)}
+                {"stage": "distill", "steps_this_run": len(history), "base": ctx.distill_base()},
+                small=masters, small_dtypes=dtypes)
+    return {"scales": len(scales), "small": len(masters), "steps_this_run": len(history)}
 
 
 def _reset_if_changed(marker, value: str, paths) -> None:
