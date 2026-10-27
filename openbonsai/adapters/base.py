@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+import sys
 from typing import ClassVar
 
 import numpy as np
@@ -31,12 +32,61 @@ class PlanError(ValueError):
     """A layer's Linear modules are not covered exactly once by its plan."""
 
 
+# Optional CUDA-only kernel packages transformers binds into a model's module when it first imports it
+# (use_kernel_func_from_hub_with_fallback); they cannot take CPU tensors.
+CUDA_KERNEL_PACKAGES = ("fla", "causal_conv1d")
+_TORCH_BOUND: set[str] = set()   # modeling modules imported here with those packages hidden
+
+
+def _importable(package: str) -> bool:
+    import importlib.util
+    if package in sys.modules:
+        return sys.modules[package] is not None
+    try:
+        return importlib.util.find_spec(package) is not None
+    except (ImportError, ValueError):
+        return False
+
+
+def import_for_device(module: str, device, packages=CUDA_KERNEL_PACKAGES) -> None:
+    """Import a transformers modeling ``module`` so it runs on ``device``.
+
+    On the CPU the module is imported with the CUDA kernel packages hidden, so
+    transformers binds its PyTorch paths (as the measured runs and the CPU tests
+    use); on CUDA nothing changes. If the module was already imported with an
+    installed kernel package, the CPU cannot run it: refuse with a clear message."""
+    import importlib
+    if torch.device(device).type != "cpu" or module in _TORCH_BOUND:
+        return
+    if module in sys.modules:
+        present = [p for p in packages if _importable(p)]
+        if present:
+            raise RuntimeError(f"{module} was imported with {present} installed, so transformers bound their "
+                               "CUDA kernels, which cannot run on the CPU. Use model.device: cuda, or run on the "
+                               "CPU in a fresh process (openbonsai hides the kernels when it imports the model)")
+        return
+    missing = object()
+    saved = {p: sys.modules.get(p, missing) for p in packages}
+    for p in packages:
+        sys.modules[p] = None   # import fails; transformers falls back to its PyTorch functions
+    try:
+        importlib.import_module(module)
+        _TORCH_BOUND.add(module)
+    finally:
+        for p, value in saved.items():
+            if value is missing:
+                sys.modules.pop(p, None)
+            else:
+                sys.modules[p] = value
+
+
 class ModelAdapter:
     name: ClassVar[str] = "base"
     model_types: ClassVar[tuple[str, ...]] = ()
     gguf_arch: ClassVar[str | None] = None     # Prism GGUF architecture; None = not exportable
     add_bos: ClassVar[bool] = False            # start every packed block / eval sequence with BOS
     zero_centered_norm: ClassVar[bool] = False  # norm is (1 + w) * x_hat instead of w * x_hat
+    modeling_module: ClassVar[str | None] = None  # transformers module of the model (see import_for_device)
 
     def __init__(self, config):
         self.config = config
@@ -47,6 +97,11 @@ class ModelAdapter:
              local_files_only=False, **options):
         """Return (model, tokenizer); the model is in eval mode with grads off."""
         raise NotImplementedError
+
+    def prepare_device(self, device) -> None:
+        """Call before building the model for ``device`` (keeps CUDA-only kernels off the CPU)."""
+        if self.modeling_module:
+            import_for_device(self.modeling_module, device)
 
     def load_tokenizer(self, path, *, revision=None, local_files_only=False):
         from transformers import AutoTokenizer
@@ -249,6 +304,7 @@ class ModelAdapter:
         from ..stages.common import apply_small, install_ternary
         device = torch.device(device)
         state, floats, _ = self.read_gguf(path, log=log)
+        self.prepare_device(device)
         model = self.empty_model(dtype=dtype, attn=attn)
         install_ternary(self, model, state.records(), device)
         apply_small(self, model, floats, device=device, dtype=dtype, keep_fp32_vectors=small_fp32)

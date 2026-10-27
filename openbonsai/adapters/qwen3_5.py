@@ -34,6 +34,7 @@ class Qwen35Adapter(Qwen35GGUF, ModelAdapter):
     gguf_arch = "qwen35"
     add_bos = False
     zero_centered_norm = True
+    modeling_module = "transformers.models.qwen3_5.modeling_qwen3_5"
 
     def __init__(self, config):
         super().__init__(config)
@@ -48,6 +49,7 @@ class Qwen35Adapter(Qwen35GGUF, ModelAdapter):
 
     def load(self, path, *, revision=None, device="cpu", dtype=torch.bfloat16, attn="sdpa",
              local_files_only=False, keep_vision=False, **options):
+        self.prepare_device(device)   # before transformers imports the model's module
         from transformers import Qwen3_5ForConditionalGeneration
         cls = self._model_class()
         model = cls.from_pretrained(path, revision=revision, dtype=dtype, device_map=str(device),

@@ -17,11 +17,15 @@
 #                  Volta (V100), which CUDA 13 dropped; .../whl/cpu for no GPU. The CUDA runtime comes
 #                  inside the wheels; only the driver must be installed.
 #   FLA            [flash-linear-attention]   pip spec of the Gated DeltaNet Triton kernels, which
-#                  transformers uses when installed; NO_FLA=1 skips them (then the slower PyTorch path
-#                  runs, as in the measured runs; results agree up to kernel rounding). The kernels
-#                  need CUDA tensors, so with them installed run Qwen3.5 on the GPU (model.device: cuda);
-#                  the CPU test suite blocks them itself. causal-conv1d (optional, built with nvcc)
-#                  would speed up the short convolution; it is not installed here.
+#                  transformers uses when installed; pin it for reproducible installs, e.g.
+#                  FLA=flash-linear-attention==<version>. It is installed under a constraints file
+#                  that holds torch and transformers at the versions above, so its resolver cannot
+#                  move them. NO_FLA=1 skips it (then the slower PyTorch path runs, as in the measured
+#                  runs; results agree up to kernel rounding); a CPU TORCH_INDEX always skips it.
+#                  The kernels need CUDA tensors: on the CPU (model.device: cpu, or
+#                  CUDA_VISIBLE_DEVICES=-1) openbonsai imports the model with them hidden, and the CPU
+#                  test suite blocks them itself. causal-conv1d (optional, built with nvcc) would speed
+#                  up the short convolution; it is not installed here.
 #   PRISM_DIR      [<repo>/third_party/prism-llama.cpp]        the clone (kept clean: builds go elsewhere)
 #   PRISM_BUILD    [<repo>/third_party/prism-llama.cpp-build]  cpu/ and cuda/ build trees
 #   CUDA_ARCHS     [llama.cpp's default list]   e.g. 120 for RTX 5090, 90 for H100, 86 for RTX 30xx
@@ -74,11 +78,24 @@ setup_python() {
   say "transformers==$TRANSFORMERS_VERSION and openbonsai (editable, with test extras)"
   pip_install "transformers==$TRANSFORMERS_VERSION" -e "$REPO[test]"
 
-  if [ "${NO_FLA:-0}" != "1" ]; then
-    say "$FLA (Gated DeltaNet kernels) and triton"
+  case "$TORCH_INDEX" in
+    */cpu|*/cpu/) cpu_torch=1 ;;
+    *) cpu_torch=0 ;;
+  esac
+  if [ "${NO_FLA:-0}" = "1" ]; then
+    say "flash-linear-attention skipped (NO_FLA=1)"
+  elif [ "$cpu_torch" = 1 ]; then
+    say "flash-linear-attention skipped: CPU PyTorch ($TORCH_INDEX); its kernels need CUDA"
+  else
+    say "$FLA (Gated DeltaNet kernels), torch and transformers held by constraints"
+    local constraints
+    constraints="$(mktemp)"
+    # The installed torch (with its local tag, e.g. +cu130) and transformers stay as they are.
+    "$VENV/bin/python" -c 'import torch, transformers; print(f"torch=={torch.__version__}"); print(f"transformers=={transformers.__version__}")' > "$constraints"
     # Linux CUDA torch wheels already depend on a matching triton; install it only if missing.
-    "$VENV/bin/python" -c "import triton" 2>/dev/null || pip_install triton
-    pip_install "$FLA"
+    "$VENV/bin/python" -c "import triton" 2>/dev/null || pip_install -c "$constraints" triton
+    pip_install -c "$constraints" "$FLA"
+    rm -f "$constraints"
   fi
 
   say "check"

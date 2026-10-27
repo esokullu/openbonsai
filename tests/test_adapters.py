@@ -109,6 +109,32 @@ def test_load_text_and_multimodal_checkpoints(tiny_dir, tiny_mm_dir):
         assert out.shape[1] <= ids.shape[1] + 3 and torch.equal(out[0, :ids.shape[1]], ids[0])
 
 
+def test_cuda_only_kernels_are_hidden_when_the_model_is_imported_for_the_cpu(tmp_path, monkeypatch):
+    """transformers binds flash-linear-attention / causal-conv1d at import; they cannot take CPU tensors."""
+    import sys
+    from openbonsai.adapters.base import import_for_device
+    (tmp_path / "fake_kernel").mkdir()
+    (tmp_path / "fake_kernel" / "__init__.py").write_text("")
+    for name in ("fake_modeling", "fake_modeling_gpu", "fake_modeling_early"):
+        (tmp_path / f"{name}.py").write_text(
+            "try:\n    import fake_kernel\n    BOUND = 'kernel'\nexcept ImportError:\n    BOUND = 'torch'\n")
+    monkeypatch.syspath_prepend(str(tmp_path))
+    names = ("fake_kernel", "fake_modeling", "fake_modeling_gpu", "fake_modeling_early")
+    try:
+        import_for_device("fake_modeling", "cpu", packages=("fake_kernel",))
+        assert sys.modules["fake_modeling"].BOUND == "torch" and "fake_kernel" not in sys.modules
+        import_for_device("fake_modeling", "cpu", packages=("fake_kernel",))       # once imported, nothing to do
+        import_for_device("fake_modeling_gpu", "cuda", packages=("fake_kernel",))  # CUDA: left alone
+        __import__("fake_modeling_gpu")
+        assert sys.modules["fake_modeling_gpu"].BOUND == "kernel"
+        __import__("fake_modeling_early")                                        # bound outside the guard
+        with pytest.raises(RuntimeError, match="cannot run on the CPU"):
+            import_for_device("fake_modeling_early", "cpu", packages=("fake_kernel",))
+    finally:
+        for name in names:
+            sys.modules.pop(name, None)
+
+
 def test_gguf_eval_fetches_no_hub_weights(monkeypatch, tmp_path):
     import huggingface_hub
     from openbonsai.config import load_config
