@@ -350,10 +350,19 @@ def test_examples_include_the_reasoning_config():
     srcs = T.trace_sources(cfg)
     assert [(s["kind"], s["n"], s["thinking"], s["max_new_tokens"], s["batch"]) for s in srcs] == [
         ("gsm8k_train", 400, True, 1536, 16), ("math_train", 240, True, 1536, 16), ("mbpp_train", 140, True, 1536, 16),
-        ("opencodeinstruct", 280, True, 1536, 16), ("ultrachat", 200, False, 512, 32)]
+        ("opencodeinstruct", 280, True, 1536, 16), ("ultrachat", 200, False, 512, 32),
+        ("gsm8k_train", 160, False, 768, 16), ("mbpp_train", 100, False, 768, 16)]
     math, code = sum(s["n"] for s in srcs[:2]), sum(s["n"] for s in srcs[2:4])
     assert (math, code, srcs[4]["n"]) == (640, 420, 200) and srcs[1]["levels"] == [1, 2, 3]
     assert srcs[4]["rows"] == [5000, 6000] and srcs[3]["max_chars"] == 2000
+    assert [s["name"] for s in srcs[5:]] == ["gsm8k_train_off", "mbpp_train_off"]
+    assert {s["batch_tokens"] for s in srcs} == {32768}
+    # The budget the config documents: the longest prompts measured with the Qwen3.5 tokenizer (UltraChat
+    # 2,049, MATH 883, OpenCodeInstruct 603 tokens) fit in it only in smaller batches.
+    for longest, src in ((2049, srcs[4]), (883, srcs[1]), (603, srcs[3])):
+        assert src["batch"] * (longest + src["max_new_tokens"]) > 32768
+        assert T.plan_batches([longest] + [10] * 40, src["batch"], sort=True, cap=src["max_new_tokens"],
+                              budget=32768)[0] == list(range({2049: 12, 883: 13, 603: 15}[longest]))
     cli.check_calibration_batch(cfg)
     calib = {s["kind"]: s["n"] for s in cfg["calibrate"]["sources"]}
     assert calib == {"wikitext2": 64, "ultrachat": 64, "traces": 128}
@@ -372,8 +381,8 @@ def test_examples_include_the_reasoning_config():
     with pytest.raises(ConfigError, match=r"distill\.teacher\.sources\.2\.n = 640 blocks .* make 600"):
         T.check_trace_supply(cfg, 600 * 2048, None)
     assert [d["where"] for d in T.trace_demands(cfg)] == ["calibrate.sources.2.n", "distill.teacher.sources.2.n"]
-    # Generation budget: every trace at its cap is the upper bound of the documented ~1.44M estimate.
-    assert sum(s["n"] * s["max_new_tokens"] for s in srcs) == 1060 * 1536 + 200 * 512
+    # Generation budget: every trace at its cap is the upper bound of the documented ~1.53M estimate.
+    assert sum(s["n"] * s["max_new_tokens"] for s in srcs) == 1060 * 1536 + 200 * 512 + 260 * 768
 
 
 def test_eval_thinking_subsets_default_to_the_full_ones():
