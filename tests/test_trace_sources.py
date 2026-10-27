@@ -450,6 +450,25 @@ def test_a_screened_near_duplicate_is_listed_in_the_summary(make_ctx, tmp_path):
     assert sorted(r["row"] for r in _rows(ctx)) == [1, 2]
 
 
+def test_an_answer_that_repeats_a_test_problem_is_left_out(make_ctx, tmp_path, monkeypatch):
+    """The prompts are clean, but the model's answer quotes a test question: the trace is dropped and listed,
+    so calibrate and the teacher (which refuse such blocks) never see it."""
+    gsm = R.load_frozen("gsm8k")["problems"]
+    path = _parquet(tmp_path / "train.parquet", {"question": ["What is two plus two?", "What is three plus one?",
+                                                              "What is one plus one?"]})
+    ctx = make_ctx(tmp_path / "run", *sources_sets([{"kind": "gsm8k_train", "path": path.as_posix(), "n": 3,
+                                                     "shuffle": False, "max_new_tokens": 400, "batch": 1}]))
+    tok = ctx.load_tokenizer()
+    leak = tok(" Like: " + gsm[3]["question"], add_special_tokens=False)["input_ids"]
+    clean = tok(" Four.", add_special_tokens=False)["input_ids"]
+    monkeypatch.setattr(T, "generate_encoded", lambda model, rows, **kw: [
+        (leak if "three plus one" in tok.decode(r) else clean, True) for r in rows])
+    T.run(ctx)
+    summary = json.loads((ctx.run.stage_dir("traces") / "summary.json").read_text(encoding="utf-8"))
+    assert summary["sources"][0]["answers_dropped"] == [{"row": 1, "items": [gsm[3]["id"]]}]
+    assert sorted(r["row"] for r in _rows(ctx)) == [0, 2] and summary["records"] == 2
+
+
 # -- trace supply -------------------------------------------------------------------------------
 
 def test_too_few_trace_blocks_fail_before_generating_or_right_after_the_traces(tiny_dir, tmp_path, monkeypatch,

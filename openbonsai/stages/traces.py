@@ -48,7 +48,10 @@ prompt that contains a test problem or one of the extended suite's chat-NLL
 prompts. The built-in kinds refuse a ``file`` that is not a training split.
 With ``sources``, rows that share a 13-word run with a test problem (near
 duplicates such as GSM8K train questions written from a test question's
-template) are skipped while sampling and listed in ``summary.json``.
+template) are skipped while sampling and listed in ``summary.json``. A generated
+answer that repeats a test problem or a chat-NLL item (its prompt did not) is
+dropped and listed (``answers_dropped``): calibrate and the distillation
+teacher would refuse the blocks that hold it, hours after the traces.
 
 Generation is greedy (``generate_encoded``), left-padded, with the model's own
 chat template and thinking switch; the stored ids are exactly the rendered
@@ -839,6 +842,8 @@ def run(ctx) -> dict:
     stats = {"batches": sum(len(p) for p in plans.values()), "cached_batches": 0, "seconds": 0.0, "fresh_tokens": 0}
     done_units = 0
     think_end = getattr(adapter, "think_end", None)
+    from ..eval import heldout
+    probes = heldout.needles() + heldout.chat_needles(tok)
     records_by_source, per_source = [], []
     for src, picked, data in loaded:
         i, cap = src["index"], src["max_new_tokens"]
@@ -870,6 +875,15 @@ def run(ctx) -> dict:
                 rec["finished_thinking"] = think_end in completion
             rec["completion"] = completion
             recs.append(rec)
+        # The prompts were checked; an answer that repeats an evaluation item is dropped here, since
+        # calibrate and the distillation teacher refuse blocks that contain one.
+        hits = heldout.contained([r["completion"] for r in recs], probes)
+        dropped = [{"row": recs[k]["row"], "items": sorted({pid for j, pid in hits if j == k})}
+                   for k in sorted({j for j, _ in hits})]
+        if dropped:
+            log(f"WARNING: {src['name']}: {len(dropped)} answers repeat an evaluation item and are left out: "
+                + ", ".join(f"row {d['row']} ({', '.join(d['items'])})" for d in dropped[:5]))
+            recs = [r for k, r in enumerate(recs) if k not in {j for j, _ in hits}]
         records_by_source.append(recs)
         gen_tokens = sum(r["generated_token_count"] for r in recs)
         per_source.append({
@@ -884,7 +898,8 @@ def run(ctx) -> dict:
             "hit_cap": sum(r["hit_cap"] for r in recs),
             **({"finished_thinking": sum(r.get("finished_thinking", False) for r in recs)}
                if src["thinking"] and think_end else {}),
-            "data": data["files"], "near_duplicates_skipped": data["screened"]})
+            "data": data["files"], "near_duplicates_skipped": data["screened"],
+            "answers_dropped": dropped})
     if any(s["legacy"] for s in sources):
         rows_out = records_by_source[0]
     else:
