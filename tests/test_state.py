@@ -55,6 +55,8 @@ def test_merge_scales_and_validation():
     assert new.tensors["lm_head"].scales.dtype == torch.float16 and (new.tensors["lm_head"].scales == 0.25).all()
     with pytest.raises(ValueError, match="unknown"):
         merged.with_scales({"nope": torch.ones(1, 1)})
+    with pytest.raises(ValueError, match="do not match"):
+        merged.with_scales({"lm_head": torch.ones(320, 2)})
     with pytest.raises(ValueError):
         TernaryTensor(torch.zeros(2, 128, dtype=torch.int8), torch.zeros(2, 3).half())
     keys = [k for k, *_ in merged.records()]
@@ -101,3 +103,18 @@ def test_legacy_states_load_and_only_shared_signs_convert(tmp_path):
     state = legacy_to_state(load_legacy_pt(tmp_path / "shared.pt"))
     assert sorted(state.signs) == [128, 256] and state.block == 128
     assert torch.equal(state.signs[128], make_signs(derive_geometry((128, 256), 128))[128])
+
+
+def test_legacy_states_without_stored_signs_use_the_seed(tmp_path):
+    """The 256-sample per-module run predates stored signs: modules carry only ``seed``."""
+    modules = _legacy(tmp_path / "with.pt", shared=False)
+    for st in modules.values():
+        del st["signs"]
+    torch.save({"args": {}, "modules": modules}, tmp_path / "seed_only.pt")
+    with_signs, seed_only = load_legacy_pt(tmp_path / "with.pt"), load_legacy_pt(tmp_path / "seed_only.pt")
+    for k in with_signs:
+        assert torch.equal(seed_only[k].signs, with_signs[k].signs) and seed_only[k].signs.dtype == torch.int8
+    del modules["layers.0.mlp.up_proj"]["seed"]
+    torch.save({"modules": modules}, tmp_path / "neither.pt")
+    with pytest.raises(ValueError, match="neither signs nor seed"):
+        load_legacy_pt(tmp_path / "neither.pt")

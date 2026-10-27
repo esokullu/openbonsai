@@ -99,6 +99,9 @@ class TernaryState:
         unknown = set(scales) - set(self.tensors)
         if unknown:
             raise ValueError(f"scales for unknown tensors {sorted(unknown)[:3]}")
+        for k, v in scales.items():
+            if tuple(v.shape) != tuple(self.tensors[k].scales.shape):
+                raise ValueError(f"{k}: scales {tuple(v.shape)} do not match {tuple(self.tensors[k].scales.shape)}")
         tensors = {k: TernaryTensor(t.codes, scales[k].to(torch.float16).contiguous()) if k in scales else t
                    for k, t in self.tensors.items()}
         return TernaryState(tensors, self.signs, self.block, self.group, dict(self.meta)).validate()
@@ -174,11 +177,17 @@ def save_signs(path, signs: dict[int, Tensor], *, block: int, meta: dict | None 
     return atomic_write_bytes(path, save(tensors, _metadata(format=SIGNS_FORMAT, block=block, meta=meta or {})))
 
 
-def load_signs(path) -> tuple[dict[int, Tensor], int]:
+def read_signs(path) -> tuple[dict[int, Tensor], int, dict]:
+    """(signs per width, block, meta)."""
     from safetensors import safe_open
     with safe_open(str(path), framework="pt", device="cpu") as f:
         md = _read_metadata(f, SIGNS_FORMAT, path)
-        return {int(n.split("::", 1)[1]): f.get_tensor(n) for n in f.keys()}, int(md["block"])
+        return {int(n.split("::", 1)[1]): f.get_tensor(n) for n in f.keys()}, int(md["block"]), md.get("meta") or {}
+
+
+def load_signs(path) -> tuple[dict[int, Tensor], int]:
+    signs, block, _ = read_signs(path)
+    return signs, block
 
 
 def save_scales(path, scales: dict[str, Tensor], meta: dict | None = None) -> Path:
@@ -187,11 +196,16 @@ def save_scales(path, scales: dict[str, Tensor], meta: dict | None = None) -> Pa
     return atomic_write_bytes(path, save(tensors, _metadata(format=SCALES_FORMAT, meta=meta or {})))
 
 
-def load_scales(path) -> dict[str, Tensor]:
+def read_scales(path) -> tuple[dict[str, Tensor], dict]:
+    """(scales per key, meta)."""
     from safetensors import safe_open
     with safe_open(str(path), framework="pt", device="cpu") as f:
-        _read_metadata(f, SCALES_FORMAT, path)
-        return {n.split("::", 1)[1]: f.get_tensor(n) for n in f.keys()}
+        md = _read_metadata(f, SCALES_FORMAT, path)
+        return {n.split("::", 1)[1]: f.get_tensor(n) for n in f.keys()}, md.get("meta") or {}
+
+
+def load_scales(path) -> dict[str, Tensor]:
+    return read_scales(path)[0]
 
 
 # Legacy research/experiments states (read-only).
@@ -207,9 +221,12 @@ class LegacyTensor:
 def load_legacy_pt(path) -> dict[str, LegacyTensor]:
     """Read a gptq_ternary.py ``ternary_state.pt`` or endpoints.py ``endpoint_state.pt``.
 
-    Each module keeps its own explicitly stored signs and block, so per-module
-    seed states evaluate exactly as ``apply_state`` did.
+    Each module keeps its own signs and block, so per-module seed states
+    evaluate exactly as ``apply_state`` did. States written before the scripts
+    stored ``signs`` (for example the 256-sample per-module run) carry only
+    ``seed``; their signs are regenerated with the scripts' ``signs_from_seed``.
     """
+    from ..core.hadamard import seeded_signs
     obj = torch.load(path, map_location="cpu", weights_only=True)
     entries = obj["modules"] if isinstance(obj, dict) and "modules" in obj else obj
     out = {}
@@ -217,7 +234,12 @@ def load_legacy_pt(path) -> dict[str, LegacyTensor]:
         if not isinstance(st, dict) or "codes" not in st:
             continue
         codes = st["codes"].to(torch.int8)
-        signs = st["signs"].to(torch.int8).reshape(-1)
+        if "signs" in st:
+            signs = st["signs"].to(torch.int8).reshape(-1)
+        elif "seed" in st:
+            signs = seeded_signs(int(st["seed"]), int(codes.shape[1]))
+        else:
+            raise ValueError(f"{path}: {key} has neither signs nor seed")
         if signs.numel() != codes.shape[1]:
             raise ValueError(f"{path}: {key} signs do not match its input width")
         out[key] = LegacyTensor(codes, st["scales"].to(torch.float16), signs, int(st["block"]))
