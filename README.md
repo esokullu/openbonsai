@@ -12,7 +12,7 @@ OpenBonsai is an open (Apache-2.0) framework that compresses a dense language mo
 - Qwen3.5-9B: measured end to end, with the research scripts and with the package's own `openbonsai run` (results below).
 - Dense Llama, Mistral, Qwen2/2.5 and Qwen3: implemented in a generic adapter, tested only on tiny random models on CPU, including loading tiny Llama and Qwen3 GGUFs in Prism's runtime. There are no real-model results for them yet. Whether Prism's runtime can run the result depends on the architecture (see [Other models](#other-models)).
 - ScaleQ/CAT-Q refinement is in `research/`, not in the pipeline: it has not beaten GPTQ plus distillation yet.
-- An optional `refine` stage that trains GPTQ's codes and scales layer by layer ([docs/refine.md](docs/refine.md)) is implemented and off by default. Its 9B pilot on layers 0-7 improved every measure before distillation (below); the full 32-layer run is being measured.
+- An optional `refine` stage that trains GPTQ's codes and scales layer by layer ([docs/refine.md](docs/refine.md)) is implemented and off by default. On 9B it lowered the error before distillation, but after distillation its reasoning scores were within noise of the model without it (below), so it stays off.
 
 ## How it works
 
@@ -178,6 +178,7 @@ Qwen3.5-9B. The dev suite is frozen: 2,048 WikiText-2 test tokens and 20 ARC-Eas
 | **+ scale distillation (OpenBonsai)** | ternary | **2.892** | **19** | **2.626** | **87** | **1.318** | **30/100 / 19/50** | **6/50 / 3/25** |
 | + small high-precision tensors trained too (norms, `conv1d`, `A_log`, `dt_bias`, `in_proj_a/b`; `distill.train.small`) | ternary | 2.884 | 19 | 2.616 | 87 | 1.308 | | |
 | **Calibrated on self-generated math and code** (`examples/qwen3_5-9b-reasoning.yaml`; the Hugging Face model) | ternary | 2.960 | 17 | 2.698 | 84 | 1.439 | **69/100 / 25/50** | **19/50 / 10/25** |
+| + all 32 layers refined before distillation (`refine.enabled`; [below](#refining-codes-not-only-scales)) | ternary | 2.950 | 18 | 2.694 | 89 | 1.443 | 66/100 / 24/50 | 19/50 / 10/25 |
 
 In Prism's own llama.cpp runtime (CPU build at c9c34bc, WikiText-2 test, 8 chunks of 512 tokens), perplexity is 16.51 for the official Ternary Bonsai 2 9B and 11.93 for ours (the bold scale-distillation row, exported as a GGUF). Prism's runtime agrees with our PyTorch reference of the same weights, mean KL 0.0028 nats and 95% top-1 agreement over 508 tokens, on the exporter's synthetic test state (not a usable model; `research/runs/gguf-test/runtime-parity/`); that check has not been run on the distilled model. Prism quantizes activations to 8 bits, so the two are not identical. The self-generated math and code model scores 12.59 in the same runtime. All three GGUF files are 1,997,486,976 bytes. The official model's dev NLL is 3.19 in Prism's CPU runtime with ARC 16/20, and 3.191 with ARC 17/20 in our PyTorch harness. The Prism perplexity logs and the export report are in `research/runs/2026-10-27-gguf-shared-v1/`.
 
@@ -186,21 +187,29 @@ In Prism's own llama.cpp runtime (CPU build at c9c34bc, WikiText-2 test, 8 chunk
 - **The evaluation is small.** One ARC question is 5 percentage points on the dev suite. The dev suite was used throughout development, so it is not a fresh held-out set.
 - **Single runs, no variance.** Every row is one run. Treat differences of one or two ARC questions as noise: re-scoring the same 256-block GPTQ state with the package moved ARC from 13 to 14 (below).
 - **Code and non-English output are the main weakness; math improved a lot.** Calibrated on generic text (WikiText, UltraChat, a few general self-generated answers), the model kept perplexity but lost math and code: 30/100 GSM8K and 6/50 HumanEval with thinking off, against 77/100 and 45/50 for the official Ternary Bonsai 2 9B and 77/100 and 44/50 for BF16. This matches the ScaleQ paper's finding. Recalibrating on 1,520 of the model's own answers to math and code training prompts (the AYOT idea) raised that to 69/100 and 19/50, at a small cost in WikiText NLL and ARC. Code is still far behind, the Turkish dev prompt still collapses into repetition, and with thinking on the model often reasons past the 4,096-token cap (23/50 GSM8K answers).
-- **Reasoning evals are small and capped.** GSM8K uses a frozen 100-problem subset and HumanEval 50 (thinking off, 512-token cap); with thinking on, the first 50 and 25 of the same subsets, 4,096-token cap, batch 8. With thinking on, 14/50 BF16 GSM8K answers and 4/50 official-model answers ran out of tokens mid-thought, so the cap understates thinking-mode accuracy (most for BF16). Ours ran out on 19/25 HumanEval problems with thinking on, mostly by looping. Greedy decoding, the model's own chat template, one run each. Results: `research/runs/2026-10-27-reasoning-v1/`.
+- **Reasoning evals are small and capped.** GSM8K uses a frozen 100-problem subset and HumanEval 50 (thinking off, 512-token cap); with thinking on, the first 50 and 25 of the same subsets, 4,096-token cap, batch 8. With thinking on, 14/50 BF16 GSM8K answers and 4/50 official-model answers ran out of tokens mid-thought, so the cap understates thinking-mode accuracy (most for BF16). The generic-calibration model ran out on 19/25 HumanEval problems with thinking on, mostly by looping; the self-generated math and code model on 5/25. Greedy decoding, the model's own chat template, one run each. Results: `research/runs/2026-10-27-reasoning-v1/` and, for the self-generated math and code model, `research/runs/2026-10-27-reasoning-mix-v1/eval/`.
 - **Only Qwen3.5-9B has run on real weights.** The runtime checks in Prism's llama.cpp (perplexity, KL, file layout) exist only for the 9B. No real dense model (Llama, Mistral, Qwen3) has been compressed, and no real dense GGUF has been run in Prism.
 - **Where the numbers come from.** They were measured with the research scripts in `research/experiments/`. The package ports their arithmetic, and tests check the ports bit for bit on CPU. Given the measured state, the package's exporter writes a GGUF byte-identical to the measured one (`research/validation/p2-export-parity.md`). GPU numbers can still differ slightly: a package re-score of the 256-block GPTQ state gave dev NLL 3.293 and ARC 14/20, against 3.295 and 13/20 from the research script (`research/runs/2026-10-27-accept-256/eval/`). The package's own `openbonsai run` of the 9B example (traces off, the measured run's calibration data) reproduced it on the GPU: its quantize stage is bit-identical to the research GPTQ state (0 code or scale differences in 6.9B weights; dev NLL 3.3183, ARC 15/20), and the full run through endpoints, distillation, verified export and eval gave dev NLL 2.887, ARC 19/20, Wiki 16K 2.630, ARC 89/100, chat NLL 1.322 (`research/runs/2026-10-27-framework-acceptance/`).
 
-### Refining codes, not only scales (pilot)
+### Refining codes, not only scales
 
-The optional `refine` stage ([docs/refine.md](docs/refine.md)) trains each decoder layer's ternary codes and scales against the original model's block outputs, starting from GPTQ's codes. On the self-generated math and code model, refining only layers 0-7 (about 4 minutes, under 10 GiB of VRAM, 0.1-0.9% of codes changed per layer) improved every measure before distillation:
+The optional `refine` stage ([docs/refine.md](docs/refine.md)) trains each decoder layer's ternary codes and scales against the original model's block outputs, starting from GPTQ's codes. All rows below start from the self-generated math and code model's GPTQ state. Before distillation, refining only layers 0-7 (about 4 minutes, 0.08-0.9% of codes changed per layer) improved every measure. Refining all 32 layers (16 minutes) gave about the same dev NLL as layers 0-7 alone, a lower KL and a higher EAR, but lower ARC and GSM8K. `original` is the default target; refine itself is off by default, and when it is enabled it refines all layers unless `refine.layers` says otherwise. Allocated VRAM peaks at 17.8 GiB while the model is loaded and the inputs are captured, and stays under 10 GiB while the layers train, but the allocator keeps 17.5 GiB reserved throughout, so plan for about 18.5 GiB:
 
-| Before distillation, layers 0-7 refined | Dev NLL | ARC /20 | Full-vocab KL vs BF16 | EAR | GSM8K (first 50, thinking off) |
+| Before distillation | Dev NLL | ARC /20 | Full-vocab KL vs BF16 | EAR | GSM8K (first 50, thinking off) |
 |---|---|---|---|---|---|
 | No refine | 3.686 | 13 | 1.373 | 0.536 | 10/50 |
-| Refine, original-model target (default) | **3.396** | **16** | **0.987** | **0.597** | **16/50** |
-| Refine, quantized-prefix target | 3.553 | 16 | 1.171 | 0.567 | 13/50 |
+| Layers 0-7, original-model target | **3.396** | **16** | 0.987 | 0.597 | **16/50** |
+| Layers 0-7, quantized-prefix target | 3.553 | **16** | 1.171 | 0.567 | 13/50 |
+| All 32 layers, original-model target | 3.401 | 13 | **0.955** | **0.633** | 7/50 |
 
-A full 32-layer refine followed by distillation is being measured; it stays off by default until it beats the distilled model on the reasoning suites. Logs: `research/runs/2026-10-28-refine-pilot-*`.
+Distillation removed most of the difference. After it, the 32-layer refine is nominally ahead on dev and WikiText NLL, KL, EAR and ARC (chat NLL is 0.004 worse), by margins one run cannot separate from noise, and within noise on the reasoning suites:
+
+| After distillation | Dev NLL | ARC /100 | Full-vocab KL vs BF16 | EAR | GSM8K off / on | HumanEval off / on |
+|---|---|---|---|---|---|---|
+| No refine (the Hugging Face model) | 2.960 | 84 | 0.554 | 0.706 | **69/100** / **25/50** | **19/50** / **10/25** |
+| All 32 layers refined | **2.950** | **89** | **0.543** | **0.710** | 66/100 / 24/50 | **19/50** / **10/25** |
+
+On GSM8K with thinking off, 13 problems were solved only without refine and 10 only with it; on HumanEval with thinking off, 2 and 2. Refine therefore stays off by default. GSM8K before distillation is near the floor (±3 problems is one standard error), so read it only as a tiebreaker. Refine is not bit-reproducible on the GPU. The 32-layer run repeated the pilot's layers 0-7 with the same inputs and settings: layers 0-2 came out identical, but from layer 3 on they differed (later layers also inherit the difference through their inputs). In layers 3-7, 0.004-0.03% of the codes (8,000 to 58,000 per layer) differed between the two runs, against 0.08-0.31% that refine flipped in those layers. Logs: `research/runs/2026-10-28-refine-pilot-*` and `research/runs/2026-10-28-reasoning-mix-refine32/`.
 
 ### Starting from Prism's weights (separate experiment)
 

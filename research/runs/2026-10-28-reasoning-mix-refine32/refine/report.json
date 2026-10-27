@@ -1,0 +1,3399 @@
+{
+ "seconds": 941.6533288955688,
+ "train_blocks": [
+  7,
+  70,
+  43,
+  68,
+  90,
+  22,
+  110,
+  147,
+  220,
+  188,
+  230,
+  56,
+  41,
+  83,
+  72,
+  185,
+  31,
+  126,
+  145,
+  116,
+  144,
+  35,
+  142,
+  14,
+  191,
+  121,
+  63,
+  74,
+  118,
+  9,
+  151,
+  179,
+  40,
+  253,
+  192,
+  103,
+  23,
+  80,
+  3,
+  200,
+  19,
+  105,
+  10,
+  21,
+  135,
+  86,
+  198,
+  5,
+  84,
+  154,
+  27,
+  51,
+  190,
+  52,
+  120,
+  15,
+  62,
+  140,
+  175,
+  181,
+  96,
+  28,
+  228,
+  50,
+  129,
+  59,
+  78,
+  37,
+  248,
+  57,
+  146,
+  150,
+  163,
+  64,
+  76,
+  174,
+  85,
+  210,
+  8,
+  222,
+  107,
+  39,
+  193,
+  71,
+  77,
+  170,
+  12,
+  203,
+  32,
+  189,
+  231,
+  13,
+  162,
+  250,
+  111,
+  173,
+  232,
+  226,
+  17,
+  156,
+  2,
+  67,
+  60,
+  131,
+  207,
+  251,
+  235,
+  6,
+  204,
+  214,
+  158,
+  65,
+  178,
+  42,
+  225,
+  141,
+  153,
+  4,
+  171,
+  187,
+  164,
+  201,
+  26,
+  122,
+  123,
+  119,
+  176,
+  216
+ ],
+ "val_blocks": [
+  98,
+  168,
+  213,
+  186,
+  18,
+  183,
+  101,
+  223
+ ],
+ "layers": [
+  0,
+  32
+ ],
+ "streams": "cuda",
+ "windows": [
+  {
+   "layers": [
+    0
+   ],
+   "kinds": [
+    "linear_attention"
+   ],
+   "steps": 512,
+   "code_steps": 410,
+   "train_loss_first": 0.011228555344132474,
+   "train_loss_last": 0.006032101970049553,
+   "eps_damped": 0.02940604778436514,
+   "latent_grad_rms": 4.127502233449989e-08,
+   "val_before": {
+    "original": 0.013761341399515459,
+    "quantized": 0.0055410289492456855
+   },
+   "val_after": {
+    "original": 0.006185258007724848,
+    "quantized": 0.006335866515350119
+   },
+   "objective_before": 0.013761341399515459,
+   "objective_after": 0.006185258007724848,
+   "rollback": false,
+   "changed": true,
+   "flips": 0.009404521722059984,
+   "sign_flips": 0.0,
+   "zero_flips": 0.009404521722059984,
+   "zeros_before": 0.45570459732642543,
+   "zeros_after": 0.4537453284630409,
+   "scale_drift_mean": 0.021257232702989317,
+   "scale_drift_max": 0.09785063513872574,
+   "scales_changed": 0.9895013662484976,
+   "modules": {
+    "layers.0.linear_attn.out_proj": {
+     "flips": 9.59634780883789e-06,
+     "sign_flips": 0.0,
+     "zero_flips": 9.59634780883789e-06,
+     "zeros_before": 0.4560436010360718,
+     "zeros_after": 0.456041157245636,
+     "scale_drift_mean": 0.009782267614584454,
+     "scale_drift_max": 0.08504093300233113,
+     "scales_changed": 0.9711761474609375
+    },
+    "layers.0.linear_attn.in_proj_qkv": {
+     "flips": 0.0022281110286712646,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0022281110286712646,
+     "zeros_before": 0.4554454982280731,
+     "zeros_after": 0.4556349515914917,
+     "scale_drift_mean": 0.018458444479350283,
+     "scale_drift_max": 0.0824689118560003,
+     "scales_changed": 0.9882545471191406
+    },
+    "layers.0.linear_attn.in_proj_z": {
+     "flips": 0.0037052035331726074,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0037052035331726074,
+     "zeros_before": 0.4554342031478882,
+     "zeros_after": 0.4546179175376892,
+     "scale_drift_mean": 0.017873861710212966,
+     "scale_drift_max": 0.08876598328011115,
+     "scales_changed": 0.9867019653320312
+    },
+    "layers.0.mlp.gate_proj": {
+     "flips": 0.006524622440338135,
+     "sign_flips": 0.0,
+     "zero_flips": 0.006524622440338135,
+     "zeros_before": 0.4557138880093892,
+     "zeros_after": 0.45438865820566815,
+     "scale_drift_mean": 0.01990740627564248,
+     "scale_drift_max": 0.08428311902940641,
+     "scales_changed": 0.9906692504882812
+    },
+    "layers.0.mlp.up_proj": {
+     "flips": 0.005931854248046875,
+     "sign_flips": 0.0,
+     "zero_flips": 0.005931854248046875,
+     "zeros_before": 0.45557496945063275,
+     "zeros_after": 0.4543190598487854,
+     "scale_drift_mean": 0.01922167742515198,
+     "scale_drift_max": 0.07905783246202455,
+     "scales_changed": 0.9903411865234375
+    },
+    "layers.0.mlp.down_proj": {
+     "flips": 0.025572776794433594,
+     "sign_flips": 0.0,
+     "zero_flips": 0.025572776794433594,
+     "zeros_before": 0.45597479740778607,
+     "zeros_after": 0.45021237929662067,
+     "scale_drift_mean": 0.031461251917659916,
+     "scale_drift_max": 0.09785063513872574,
+     "scales_changed": 0.9953664143880209
+    }
+   },
+   "seconds": 27.352951765060425,
+   "peak_vram_gb": 9.913463592529297,
+   "peak_reserved_gb": 17.544921875
+  },
+  {
+   "layers": [
+    1
+   ],
+   "kinds": [
+    "linear_attention"
+   ],
+   "steps": 512,
+   "code_steps": 410,
+   "train_loss_first": 0.013335220031876815,
+   "train_loss_last": 0.01118308377044741,
+   "eps_damped": 0.0001110388682438777,
+   "latent_grad_rms": 2.779315399650663e-08,
+   "val_before": {
+    "original": 0.014514608647886007,
+    "quantized": 0.0051775138592145
+   },
+   "val_after": {
+    "original": 0.01126738093395474,
+    "quantized": 0.004806427276772496
+   },
+   "objective_before": 0.014514608647886007,
+   "objective_after": 0.01126738093395474,
+   "rollback": false,
+   "changed": true,
+   "flips": 0.004622441071730394,
+   "sign_flips": 0.0,
+   "zero_flips": 0.004622441071730394,
+   "zeros_before": 0.45590226925336397,
+   "zeros_after": 0.4549179764894339,
+   "scale_drift_mean": 0.018997176768554593,
+   "scale_drift_max": 0.08515780834030677,
+   "scales_changed": 0.989175062913161,
+   "modules": {
+    "layers.1.linear_attn.out_proj": {
+     "flips": 0.0025554299354553223,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0025554299354553223,
+     "zeros_before": 0.4557473063468933,
+     "zeros_after": 0.45518672466278076,
+     "scale_drift_mean": 0.017260094336593416,
+     "scale_drift_max": 0.07600295102827058,
+     "scales_changed": 0.9870986938476562
+    },
+    "layers.1.linear_attn.in_proj_qkv": {
+     "flips": 0.0003089010715484619,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0003089010715484619,
+     "zeros_before": 0.45574307441711426,
+     "zeros_after": 0.45565882325172424,
+     "scale_drift_mean": 0.013411091292552826,
+     "scale_drift_max": 0.07452385903848517,
+     "scales_changed": 0.981292724609375
+    },
+    "layers.1.linear_attn.in_proj_z": {
+     "flips": 1.7464160919189453e-05,
+     "sign_flips": 0.0,
+     "zero_flips": 1.7464160919189453e-05,
+     "zeros_before": 0.455407977104187,
+     "zeros_after": 0.4554057717323303,
+     "scale_drift_mean": 0.014368787390851423,
+     "scale_drift_max": 0.07698366582645381,
+     "scales_changed": 0.9839324951171875
+    },
+    "layers.1.mlp.gate_proj": {
+     "flips": 0.004818737506866455,
+     "sign_flips": 0.0,
+     "zero_flips": 0.004818737506866455,
+     "zeros_before": 0.4558181365331014,
+     "zeros_after": 0.4547883868217468,
+     "scale_drift_mean": 0.020205912896493206,
+     "scale_drift_max": 0.08406413052969743,
+     "scales_changed": 0.9911270141601562
+    },
+    "layers.1.mlp.up_proj": {
+     "flips": 0.004303932189941406,
+     "sign_flips": 0.0,
+     "zero_flips": 0.004303932189941406,
+     "zeros_before": 0.45588525136311847,
+     "zeros_after": 0.45494429270426434,
+     "scale_drift_mean": 0.018942964732186172,
+     "scale_drift_max": 0.08486492194278626,
+     "scales_changed": 0.9907328287760416
+    },
+    "layers.1.mlp.down_proj": {
+     "flips": 0.009844342867533365,
+     "sign_flips": 0.0,
+     "zero_flips": 0.009844342867533365,
+     "zeros_before": 0.4563259681065877,
+     "zeros_after": 0.4542751709620158,
+     "scale_drift_mean": 0.02368853359754036,
+     "scale_drift_max": 0.08515780834030677,
+     "scales_changed": 0.9933598836263021
+    }
+   },
+   "seconds": 27.16962432861328,
+   "peak_vram_gb": 9.912006378173828,
+   "peak_reserved_gb": 17.544921875
+  },
+  {
+   "layers": [
+    2
+   ],
+   "kinds": [
+    "linear_attention"
+   ],
+   "steps": 512,
+   "code_steps": 410,
+   "train_loss_first": 0.031472838803892955,
+   "train_loss_last": 0.028162768780020997,
+   "eps_damped": 0.00015511421056894155,
+   "latent_grad_rms": 5.9060523481104846e-08,
+   "val_before": {
+    "original": 0.0320023110916452,
+    "quantized": 0.009108960250664211
+   },
+   "val_after": {
+    "original": 0.027801201243590867,
+    "quantized": 0.009671741768478626
+   },
+   "objective_before": 0.0320023110916452,
+   "objective_after": 0.027801201243590867,
+   "rollback": false,
+   "changed": true,
+   "flips": 0.002738503309396597,
+   "sign_flips": 0.0,
+   "zero_flips": 0.002738503309396597,
+   "zeros_before": 0.4559049698022696,
+   "zeros_after": 0.4552865670277522,
+   "scale_drift_mean": 0.014795906951840862,
+   "scale_drift_max": 0.08487530251174531,
+   "scales_changed": 0.9860657912034255,
+   "modules": {
+    "layers.2.linear_attn.out_proj": {
+     "flips": 0.0011851787567138672,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0011851787567138672,
+     "zeros_before": 0.4555221199989319,
+     "zeros_after": 0.4552178978919983,
+     "scale_drift_mean": 0.014366710813136284,
+     "scale_drift_max": 0.06618672222491202,
+     "scales_changed": 0.98388671875
+    },
+    "layers.2.linear_attn.in_proj_qkv": {
+     "flips": 0.0008182823657989502,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0008182823657989502,
+     "zeros_before": 0.4556695818901062,
+     "zeros_after": 0.45538631081581116,
+     "scale_drift_mean": 0.013075406288390335,
+     "scale_drift_max": 0.08288148389736874,
+     "scales_changed": 0.9807968139648438
+    },
+    "layers.2.linear_attn.in_proj_z": {
+     "flips": 0.0004011988639831543,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0004011988639831543,
+     "zeros_before": 0.45590901374816895,
+     "zeros_after": 0.4558259844779968,
+     "scale_drift_mean": 0.015449416810425028,
+     "scale_drift_max": 0.08069623127810524,
+     "scales_changed": 0.9857025146484375
+    },
+    "layers.2.mlp.gate_proj": {
+     "flips": 0.002638240655263265,
+     "sign_flips": 0.0,
+     "zero_flips": 0.002638240655263265,
+     "zeros_before": 0.45576411485671997,
+     "zeros_after": 0.4551486571629842,
+     "scale_drift_mean": 0.014994224487456104,
+     "scale_drift_max": 0.0772355213409669,
+     "scales_changed": 0.9869537353515625
+    },
+    "layers.2.mlp.up_proj": {
+     "flips": 0.0030432939529418945,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0030432939529418945,
+     "zeros_before": 0.45592278242111206,
+     "zeros_after": 0.4552306930224101,
+     "scale_drift_mean": 0.014964445326452845,
+     "scale_drift_max": 0.0758029634155006,
+     "scales_changed": 0.9877777099609375
+    },
+    "layers.2.mlp.down_proj": {
+     "flips": 0.00511099894841512,
+     "sign_flips": 0.0,
+     "zero_flips": 0.00511099894841512,
+     "zeros_before": 0.4563112060228984,
+     "zeros_after": 0.45525693893432617,
+     "scale_drift_mean": 0.015501280243954122,
+     "scale_drift_max": 0.08487530251174531,
+     "scales_changed": 0.9878260294596354
+    }
+   },
+   "seconds": 27.210957288742065,
+   "peak_vram_gb": 9.912494659423828,
+   "peak_reserved_gb": 17.544921875
+  },
+  {
+   "layers": [
+    3
+   ],
+   "kinds": [
+    "full_attention"
+   ],
+   "steps": 512,
+   "code_steps": 410,
+   "train_loss_first": 0.02588613049738342,
+   "train_loss_last": 0.02309335056634154,
+   "eps_damped": 2.384185791015625e-08,
+   "latent_grad_rms": 8.423057108883753e-08,
+   "val_before": {
+    "original": 0.02735501364289661,
+    "quantized": 0.006706786426896372
+   },
+   "val_after": {
+    "original": 0.023068342680694798,
+    "quantized": 0.006717283688747244
+   },
+   "objective_before": 0.02735501364289661,
+   "objective_after": 0.023068342680694798,
+   "rollback": false,
+   "changed": true,
+   "flips": 0.003068866729736328,
+   "sign_flips": 0.0,
+   "zero_flips": 0.003068866729736328,
+   "zeros_before": 0.45580880641937255,
+   "zeros_after": 0.45511861324310304,
+   "scale_drift_mean": 0.017115778563772357,
+   "scale_drift_max": 0.09007317939768208,
+   "scales_changed": 0.988094482421875,
+   "modules": {
+    "layers.3.self_attn.q_proj": {
+     "flips": 4.786252975463867e-05,
+     "sign_flips": 0.0,
+     "zero_flips": 4.786252975463867e-05,
+     "zeros_before": 0.4556642770767212,
+     "zeros_after": 0.455639123916626,
+     "scale_drift_mean": 0.013916860190525123,
+     "scale_drift_max": 0.07400346256487204,
+     "scales_changed": 0.9835205078125
+    },
+    "layers.3.self_attn.k_proj": {
+     "flips": 0.00023317337036132812,
+     "sign_flips": 0.0,
+     "zero_flips": 0.00023317337036132812,
+     "zeros_before": 0.4554159641265869,
+     "zeros_after": 0.45533299446105957,
+     "scale_drift_mean": 0.014459070755555432,
+     "scale_drift_max": 0.05971923470162231,
+     "scales_changed": 0.984344482421875
+    },
+    "layers.3.self_attn.v_proj": {
+     "flips": 0.0,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0,
+     "zeros_before": 0.45561695098876953,
+     "zeros_after": 0.45561695098876953,
+     "scale_drift_mean": 0.007478119322549664,
+     "scale_drift_max": 0.05621314484055248,
+     "scales_changed": 0.964752197265625
+    },
+    "layers.3.self_attn.o_proj": {
+     "flips": 0.0006644129753112793,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0006644129753112793,
+     "zeros_before": 0.4544091820716858,
+     "zeros_after": 0.454227089881897,
+     "scale_drift_mean": 0.014499101409389795,
+     "scale_drift_max": 0.07320340402329492,
+     "scales_changed": 0.9833602905273438
+    },
+    "layers.3.mlp.gate_proj": {
+     "flips": 0.0029712518056233725,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0029712518056233725,
+     "zeros_before": 0.4558005730311076,
+     "zeros_after": 0.4551318089167277,
+     "scale_drift_mean": 0.017858246981547726,
+     "scale_drift_max": 0.07808197468533827,
+     "scales_changed": 0.9896748860677084
+    },
+    "layers.3.mlp.up_proj": {
+     "flips": 0.0031424363454182944,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0031424363454182944,
+     "zeros_before": 0.45583200454711914,
+     "zeros_after": 0.4551113446553548,
+     "scale_drift_mean": 0.01721928027070962,
+     "scale_drift_max": 0.083381608939051,
+     "scales_changed": 0.9899470011393229
+    },
+    "layers.3.mlp.down_proj": {
+     "flips": 0.006400446097056071,
+     "sign_flips": 0.0,
+     "zero_flips": 0.006400446097056071,
+     "zeros_before": 0.4564054608345032,
+     "zeros_after": 0.45500346024831134,
+     "scale_drift_mean": 0.020299176993472032,
+     "scale_drift_max": 0.09007317939768208,
+     "scales_changed": 0.991546630859375
+    }
+   },
+   "seconds": 29.07079291343689,
+   "peak_vram_gb": 9.635679244995117,
+   "peak_reserved_gb": 17.54296875
+  },
+  {
+   "layers": [
+    4
+   ],
+   "kinds": [
+    "linear_attention"
+   ],
+   "steps": 512,
+   "code_steps": 410,
+   "train_loss_first": 0.03573980163491797,
+   "train_loss_last": 0.0334296015498694,
+   "eps_damped": 6.176416690532978e-05,
+   "latent_grad_rms": 3.908900339065496e-08,
+   "val_before": {
+    "original": 0.03690853465656119,
+    "quantized": 0.008200065262684575
+   },
+   "val_after": {
+    "original": 0.033600104966382105,
+    "quantized": 0.008455662580949763
+   },
+   "objective_before": 0.03690853465656119,
+   "objective_after": 0.033600104966382105,
+   "rollback": false,
+   "changed": true,
+   "flips": 0.0020389190086951624,
+   "sign_flips": 0.0,
+   "zero_flips": 0.0020389190086951624,
+   "zeros_before": 0.45593053560990554,
+   "zeros_after": 0.4554569446123563,
+   "scale_drift_mean": 0.015158238439940599,
+   "scale_drift_max": 0.08756249301349908,
+   "scales_changed": 0.9866632314828726,
+   "modules": {
+    "layers.4.linear_attn.out_proj": {
+     "flips": 0.002405822277069092,
+     "sign_flips": 0.0,
+     "zero_flips": 0.002405822277069092,
+     "zeros_before": 0.4552457928657532,
+     "zeros_after": 0.45465385913848877,
+     "scale_drift_mean": 0.015256430982054328,
+     "scale_drift_max": 0.07333903709084476,
+     "scales_changed": 0.9852752685546875
+    },
+    "layers.4.linear_attn.in_proj_qkv": {
+     "flips": 0.0001971125602722168,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0001971125602722168,
+     "zeros_before": 0.4559778571128845,
+     "zeros_after": 0.4558980464935303,
+     "scale_drift_mean": 0.01352928254301259,
+     "scale_drift_max": 0.07562859590234972,
+     "scales_changed": 0.9833641052246094
+    },
+    "layers.4.linear_attn.in_proj_z": {
+     "flips": 0.00013774633407592773,
+     "sign_flips": 0.0,
+     "zero_flips": 0.00013774633407592773,
+     "zeros_before": 0.45604604482650757,
+     "zeros_after": 0.4560117721557617,
+     "scale_drift_mean": 0.014921553882425638,
+     "scale_drift_max": 0.08334422506271251,
+     "scales_changed": 0.9857559204101562
+    },
+    "layers.4.mlp.gate_proj": {
+     "flips": 0.0005026658376057943,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0005026658376057943,
+     "zeros_before": 0.45575835307439166,
+     "zeros_after": 0.4556441903114319,
+     "scale_drift_mean": 0.015302181175329568,
+     "scale_drift_max": 0.079007332257488,
+     "scales_changed": 0.9869181315104166
+    },
+    "layers.4.mlp.up_proj": {
+     "flips": 0.0002594590187072754,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0002594590187072754,
+     "zeros_before": 0.4558991591135661,
+     "zeros_after": 0.4558398127555847,
+     "scale_drift_mean": 0.014362348472204954,
+     "scale_drift_max": 0.07844863353974187,
+     "scales_changed": 0.9872055053710938
+    },
+    "layers.4.mlp.down_proj": {
+     "flips": 0.0070939262708028155,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0070939262708028155,
+     "zeros_before": 0.4562922914822896,
+     "zeros_after": 0.45467551549275714,
+     "scale_drift_mean": 0.01694232027537302,
+     "scale_drift_max": 0.08756249301349908,
+     "scales_changed": 0.98883056640625
+    }
+   },
+   "seconds": 27.3051540851593,
+   "peak_vram_gb": 9.913516998291016,
+   "peak_reserved_gb": 17.544921875
+  },
+  {
+   "layers": [
+    5
+   ],
+   "kinds": [
+    "linear_attention"
+   ],
+   "steps": 512,
+   "code_steps": 410,
+   "train_loss_first": 0.042691902577644214,
+   "train_loss_last": 0.04012725123902783,
+   "eps_damped": 2.5950945340670073e-06,
+   "latent_grad_rms": 3.763958362695408e-08,
+   "val_before": {
+    "original": 0.043260311996704104,
+    "quantized": 0.011094876691636557
+   },
+   "val_after": {
+    "original": 0.039521585070218634,
+    "quantized": 0.011130555333991765
+   },
+   "objective_before": 0.043260311996704104,
+   "objective_after": 0.039521585070218634,
+   "rollback": false,
+   "changed": true,
+   "flips": 0.0022064630801861104,
+   "sign_flips": 0.0,
+   "zero_flips": 0.0022064630801861104,
+   "zeros_before": 0.4560062885284424,
+   "zeros_after": 0.4555140183522151,
+   "scale_drift_mean": 0.015036641023393221,
+   "scale_drift_max": 0.09111679190977573,
+   "scales_changed": 0.9864261333759015,
+   "modules": {
+    "layers.5.linear_attn.out_proj": {
+     "flips": 0.0002478361129760742,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0002478361129760742,
+     "zeros_before": 0.4558509588241577,
+     "zeros_after": 0.455785870552063,
+     "scale_drift_mean": 0.013415576793589401,
+     "scale_drift_max": 0.09111679190977573,
+     "scales_changed": 0.9821319580078125
+    },
+    "layers.5.linear_attn.in_proj_qkv": {
+     "flips": 0.00017157196998596191,
+     "sign_flips": 0.0,
+     "zero_flips": 0.00017157196998596191,
+     "zeros_before": 0.45562878251075745,
+     "zeros_after": 0.45557963848114014,
+     "scale_drift_mean": 0.01352471383682611,
+     "scale_drift_max": 0.0765270976104937,
+     "scales_changed": 0.9827117919921875
+    },
+    "layers.5.linear_attn.in_proj_z": {
+     "flips": 9.363889694213867e-05,
+     "sign_flips": 0.0,
+     "zero_flips": 9.363889694213867e-05,
+     "zeros_before": 0.4559735059738159,
+     "zeros_after": 0.4559515118598938,
+     "scale_drift_mean": 0.01520407426410554,
+     "scale_drift_max": 0.08344855230498852,
+     "scales_changed": 0.985504150390625
+    },
+    "layers.5.mlp.gate_proj": {
+     "flips": 0.0004437963167826335,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0004437963167826335,
+     "zeros_before": 0.4558041493097941,
+     "zeros_after": 0.4556857943534851,
+     "scale_drift_mean": 0.015467921461530717,
+     "scale_drift_max": 0.08011096007092836,
+     "scales_changed": 0.9871012369791666
+    },
+    "layers.5.mlp.up_proj": {
+     "flips": 0.00023893515268961588,
+     "sign_flips": 0.0,
+     "zero_flips": 0.00023893515268961588,
+     "zeros_before": 0.45601757367451984,
+     "zeros_after": 0.45595916112263996,
+     "scale_drift_mean": 0.014539653272913415,
+     "scale_drift_max": 0.07663322602091596,
+     "scales_changed": 0.9874114990234375
+    },
+    "layers.5.mlp.down_proj": {
+     "flips": 0.008650402228037516,
+     "sign_flips": 0.0,
+     "zero_flips": 0.008650402228037516,
+     "zeros_before": 0.4565115173657735,
+     "zeros_after": 0.454616904258728,
+     "scale_drift_mean": 0.016594843456477437,
+     "scale_drift_max": 0.08509067397084127,
+     "scales_changed": 0.9889806111653646
+    }
+   },
+   "seconds": 27.112277269363403,
+   "peak_vram_gb": 9.913516998291016,
+   "peak_reserved_gb": 17.544921875
+  },
+  {
+   "layers": [
+    6
+   ],
+   "kinds": [
+    "linear_attention"
+   ],
+   "steps": 512,
+   "code_steps": 410,
+   "train_loss_first": 0.05332070302392822,
+   "train_loss_last": 0.05019245659059379,
+   "eps_damped": 0.00012069940567016602,
+   "latent_grad_rms": 6.58356296470369e-08,
+   "val_before": {
+    "original": 0.05375041921845991,
+    "quantized": 0.013910395647712903
+   },
+   "val_after": {
+    "original": 0.04866445834863953,
+    "quantized": 0.014751846042571515
+   },
+   "objective_before": 0.05375041921845991,
+   "objective_after": 0.04866445834863953,
+   "rollback": false,
+   "changed": true,
+   "flips": 0.001550752383012038,
+   "sign_flips": 0.0,
+   "zero_flips": 0.001550752383012038,
+   "zeros_before": 0.45589292966402495,
+   "zeros_after": 0.4555129408836365,
+   "scale_drift_mean": 0.013527558577599618,
+   "scale_drift_max": 0.08289395542936494,
+   "scales_changed": 0.9840246347280649,
+   "modules": {
+    "layers.6.linear_attn.out_proj": {
+     "flips": 0.001406848430633545,
+     "sign_flips": 0.0,
+     "zero_flips": 0.001406848430633545,
+     "zeros_before": 0.45551782846450806,
+     "zeros_after": 0.45515429973602295,
+     "scale_drift_mean": 0.013933529632650469,
+     "scale_drift_max": 0.06731152955730754,
+     "scales_changed": 0.9834823608398438
+    },
+    "layers.6.linear_attn.in_proj_qkv": {
+     "flips": 0.00019508600234985352,
+     "sign_flips": 0.0,
+     "zero_flips": 0.00019508600234985352,
+     "zeros_before": 0.45569294691085815,
+     "zeros_after": 0.4556034803390503,
+     "scale_drift_mean": 0.012281586452904685,
+     "scale_drift_max": 0.0758380763915046,
+     "scales_changed": 0.9804000854492188
+    },
+    "layers.6.linear_attn.in_proj_z": {
+     "flips": 0.0002658367156982422,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0002658367156982422,
+     "zeros_before": 0.45573902130126953,
+     "zeros_after": 0.4556117057800293,
+     "scale_drift_mean": 0.015090304074457541,
+     "scale_drift_max": 0.07920805275487011,
+     "scales_changed": 0.9834060668945312
+    },
+    "layers.6.mlp.gate_proj": {
+     "flips": 7.249911626180013e-05,
+     "sign_flips": 0.0,
+     "zero_flips": 7.249911626180013e-05,
+     "zeros_before": 0.4557809829711914,
+     "zeros_after": 0.4557620882987976,
+     "scale_drift_mean": 0.013153989703803123,
+     "scale_drift_max": 0.08289395542936494,
+     "scales_changed": 0.9828720092773438
+    },
+    "layers.6.mlp.up_proj": {
+     "flips": 3.174940745035807e-05,
+     "sign_flips": 0.0,
+     "zero_flips": 3.174940745035807e-05,
+     "zeros_before": 0.45583627621332806,
+     "zeros_after": 0.45582809050877887,
+     "scale_drift_mean": 0.012193103989178064,
+     "scale_drift_max": 0.07717496776011243,
+     "scales_changed": 0.9839019775390625
+    },
+    "layers.6.mlp.down_proj": {
+     "flips": 0.005928059418996175,
+     "sign_flips": 0.0,
+     "zero_flips": 0.005928059418996175,
+     "zeros_before": 0.4563711881637573,
+     "zeros_after": 0.45497490962346393,
+     "scale_drift_mean": 0.015409991272311359,
+     "scale_drift_max": 0.07914400127716834,
+     "scales_changed": 0.9881032307942709
+    }
+   },
+   "seconds": 27.222764492034912,
+   "peak_vram_gb": 9.913516998291016,
+   "peak_reserved_gb": 17.544921875
+  },
+  {
+   "layers": [
+    7
+   ],
+   "kinds": [
+    "full_attention"
+   ],
+   "steps": 512,
+   "code_steps": 410,
+   "train_loss_first": 0.06041477477992885,
+   "train_loss_last": 0.05770313959510531,
+   "eps_damped": 1.954078674316406e-05,
+   "latent_grad_rms": 1.0124406683902343e-07,
+   "val_before": {
+    "original": 0.060373025722071816,
+    "quantized": 0.013701965185077825
+   },
+   "val_after": {
+    "original": 0.05549680011077385,
+    "quantized": 0.014445798268880594
+   },
+   "objective_before": 0.060373025722071816,
+   "objective_after": 0.05549680011077385,
+   "rollback": false,
+   "changed": true,
+   "flips": 0.0008426189422607421,
+   "sign_flips": 0.0,
+   "zero_flips": 0.0008426189422607421,
+   "zeros_before": 0.45594230651855466,
+   "zeros_after": 0.45573330879211427,
+   "scale_drift_mean": 0.013779370764384456,
+   "scale_drift_max": 0.08533092729510074,
+   "scales_changed": 0.98446533203125,
+   "modules": {
+    "layers.7.self_attn.q_proj": {
+     "flips": 8.979439735412598e-05,
+     "sign_flips": 0.0,
+     "zero_flips": 8.979439735412598e-05,
+     "zeros_before": 0.45544424653053284,
+     "zeros_after": 0.4554259181022644,
+     "scale_drift_mean": 0.014041806061290959,
+     "scale_drift_max": 0.08533092729510074,
+     "scales_changed": 0.9833450317382812
+    },
+    "layers.7.self_attn.k_proj": {
+     "flips": 0.0003285408020019531,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0003285408020019531,
+     "zeros_before": 0.4552764892578125,
+     "zeros_after": 0.45516443252563477,
+     "scale_drift_mean": 0.01506310690857127,
+     "scale_drift_max": 0.07155369234862508,
+     "scales_changed": 0.984954833984375
+    },
+    "layers.7.self_attn.v_proj": {
+     "flips": 2.384185791015625e-06,
+     "sign_flips": 0.0,
+     "zero_flips": 2.384185791015625e-06,
+     "zeros_before": 0.45540666580200195,
+     "zeros_after": 0.45540428161621094,
+     "scale_drift_mean": 0.00802048770268309,
+     "scale_drift_max": 0.059854671825144874,
+     "scales_changed": 0.965728759765625
+    },
+    "layers.7.self_attn.o_proj": {
+     "flips": 0.0006608963012695312,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0006608963012695312,
+     "zeros_before": 0.45541632175445557,
+     "zeros_after": 0.4552426338195801,
+     "scale_drift_mean": 0.013112182921017276,
+     "scale_drift_max": 0.0639569567129217,
+     "scales_changed": 0.9806365966796875
+    },
+    "layers.7.mlp.gate_proj": {
+     "flips": 0.0003066261609395345,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0003066261609395345,
+     "zeros_before": 0.45600394407908124,
+     "zeros_after": 0.4559250473976135,
+     "scale_drift_mean": 0.01394751918982035,
+     "scale_drift_max": 0.08126832750449305,
+     "scales_changed": 0.9836629231770834
+    },
+    "layers.7.mlp.up_proj": {
+     "flips": 0.00014064709345499674,
+     "sign_flips": 0.0,
+     "zero_flips": 0.00014064709345499674,
+     "zeros_before": 0.45597251256306964,
+     "zeros_after": 0.4559358557065328,
+     "scale_drift_mean": 0.013563236317414079,
+     "scale_drift_max": 0.07804270700686933,
+     "scales_changed": 0.9865493774414062
+    },
+    "layers.7.mlp.down_proj": {
+     "flips": 0.002755900224049886,
+     "sign_flips": 0.0,
+     "zero_flips": 0.002755900224049886,
+     "zeros_before": 0.4564579526583354,
+     "zeros_after": 0.45578233400980633,
+     "scale_drift_mean": 0.014247724778896539,
+     "scale_drift_max": 0.07835585460325754,
+     "scales_changed": 0.9867273966471354
+    }
+   },
+   "seconds": 28.507632970809937,
+   "peak_vram_gb": 9.637144088745117,
+   "peak_reserved_gb": 17.54296875
+  },
+  {
+   "layers": [
+    8
+   ],
+   "kinds": [
+    "linear_attention"
+   ],
+   "steps": 512,
+   "code_steps": 410,
+   "train_loss_first": 0.06841361295664683,
+   "train_loss_last": 0.06636366472230293,
+   "eps_damped": 7.062233411348783e-05,
+   "latent_grad_rms": 7.026937062932756e-08,
+   "val_before": {
+    "original": 0.06692931808834146,
+    "quantized": 0.0127991998717647
+   },
+   "val_after": {
+    "original": 0.06370454109065804,
+    "quantized": 0.013313127707100136
+   },
+   "objective_before": 0.06692931808834146,
+   "objective_after": 0.06370454109065804,
+   "rollback": false,
+   "changed": true,
+   "flips": 0.000520940010364239,
+   "sign_flips": 0.0,
+   "zero_flips": 0.000520940010364239,
+   "zeros_before": 0.4559763486568744,
+   "zeros_after": 0.4558361080976633,
+   "scale_drift_mean": 0.013145983331683585,
+   "scale_drift_max": 0.08131198849293386,
+   "scales_changed": 0.983987074631911,
+   "modules": {
+    "layers.8.linear_attn.out_proj": {
+     "flips": 0.0009824633598327637,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0009824633598327637,
+     "zeros_before": 0.45579594373703003,
+     "zeros_after": 0.4555199146270752,
+     "scale_drift_mean": 0.013234446385029557,
+     "scale_drift_max": 0.07202118566024293,
+     "scales_changed": 0.9820480346679688
+    },
+    "layers.8.linear_attn.in_proj_qkv": {
+     "flips": 0.0001932978630065918,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0001932978630065918,
+     "zeros_before": 0.4557512402534485,
+     "zeros_after": 0.4556826949119568,
+     "scale_drift_mean": 0.012951695753669168,
+     "scale_drift_max": 0.08131198849293386,
+     "scales_changed": 0.9819602966308594
+    },
+    "layers.8.linear_attn.in_proj_z": {
+     "flips": 0.00019472837448120117,
+     "sign_flips": 0.0,
+     "zero_flips": 0.00019472837448120117,
+     "zeros_before": 0.45604991912841797,
+     "zeros_after": 0.45595937967300415,
+     "scale_drift_mean": 0.013638738341344481,
+     "scale_drift_max": 0.07328661687140677,
+     "scales_changed": 0.9828338623046875
+    },
+    "layers.8.mlp.gate_proj": {
+     "flips": 0.00019544363021850586,
+     "sign_flips": 0.0,
+     "zero_flips": 0.00019544363021850586,
+     "zeros_before": 0.4559370477994283,
+     "zeros_after": 0.45588648319244385,
+     "scale_drift_mean": 0.01324845767466539,
+     "scale_drift_max": 0.07601855737381095,
+     "scales_changed": 0.9833984375
+    },
+    "layers.8.mlp.up_proj": {
+     "flips": 9.665886561075847e-05,
+     "sign_flips": 0.0,
+     "zero_flips": 9.665886561075847e-05,
+     "zeros_before": 0.45589850346247357,
+     "zeros_after": 0.45587193965911865,
+     "scale_drift_mean": 0.01283846573641069,
+     "scale_drift_max": 0.07538689613734242,
+     "scales_changed": 0.9854863484700521
+    },
+    "layers.8.mlp.down_proj": {
+     "flips": 0.0014440417289733887,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0014440417289733887,
+     "zeros_before": 0.456279178460439,
+     "zeros_after": 0.4559164841969808,
+     "scale_drift_mean": 0.013286812281648663,
+     "scale_drift_max": 0.07216765109810955,
+     "scales_changed": 0.9854583740234375
+    }
+   },
+   "seconds": 27.25229048728943,
+   "peak_vram_gb": 9.914981842041016,
+   "peak_reserved_gb": 17.544921875
+  },
+  {
+   "layers": [
+    9
+   ],
+   "kinds": [
+    "linear_attention"
+   ],
+   "steps": 512,
+   "code_steps": 410,
+   "train_loss_first": 0.06997318629873917,
+   "train_loss_last": 0.06811311130877584,
+   "eps_damped": 3.7560096153846156e-05,
+   "latent_grad_rms": 4.555787265852181e-08,
+   "val_before": {
+    "original": 0.06805331099917566,
+    "quantized": 0.01178907127810902
+   },
+   "val_after": {
+    "original": 0.06480996376268422,
+    "quantized": 0.01228872274432291
+   },
+   "objective_before": 0.06805331099917566,
+   "objective_after": 0.06480996376268422,
+   "rollback": false,
+   "changed": true,
+   "flips": 0.0006221486971928523,
+   "sign_flips": 0.0,
+   "zero_flips": 0.0006221486971928523,
+   "zeros_before": 0.45610552567702073,
+   "zeros_after": 0.455939572591048,
+   "scale_drift_mean": 0.013158868935726795,
+   "scale_drift_max": 0.08240398385921623,
+   "scales_changed": 0.9839008037860577,
+   "modules": {
+    "layers.9.linear_attn.out_proj": {
+     "flips": 0.0007437467575073242,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0007437467575073242,
+     "zeros_before": 0.45617473125457764,
+     "zeros_after": 0.4559718370437622,
+     "scale_drift_mean": 0.013419579266126611,
+     "scale_drift_max": 0.07713994801557499,
+     "scales_changed": 0.9819183349609375
+    },
+    "layers.9.linear_attn.in_proj_qkv": {
+     "flips": 0.00012814998626708984,
+     "sign_flips": 0.0,
+     "zero_flips": 0.00012814998626708984,
+     "zeros_before": 0.45581868290901184,
+     "zeros_after": 0.45576903223991394,
+     "scale_drift_mean": 0.012349776622314622,
+     "scale_drift_max": 0.07872916486021328,
+     "scales_changed": 0.9807395935058594
+    },
+    "layers.9.linear_attn.in_proj_z": {
+     "flips": 0.00011599063873291016,
+     "sign_flips": 0.0,
+     "zero_flips": 0.00011599063873291016,
+     "zeros_before": 0.45631521940231323,
+     "zeros_after": 0.4562644362449646,
+     "scale_drift_mean": 0.01343404555883578,
+     "scale_drift_max": 0.07764667709031055,
+     "scales_changed": 0.9821624755859375
+    },
+    "layers.9.mlp.gate_proj": {
+     "flips": 0.00016957521438598633,
+     "sign_flips": 0.0,
+     "zero_flips": 0.00016957521438598633,
+     "zeros_before": 0.45595645904541016,
+     "zeros_after": 0.4559113383293152,
+     "scale_drift_mean": 0.01330246413873048,
+     "scale_drift_max": 0.07827464484856783,
+     "scales_changed": 0.9839502970377604
+    },
+    "layers.9.mlp.up_proj": {
+     "flips": 8.175770441691081e-05,
+     "sign_flips": 0.0,
+     "zero_flips": 8.175770441691081e-05,
+     "zeros_before": 0.45598357915878296,
+     "zeros_after": 0.4559584856033325,
+     "scale_drift_mean": 0.012744067357147481,
+     "scale_drift_max": 0.08148052244316398,
+     "scales_changed": 0.9852320353190104
+    },
+    "layers.9.mlp.down_proj": {
+     "flips": 0.002072632312774658,
+     "sign_flips": 0.0,
+     "zero_flips": 0.002072632312774658,
+     "zeros_before": 0.45647480090459186,
+     "zeros_after": 0.4559435447057088,
+     "scale_drift_mean": 0.013790841202407611,
+     "scale_drift_max": 0.08240398385921623,
+     "scales_changed": 0.9858678181966146
+    }
+   },
+   "seconds": 27.126546621322632,
+   "peak_vram_gb": 9.914981842041016,
+   "peak_reserved_gb": 17.544921875
+  },
+  {
+   "layers": [
+    10
+   ],
+   "kinds": [
+    "linear_attention"
+   ],
+   "steps": 512,
+   "code_steps": 410,
+   "train_loss_first": 0.07039677546708845,
+   "train_loss_last": 0.0677258413634263,
+   "eps_damped": 3.2094808725210335e-08,
+   "latent_grad_rms": 5.1728806473906064e-08,
+   "val_before": {
+    "original": 0.06980761544249958,
+    "quantized": 0.010722816587893647
+   },
+   "val_after": {
+    "original": 0.06456278966328455,
+    "quantized": 0.012013612139696761
+   },
+   "objective_before": 0.06980761544249958,
+   "objective_after": 0.06456278966328455,
+   "rollback": false,
+   "changed": true,
+   "flips": 0.0010066445057208722,
+   "sign_flips": 0.0,
+   "zero_flips": 0.0010066445057208722,
+   "zeros_before": 0.4559442767730126,
+   "zeros_after": 0.4556806729390071,
+   "scale_drift_mean": 0.013505104070182915,
+   "scale_drift_max": 0.0786492122834705,
+   "scales_changed": 0.9842529296875,
+   "modules": {
+    "layers.10.linear_attn.out_proj": {
+     "flips": 0.001959383487701416,
+     "sign_flips": 0.0,
+     "zero_flips": 0.001959383487701416,
+     "zeros_before": 0.45582693815231323,
+     "zeros_after": 0.45529353618621826,
+     "scale_drift_mean": 0.015025922738370657,
+     "scale_drift_max": 0.07419259958152166,
+     "scales_changed": 0.9849090576171875
+    },
+    "layers.10.linear_attn.in_proj_qkv": {
+     "flips": 0.00010752677917480469,
+     "sign_flips": 0.0,
+     "zero_flips": 0.00010752677917480469,
+     "zeros_before": 0.455596923828125,
+     "zeros_after": 0.4555639624595642,
+     "scale_drift_mean": 0.01174919742639799,
+     "scale_drift_max": 0.0786492122834705,
+     "scales_changed": 0.9796180725097656
+    },
+    "layers.10.linear_attn.in_proj_z": {
+     "flips": 5.793571472167969e-05,
+     "sign_flips": 0.0,
+     "zero_flips": 5.793571472167969e-05,
+     "zeros_before": 0.45571041107177734,
+     "zeros_after": 0.455691933631897,
+     "scale_drift_mean": 0.01307523301784527,
+     "scale_drift_max": 0.07140224731026407,
+     "scales_changed": 0.982177734375
+    },
+    "layers.10.mlp.gate_proj": {
+     "flips": 0.00014366706212361655,
+     "sign_flips": 0.0,
+     "zero_flips": 0.00014366706212361655,
+     "zeros_before": 0.4557587703069051,
+     "zeros_after": 0.4557187755902608,
+     "scale_drift_mean": 0.01354558915028796,
+     "scale_drift_max": 0.07607158332130814,
+     "scales_changed": 0.9846267700195312
+    },
+    "layers.10.mlp.up_proj": {
+     "flips": 8.177757263183594e-05,
+     "sign_flips": 0.0,
+     "zero_flips": 8.177757263183594e-05,
+     "zeros_before": 0.45602168639500934,
+     "zeros_after": 0.45599907636642456,
+     "scale_drift_mean": 0.012895224518407342,
+     "scale_drift_max": 0.07764362698602964,
+     "scales_changed": 0.9846394856770834
+    },
+    "layers.10.mlp.down_proj": {
+     "flips": 0.0033925573031107583,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0033925573031107583,
+     "zeros_before": 0.4564010103543599,
+     "zeros_after": 0.4555272658665975,
+     "scale_drift_mean": 0.014881453765760035,
+     "scale_drift_max": 0.07455464999476123,
+     "scales_changed": 0.9870554606119791
+    }
+   },
+   "seconds": 27.1921329498291,
+   "peak_vram_gb": 9.914981842041016,
+   "peak_reserved_gb": 17.544921875
+  },
+  {
+   "layers": [
+    11
+   ],
+   "kinds": [
+    "full_attention"
+   ],
+   "steps": 512,
+   "code_steps": 410,
+   "train_loss_first": 0.074242692993721,
+   "train_loss_last": 0.07165118333068676,
+   "eps_damped": 2.384185791015625e-08,
+   "latent_grad_rms": 6.748798789518433e-08,
+   "val_before": {
+    "original": 0.07308523690670654,
+    "quantized": 0.0109866444188782
+   },
+   "val_after": {
+    "original": 0.06793808149700453,
+    "quantized": 0.012494134121226352
+   },
+   "objective_before": 0.07308523690670654,
+   "objective_after": 0.06793808149700453,
+   "rollback": false,
+   "changed": true,
+   "flips": 0.0009439706802368164,
+   "sign_flips": 0.0,
+   "zero_flips": 0.0009439706802368164,
+   "zeros_before": 0.45602065086364746,
+   "zeros_after": 0.45577206134796144,
+   "scale_drift_mean": 0.013977201414767904,
+   "scale_drift_max": 0.0809247279404852,
+   "scales_changed": 0.984761962890625,
+   "modules": {
+    "layers.11.self_attn.q_proj": {
+     "flips": 9.906291961669922e-05,
+     "sign_flips": 0.0,
+     "zero_flips": 9.906291961669922e-05,
+     "zeros_before": 0.4557974934577942,
+     "zeros_after": 0.4557613730430603,
+     "scale_drift_mean": 0.013617693654588089,
+     "scale_drift_max": 0.0809247279404852,
+     "scales_changed": 0.9826278686523438
+    },
+    "layers.11.self_attn.k_proj": {
+     "flips": 0.0006625652313232422,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0006625652313232422,
+     "zeros_before": 0.4554421901702881,
+     "zeros_after": 0.45524120330810547,
+     "scale_drift_mean": 0.016291398401673558,
+     "scale_drift_max": 0.07810659864667008,
+     "scales_changed": 0.98626708984375
+    },
+    "layers.11.self_attn.v_proj": {
+     "flips": 1.9073486328125e-06,
+     "sign_flips": 0.0,
+     "zero_flips": 1.9073486328125e-06,
+     "zeros_before": 0.4549732208251953,
+     "zeros_after": 0.4549736976623535,
+     "scale_drift_mean": 0.008232857829143783,
+     "scale_drift_max": 0.06296297330889224,
+     "scales_changed": 0.966278076171875
+    },
+    "layers.11.self_attn.o_proj": {
+     "flips": 0.0005486607551574707,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0005486607551574707,
+     "zeros_before": 0.4552873969078064,
+     "zeros_after": 0.4551353454589844,
+     "scale_drift_mean": 0.01298726646489222,
+     "scale_drift_max": 0.06423359660403007,
+     "scales_changed": 0.9822845458984375
+    },
+    "layers.11.mlp.gate_proj": {
+     "flips": 0.0002543330192565918,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0002543330192565918,
+     "zeros_before": 0.4559890627861023,
+     "zeros_after": 0.455927570660909,
+     "scale_drift_mean": 0.014546326662799945,
+     "scale_drift_max": 0.07903482595383622,
+     "scales_changed": 0.9859059651692709
+    },
+    "layers.11.mlp.up_proj": {
+     "flips": 0.0001248319943745931,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0001248319943745931,
+     "zeros_before": 0.4559980034828186,
+     "zeros_after": 0.45596396923065186,
+     "scale_drift_mean": 0.01355543509678056,
+     "scale_drift_max": 0.0781045518382072,
+     "scales_changed": 0.9855524698893229
+    },
+    "layers.11.mlp.down_proj": {
+     "flips": 0.0032497445742289224,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0032497445742289224,
+     "zeros_before": 0.45660356680552167,
+     "zeros_after": 0.45575477679570514,
+     "scale_drift_mean": 0.014685338191361514,
+     "scale_drift_max": 0.07493382902711819,
+     "scales_changed": 0.9864908854166666
+    }
+   },
+   "seconds": 28.508995532989502,
+   "peak_vram_gb": 9.637144088745117,
+   "peak_reserved_gb": 17.54296875
+  },
+  {
+   "layers": [
+    12
+   ],
+   "kinds": [
+    "linear_attention"
+   ],
+   "steps": 512,
+   "code_steps": 410,
+   "train_loss_first": 0.0822238419787027,
+   "train_loss_last": 0.07995997404213995,
+   "eps_damped": 6.0874682206373946e-05,
+   "latent_grad_rms": 4.270142975598573e-08,
+   "val_before": {
+    "original": 0.07924478276561331,
+    "quantized": 0.010011757033961288
+   },
+   "val_after": {
+    "original": 0.07597529454216101,
+    "quantized": 0.010983232395762599
+   },
+   "objective_before": 0.07924478276561331,
+   "objective_after": 0.07597529454216101,
+   "rollback": false,
+   "changed": true,
+   "flips": 0.0011445467288677509,
+   "sign_flips": 0.0,
+   "zero_flips": 0.0011445467288677509,
+   "zeros_before": 0.456036246739901,
+   "zeros_after": 0.45573347348433274,
+   "scale_drift_mean": 0.0139988358763257,
+   "scale_drift_max": 0.0829449057055458,
+   "scales_changed": 0.9849178607647235,
+   "modules": {
+    "layers.12.linear_attn.out_proj": {
+     "flips": 0.001336812973022461,
+     "sign_flips": 0.0,
+     "zero_flips": 0.001336812973022461,
+     "zeros_before": 0.4561246633529663,
+     "zeros_after": 0.4557619094848633,
+     "scale_drift_mean": 0.014109965977903753,
+     "scale_drift_max": 0.07896477289200288,
+     "scales_changed": 0.9833908081054688
+    },
+    "layers.12.linear_attn.in_proj_qkv": {
+     "flips": 0.0002607107162475586,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0002607107162475586,
+     "zeros_before": 0.45575639605522156,
+     "zeros_after": 0.45567628741264343,
+     "scale_drift_mean": 0.012430325566609345,
+     "scale_drift_max": 0.0829449057055458,
+     "scales_changed": 0.9810104370117188
+    },
+    "layers.12.linear_attn.in_proj_z": {
+     "flips": 9.274482727050781e-05,
+     "sign_flips": 0.0,
+     "zero_flips": 9.274482727050781e-05,
+     "zeros_before": 0.4560491442680359,
+     "zeros_after": 0.4560137391090393,
+     "scale_drift_mean": 0.013354917734006386,
+     "scale_drift_max": 0.07809691136816559,
+     "scales_changed": 0.98193359375
+    },
+    "layers.12.mlp.gate_proj": {
+     "flips": 0.00025264422098795575,
+     "sign_flips": 0.0,
+     "zero_flips": 0.00025264422098795575,
+     "zeros_before": 0.4557652274767558,
+     "zeros_after": 0.45570335785547894,
+     "scale_drift_mean": 0.014532361432672442,
+     "scale_drift_max": 0.07321805485729402,
+     "scales_changed": 0.9863230387369791
+    },
+    "layers.12.mlp.up_proj": {
+     "flips": 0.00016011794408162436,
+     "sign_flips": 0.0,
+     "zero_flips": 0.00016011794408162436,
+     "zeros_before": 0.45604223012924194,
+     "zeros_after": 0.45599714914957684,
+     "scale_drift_mean": 0.013802774073938373,
+     "scale_drift_max": 0.07538999073909697,
+     "scales_changed": 0.9856694539388021
+    },
+    "layers.12.mlp.down_proj": {
+     "flips": 0.003896613915761312,
+     "sign_flips": 0.0,
+     "zero_flips": 0.003896613915761312,
+     "zeros_before": 0.456454078356425,
+     "zeros_after": 0.4554351369539897,
+     "scale_drift_mean": 0.014884641675757608,
+     "scale_drift_max": 0.07774875287437763,
+     "scales_changed": 0.9868698120117188
+    }
+   },
+   "seconds": 27.0977623462677,
+   "peak_vram_gb": 9.914981842041016,
+   "peak_reserved_gb": 17.544921875
+  },
+  {
+   "layers": [
+    13
+   ],
+   "kinds": [
+    "linear_attention"
+   ],
+   "steps": 512,
+   "code_steps": 410,
+   "train_loss_first": 0.08630510585498996,
+   "train_loss_last": 0.0842063122545369,
+   "eps_damped": 3.956831418550932e-06,
+   "latent_grad_rms": 3.684085236943815e-08,
+   "val_before": {
+    "original": 0.08261845149957026,
+    "quantized": 0.00905193301234064
+   },
+   "val_after": {
+    "original": 0.0796412702680982,
+    "quantized": 0.009644751576097121
+   },
+   "objective_before": 0.08261845149957026,
+   "objective_after": 0.0796412702680982,
+   "rollback": false,
+   "changed": true,
+   "flips": 0.001255668126619779,
+   "sign_flips": 0.0,
+   "zero_flips": 0.001255668126619779,
+   "zeros_before": 0.45605230789918166,
+   "zeros_after": 0.4557263255119324,
+   "scale_drift_mean": 0.014380620082605322,
+   "scale_drift_max": 0.09014111929445658,
+   "scales_changed": 0.9853392380934495,
+   "modules": {
+    "layers.13.linear_attn.out_proj": {
+     "flips": 0.0013827681541442871,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0013827681541442871,
+     "zeros_before": 0.456254243850708,
+     "zeros_after": 0.4558945298194885,
+     "scale_drift_mean": 0.014318740414098561,
+     "scale_drift_max": 0.07625112044474316,
+     "scales_changed": 0.9835433959960938
+    },
+    "layers.13.linear_attn.in_proj_qkv": {
+     "flips": 0.00010967254638671875,
+     "sign_flips": 0.0,
+     "zero_flips": 0.00010967254638671875,
+     "zeros_before": 0.4559655785560608,
+     "zeros_after": 0.4559287428855896,
+     "scale_drift_mean": 0.012492322506634143,
+     "scale_drift_max": 0.07973273587848764,
+     "scales_changed": 0.9808425903320312
+    },
+    "layers.13.linear_attn.in_proj_z": {
+     "flips": 8.624792098999023e-05,
+     "sign_flips": 0.0,
+     "zero_flips": 8.624792098999023e-05,
+     "zeros_before": 0.4558616280555725,
+     "zeros_after": 0.4558253288269043,
+     "scale_drift_mean": 0.014622297689721205,
+     "scale_drift_max": 0.07890526679261023,
+     "scales_changed": 0.9830474853515625
+    },
+    "layers.13.mlp.gate_proj": {
+     "flips": 0.00034240881601969403,
+     "sign_flips": 0.0,
+     "zero_flips": 0.00034240881601969403,
+     "zeros_before": 0.45583367347717285,
+     "zeros_after": 0.4557503859202067,
+     "scale_drift_mean": 0.0152100535851629,
+     "scale_drift_max": 0.08155525522900561,
+     "scales_changed": 0.9870859781901041
+    },
+    "layers.13.mlp.up_proj": {
+     "flips": 0.00017752250035603842,
+     "sign_flips": 0.0,
+     "zero_flips": 0.00017752250035603842,
+     "zeros_before": 0.45594122012456256,
+     "zeros_after": 0.4558895428975423,
+     "scale_drift_mean": 0.014031330275307086,
+     "scale_drift_max": 0.09014111929445658,
+     "scales_changed": 0.9864247639973959
+    },
+    "layers.13.mlp.down_proj": {
+     "flips": 0.004358510176340739,
+     "sign_flips": 0.0,
+     "zero_flips": 0.004358510176340739,
+     "zeros_before": 0.4564360976219177,
+     "zeros_after": 0.45531503359476727,
+     "scale_drift_mean": 0.015099408791790394,
+     "scale_drift_max": 0.07592760190633606,
+     "scales_changed": 0.9868672688802084
+    }
+   },
+   "seconds": 27.412139892578125,
+   "peak_vram_gb": 9.914981842041016,
+   "peak_reserved_gb": 17.544921875
+  },
+  {
+   "layers": [
+    14
+   ],
+   "kinds": [
+    "linear_attention"
+   ],
+   "steps": 512,
+   "code_steps": 410,
+   "train_loss_first": 0.09353179950267076,
+   "train_loss_last": 0.0912612703978084,
+   "eps_damped": 9.58396838261531e-05,
+   "latent_grad_rms": 6.203871808275614e-08,
+   "val_before": {
+    "original": 0.09040551883123271,
+    "quantized": 0.010327938217109534
+   },
+   "val_after": {
+    "original": 0.08666562327812244,
+    "quantized": 0.01147511573888238
+   },
+   "objective_before": 0.09040551883123271,
+   "objective_after": 0.08666562327812244,
+   "rollback": false,
+   "changed": true,
+   "flips": 0.001169149692241962,
+   "sign_flips": 0.0,
+   "zero_flips": 0.001169149692241962,
+   "zeros_before": 0.4559090504279503,
+   "zeros_after": 0.45559917046473575,
+   "scale_drift_mean": 0.014025821068169436,
+   "scale_drift_max": 0.08793007250670225,
+   "scales_changed": 0.9846214881310096,
+   "modules": {
+    "layers.14.linear_attn.out_proj": {
+     "flips": 0.0009720921516418457,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0009720921516418457,
+     "zeros_before": 0.4560484290122986,
+     "zeros_after": 0.4557865858078003,
+     "scale_drift_mean": 0.013255573209327517,
+     "scale_drift_max": 0.07304833821693284,
+     "scales_changed": 0.9814910888671875
+    },
+    "layers.14.linear_attn.in_proj_qkv": {
+     "flips": 0.00015565752983093262,
+     "sign_flips": 0.0,
+     "zero_flips": 0.00015565752983093262,
+     "zeros_before": 0.45578399300575256,
+     "zeros_after": 0.45573508739471436,
+     "scale_drift_mean": 0.012113833410203091,
+     "scale_drift_max": 0.07303625137539353,
+     "scales_changed": 0.9800529479980469
+    },
+    "layers.14.linear_attn.in_proj_z": {
+     "flips": 8.83936882019043e-05,
+     "sign_flips": 0.0,
+     "zero_flips": 8.83936882019043e-05,
+     "zeros_before": 0.4554157853126526,
+     "zeros_after": 0.45538198947906494,
+     "scale_drift_mean": 0.013903587738511386,
+     "scale_drift_max": 0.08641542941537693,
+     "scales_changed": 0.982635498046875
+    },
+    "layers.14.mlp.gate_proj": {
+     "flips": 0.0003164807955423991,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0003164807955423991,
+     "zeros_before": 0.45572076241175336,
+     "zeros_after": 0.4556405544281006,
+     "scale_drift_mean": 0.014679132639784619,
+     "scale_drift_max": 0.07879381672342167,
+     "scales_changed": 0.9861323038736979
+    },
+    "layers.14.mlp.up_proj": {
+     "flips": 0.00014533599217732748,
+     "sign_flips": 0.0,
+     "zero_flips": 0.00014533599217732748,
+     "zeros_before": 0.45577847957611084,
+     "zeros_after": 0.45573951800664264,
+     "scale_drift_mean": 0.013829562809355008,
+     "scale_drift_max": 0.08793007250670225,
+     "scales_changed": 0.9853769938151041
+    },
+    "layers.14.mlp.down_proj": {
+     "flips": 0.004147231578826904,
+     "sign_flips": 0.0,
+     "zero_flips": 0.004147231578826904,
+     "zeros_before": 0.45642924308776855,
+     "zeros_after": 0.4553367495536804,
+     "scale_drift_mean": 0.015140919923512903,
+     "scale_drift_max": 0.07489462682976693,
+     "scales_changed": 0.9871063232421875
+    }
+   },
+   "seconds": 27.365952014923096,
+   "peak_vram_gb": 9.914981842041016,
+   "peak_reserved_gb": 17.544921875
+  },
+  {
+   "layers": [
+    15
+   ],
+   "kinds": [
+    "full_attention"
+   ],
+   "steps": 512,
+   "code_steps": 410,
+   "train_loss_first": 0.10361132712569088,
+   "train_loss_last": 0.10055545141221955,
+   "eps_damped": 8.487701416015625e-07,
+   "latent_grad_rms": 8.025828259209322e-08,
+   "val_before": {
+    "original": 0.09982201031255045,
+    "quantized": 0.011199291817135304
+   },
+   "val_after": {
+    "original": 0.09465347307559568,
+    "quantized": 0.012861377501550919
+   },
+   "objective_before": 0.09982201031255045,
+   "objective_after": 0.09465347307559568,
+   "rollback": false,
+   "changed": true,
+   "flips": 0.0012848758697509765,
+   "sign_flips": 0.0,
+   "zero_flips": 0.0012848758697509765,
+   "zeros_before": 0.4559615039825439,
+   "zeros_after": 0.4556232166290283,
+   "scale_drift_mean": 0.014811455001731593,
+   "scale_drift_max": 0.08483344894725872,
+   "scales_changed": 0.9858233642578125,
+   "modules": {
+    "layers.15.self_attn.q_proj": {
+     "flips": 0.00020503997802734375,
+     "sign_flips": 0.0,
+     "zero_flips": 0.00020503997802734375,
+     "zeros_before": 0.45561403036117554,
+     "zeros_after": 0.4555421471595764,
+     "scale_drift_mean": 0.013806728544703148,
+     "scale_drift_max": 0.08365002928692496,
+     "scales_changed": 0.9829292297363281
+    },
+    "layers.15.self_attn.k_proj": {
+     "flips": 0.0011060237884521484,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0011060237884521484,
+     "zeros_before": 0.45470213890075684,
+     "zeros_after": 0.4543724060058594,
+     "scale_drift_mean": 0.01626768936816097,
+     "scale_drift_max": 0.08483344894725872,
+     "scales_changed": 0.98541259765625
+    },
+    "layers.15.self_attn.v_proj": {
+     "flips": 9.5367431640625e-07,
+     "sign_flips": 0.0,
+     "zero_flips": 9.5367431640625e-07,
+     "zeros_before": 0.45542454719543457,
+     "zeros_after": 0.45542454719543457,
+     "scale_drift_mean": 0.008667753736911268,
+     "scale_drift_max": 0.06308724399326136,
+     "scales_changed": 0.97174072265625
+    },
+    "layers.15.self_attn.o_proj": {
+     "flips": 0.00034302473068237305,
+     "sign_flips": 0.0,
+     "zero_flips": 0.00034302473068237305,
+     "zeros_before": 0.45536279678344727,
+     "zeros_after": 0.4552616477012634,
+     "scale_drift_mean": 0.01219850207157816,
+     "scale_drift_max": 0.06348222020487759,
+     "scales_changed": 0.981536865234375
+    },
+    "layers.15.mlp.gate_proj": {
+     "flips": 0.0005860527356465658,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0005860527356465658,
+     "zeros_before": 0.45590291420618695,
+     "zeros_after": 0.4557681878407796,
+     "scale_drift_mean": 0.016499549798414403,
+     "scale_drift_max": 0.0755075525081451,
+     "scales_changed": 0.98834228515625
+    },
+    "layers.15.mlp.up_proj": {
+     "flips": 0.0003057122230529785,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0003057122230529785,
+     "zeros_before": 0.4559592604637146,
+     "zeros_after": 0.45587944984436035,
+     "scale_drift_mean": 0.014701610734991826,
+     "scale_drift_max": 0.07902198695615088,
+     "scales_changed": 0.9865671793619791
+    },
+    "layers.15.mlp.down_proj": {
+     "flips": 0.004118601481119792,
+     "sign_flips": 0.0,
+     "zero_flips": 0.004118601481119792,
+     "zeros_before": 0.4566032489140828,
+     "zeros_after": 0.45551737149556476,
+     "scale_drift_mean": 0.015164628661391233,
+     "scale_drift_max": 0.07664711867239818,
+     "scales_changed": 0.9871266682942709
+    }
+   },
+   "seconds": 28.62809920310974,
+   "peak_vram_gb": 9.637144088745117,
+   "peak_reserved_gb": 17.54296875
+  },
+  {
+   "layers": [
+    16
+   ],
+   "kinds": [
+    "linear_attention"
+   ],
+   "steps": 512,
+   "code_steps": 410,
+   "train_loss_first": 0.11944928020238876,
+   "train_loss_last": 0.11653779726475477,
+   "eps_damped": 1.1003934420072116e-07,
+   "latent_grad_rms": 5.172457685348544e-08,
+   "val_before": {
+    "original": 0.11394088580834705,
+    "quantized": 0.012770693793491716
+   },
+   "val_after": {
+    "original": 0.11024479861839609,
+    "quantized": 0.014153642772662067
+   },
+   "objective_before": 0.11394088580834705,
+   "objective_after": 0.11024479861839609,
+   "rollback": false,
+   "changed": true,
+   "flips": 0.0014025156314556415,
+   "sign_flips": 0.0,
+   "zero_flips": 0.0014025156314556415,
+   "zeros_before": 0.45602202873963577,
+   "zeros_after": 0.4556563955086928,
+   "scale_drift_mean": 0.01453388764597317,
+   "scale_drift_max": 0.08789437925450783,
+   "scales_changed": 0.9854290301983173,
+   "modules": {
+    "layers.16.linear_attn.out_proj": {
+     "flips": 0.0011880993843078613,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0011880993843078613,
+     "zeros_before": 0.4558557868003845,
+     "zeros_after": 0.4555243253707886,
+     "scale_drift_mean": 0.013814521774093744,
+     "scale_drift_max": 0.06391627415094778,
+     "scales_changed": 0.9825057983398438
+    },
+    "layers.16.linear_attn.in_proj_qkv": {
+     "flips": 0.0002512931823730469,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0002512931823730469,
+     "zeros_before": 0.4557609260082245,
+     "zeros_after": 0.45568564534187317,
+     "scale_drift_mean": 0.012709661781542595,
+     "scale_drift_max": 0.08789437925450783,
+     "scales_changed": 0.9814682006835938
+    },
+    "layers.16.linear_attn.in_proj_z": {
+     "flips": 0.00010836124420166016,
+     "sign_flips": 0.0,
+     "zero_flips": 0.00010836124420166016,
+     "zeros_before": 0.45605432987213135,
+     "zeros_after": 0.45601165294647217,
+     "scale_drift_mean": 0.013795716313073098,
+     "scale_drift_max": 0.07471384917922354,
+     "scales_changed": 0.982391357421875
+    },
+    "layers.16.mlp.gate_proj": {
+     "flips": 0.000694731871287028,
+     "sign_flips": 0.0,
+     "zero_flips": 0.000694731871287028,
+     "zeros_before": 0.45581672588984173,
+     "zeros_after": 0.45565080642700195,
+     "scale_drift_mean": 0.015732435474658885,
+     "scale_drift_max": 0.07468747701524404,
+     "scales_changed": 0.9875971476236979
+    },
+    "layers.16.mlp.up_proj": {
+     "flips": 0.0004334251085917155,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0004334251085917155,
+     "zeros_before": 0.4561120867729187,
+     "zeros_after": 0.45598657925923664,
+     "scale_drift_mean": 0.014320895161642215,
+     "scale_drift_max": 0.08574072878817418,
+     "scales_changed": 0.9860000610351562
+    },
+    "layers.16.mlp.down_proj": {
+     "flips": 0.004349728425343831,
+     "sign_flips": 0.0,
+     "zero_flips": 0.004349728425343831,
+     "zeros_before": 0.4563559889793396,
+     "zeros_after": 0.4552379051844279,
+     "scale_drift_mean": 0.015250328612831954,
+     "scale_drift_max": 0.07938049984852937,
+     "scales_changed": 0.9873174031575521
+    }
+   },
+   "seconds": 26.90221858024597,
+   "peak_vram_gb": 9.914981842041016,
+   "peak_reserved_gb": 17.544921875
+  },
+  {
+   "layers": [
+    17
+   ],
+   "kinds": [
+    "linear_attention"
+   ],
+   "steps": 512,
+   "code_steps": 410,
+   "train_loss_first": 0.12704731262056157,
+   "train_loss_last": 0.12375405535567552,
+   "eps_damped": 3.7560096153846156e-05,
+   "latent_grad_rms": 5.132354752164588e-08,
+   "val_before": {
+    "original": 0.12197144838012264,
+    "quantized": 0.0149106557026073
+   },
+   "val_after": {
+    "original": 0.11792785228442426,
+    "quantized": 0.016070708871197326
+   },
+   "objective_before": 0.12197144838012264,
+   "objective_after": 0.11792785228442426,
+   "rollback": false,
+   "changed": true,
+   "flips": 0.0013358547137333797,
+   "sign_flips": 0.0,
+   "zero_flips": 0.0013358547137333797,
+   "zeros_before": 0.4559840468259958,
+   "zeros_after": 0.455641691501324,
+   "scale_drift_mean": 0.014753731521835392,
+   "scale_drift_max": 0.08718259520766639,
+   "scales_changed": 0.9857312715970553,
+   "modules": {
+    "layers.17.linear_attn.out_proj": {
+     "flips": 0.0016358494758605957,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0016358494758605957,
+     "zeros_before": 0.45601606369018555,
+     "zeros_after": 0.45560222864151,
+     "scale_drift_mean": 0.014393742313440185,
+     "scale_drift_max": 0.06765864847381486,
+     "scales_changed": 0.9835128784179688
+    },
+    "layers.17.linear_attn.in_proj_qkv": {
+     "flips": 0.00028842687606811523,
+     "sign_flips": 0.0,
+     "zero_flips": 0.00028842687606811523,
+     "zeros_before": 0.45576757192611694,
+     "zeros_after": 0.4556785225868225,
+     "scale_drift_mean": 0.012879687877951284,
+     "scale_drift_max": 0.08540590112828161,
+     "scales_changed": 0.9818611145019531
+    },
+    "layers.17.linear_attn.in_proj_z": {
+     "flips": 0.00018084049224853516,
+     "sign_flips": 0.0,
+     "zero_flips": 0.00018084049224853516,
+     "zeros_before": 0.45585787296295166,
+     "zeros_after": 0.4557936191558838,
+     "scale_drift_mean": 0.01465735532109035,
+     "scale_drift_max": 0.07385620981603759,
+     "scales_changed": 0.9840850830078125
+    },
+    "layers.17.mlp.gate_proj": {
+     "flips": 0.0007583300272623698,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0007583300272623698,
+     "zeros_before": 0.45593853791554767,
+     "zeros_after": 0.4557700951894124,
+     "scale_drift_mean": 0.015977168001208377,
+     "scale_drift_max": 0.08076760803148496,
+     "scales_changed": 0.9881871541341146
+    },
+    "layers.17.mlp.up_proj": {
+     "flips": 0.0005613366762797037,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0005613366762797037,
+     "zeros_before": 0.45597928762435913,
+     "zeros_after": 0.45583081245422363,
+     "scale_drift_mean": 0.01461310867508448,
+     "scale_drift_max": 0.0819423714863325,
+     "scales_changed": 0.9861399332682291
+    },
+    "layers.17.mlp.down_proj": {
+     "flips": 0.0036711891492207846,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0036711891492207846,
+     "zeros_before": 0.45621001720428467,
+     "zeros_after": 0.45526212453842163,
+     "scale_drift_mean": 0.015072402121516138,
+     "scale_drift_max": 0.08718259520766639,
+     "scales_changed": 0.9867350260416666
+    }
+   },
+   "seconds": 27.1004900932312,
+   "peak_vram_gb": 9.914981842041016,
+   "peak_reserved_gb": 17.544921875
+  },
+  {
+   "layers": [
+    18
+   ],
+   "kinds": [
+    "linear_attention"
+   ],
+   "steps": 512,
+   "code_steps": 410,
+   "train_loss_first": 0.15810405364027247,
+   "train_loss_last": 0.15362908114911988,
+   "eps_damped": 0.0,
+   "latent_grad_rms": 8.578172136929633e-08,
+   "val_before": {
+    "original": 0.15412125848013147,
+    "quantized": 0.02265833969822495
+   },
+   "val_after": {
+    "original": 0.14872412420578485,
+    "quantized": 0.023850348754066886
+   },
+   "objective_before": 0.15412125848013147,
+   "objective_after": 0.14872412420578485,
+   "rollback": false,
+   "changed": true,
+   "flips": 0.0012033810982337366,
+   "sign_flips": 0.0,
+   "zero_flips": 0.0012033810982337366,
+   "zeros_before": 0.45582425135832566,
+   "zeros_after": 0.4555122164579538,
+   "scale_drift_mean": 0.014271226640496263,
+   "scale_drift_max": 0.0789767231359674,
+   "scales_changed": 0.985207777756911,
+   "modules": {
+    "layers.18.linear_attn.out_proj": {
+     "flips": 0.0009312033653259277,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0009312033653259277,
+     "zeros_before": 0.4555262327194214,
+     "zeros_after": 0.45528560876846313,
+     "scale_drift_mean": 0.013266408828274026,
+     "scale_drift_max": 0.06302970801270909,
+     "scales_changed": 0.9814224243164062
+    },
+    "layers.18.linear_attn.in_proj_qkv": {
+     "flips": 0.0002409219741821289,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0002409219741821289,
+     "zeros_before": 0.455849289894104,
+     "zeros_after": 0.4557758569717407,
+     "scale_drift_mean": 0.012391957657443602,
+     "scale_drift_max": 0.0789767231359674,
+     "scales_changed": 0.9812355041503906
+    },
+    "layers.18.linear_attn.in_proj_z": {
+     "flips": 0.00028121471405029297,
+     "sign_flips": 0.0,
+     "zero_flips": 0.00028121471405029297,
+     "zeros_before": 0.4559144377708435,
+     "zeros_after": 0.4558184742927551,
+     "scale_drift_mean": 0.014292979653390013,
+     "scale_drift_max": 0.07720582633833671,
+     "scales_changed": 0.982818603515625
+    },
+    "layers.18.mlp.gate_proj": {
+     "flips": 0.0006398161252339681,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0006398161252339681,
+     "zeros_before": 0.4557338356971741,
+     "zeros_after": 0.4555797179539998,
+     "scale_drift_mean": 0.015447108549435014,
+     "scale_drift_max": 0.07534943724178679,
+     "scales_changed": 0.9874725341796875
+    },
+    "layers.18.mlp.up_proj": {
+     "flips": 0.0004904866218566895,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0004904866218566895,
+     "zeros_before": 0.45564021666844684,
+     "zeros_after": 0.45551009972890216,
+     "scale_drift_mean": 0.0141605689782262,
+     "scale_drift_max": 0.07416135531134836,
+     "scales_changed": 0.9857966105143229
+    },
+    "layers.18.mlp.down_proj": {
+     "flips": 0.003519594669342041,
+     "sign_flips": 0.0,
+     "zero_flips": 0.003519594669342041,
+     "zeros_before": 0.456151286760966,
+     "zeros_after": 0.455244521299998,
+     "scale_drift_mean": 0.014786536648972176,
+     "scale_drift_max": 0.07021339071805044,
+     "scales_changed": 0.987060546875
+    }
+   },
+   "seconds": 26.997955322265625,
+   "peak_vram_gb": 9.914981842041016,
+   "peak_reserved_gb": 17.544921875
+  },
+  {
+   "layers": [
+    19
+   ],
+   "kinds": [
+    "full_attention"
+   ],
+   "steps": 512,
+   "code_steps": 410,
+   "train_loss_first": 0.16800839663483202,
+   "train_loss_last": 0.16180831869132817,
+   "eps_damped": 0.0,
+   "latent_grad_rms": 1.1778896716879687e-07,
+   "val_before": {
+    "original": 0.16561513813542206,
+    "quantized": 0.026692706964411173
+   },
+   "val_after": {
+    "original": 0.15706180208360365,
+    "quantized": 0.02918461005270956
+   },
+   "objective_before": 0.16561513813542206,
+   "objective_after": 0.15706180208360365,
+   "rollback": false,
+   "changed": true,
+   "flips": 0.0011315631866455078,
+   "sign_flips": 0.0,
+   "zero_flips": 0.0011315631866455078,
+   "zeros_before": 0.4558238887786865,
+   "zeros_after": 0.4555197525024414,
+   "scale_drift_mean": 0.014774037269901603,
+   "scale_drift_max": 0.0809164517221332,
+   "scales_changed": 0.985909423828125,
+   "modules": {
+    "layers.19.self_attn.q_proj": {
+     "flips": 0.0008120536804199219,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0008120536804199219,
+     "zeros_before": 0.45570048689842224,
+     "zeros_after": 0.4554404318332672,
+     "scale_drift_mean": 0.015268193381234108,
+     "scale_drift_max": 0.0809164517221332,
+     "scales_changed": 0.9851913452148438
+    },
+    "layers.19.self_attn.k_proj": {
+     "flips": 0.0012118816375732422,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0012118816375732422,
+     "zeros_before": 0.4550020694732666,
+     "zeros_after": 0.45465993881225586,
+     "scale_drift_mean": 0.015452173572017013,
+     "scale_drift_max": 0.06366171266403665,
+     "scales_changed": 0.985321044921875
+    },
+    "layers.19.self_attn.v_proj": {
+     "flips": 6.937980651855469e-05,
+     "sign_flips": 0.0,
+     "zero_flips": 6.937980651855469e-05,
+     "zeros_before": 0.4553089141845703,
+     "zeros_after": 0.45528292655944824,
+     "scale_drift_mean": 0.011060466102940278,
+     "scale_drift_max": 0.06311242331005626,
+     "scales_changed": 0.980682373046875
+    },
+    "layers.19.self_attn.o_proj": {
+     "flips": 0.0003808736801147461,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0003808736801147461,
+     "zeros_before": 0.4553223252296448,
+     "zeros_after": 0.4552231431007385,
+     "scale_drift_mean": 0.012861765268441013,
+     "scale_drift_max": 0.06412107174724692,
+     "scales_changed": 0.9835891723632812
+    },
+    "layers.19.mlp.gate_proj": {
+     "flips": 0.0009709993998209635,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0009709993998209635,
+     "zeros_before": 0.45576997598012287,
+     "zeros_after": 0.45553024609883624,
+     "scale_drift_mean": 0.01585884895405933,
+     "scale_drift_max": 0.07654699775308062,
+     "scales_changed": 0.9884007771809896
+    },
+    "layers.19.mlp.up_proj": {
+     "flips": 0.0008762280146280924,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0008762280146280924,
+     "zeros_before": 0.45593488216400146,
+     "zeros_after": 0.45569753646850586,
+     "scale_drift_mean": 0.014797271849138122,
+     "scale_drift_max": 0.07176679836967668,
+     "scales_changed": 0.9857686360677084
+    },
+    "layers.19.mlp.down_proj": {
+     "flips": 0.0020925203959147134,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0020925203959147134,
+     "zeros_before": 0.45612766345342,
+     "zeros_after": 0.4555746118227641,
+     "scale_drift_mean": 0.014226930504843041,
+     "scale_drift_max": 0.06739975341860337,
+     "scales_changed": 0.9852956136067709
+    }
+   },
+   "seconds": 28.226755619049072,
+   "peak_vram_gb": 9.637144088745117,
+   "peak_reserved_gb": 17.54296875
+  },
+  {
+   "layers": [
+    20
+   ],
+   "kinds": [
+    "linear_attention"
+   ],
+   "steps": 512,
+   "code_steps": 410,
+   "train_loss_first": 0.16942495002876967,
+   "train_loss_last": 0.16500481736147776,
+   "eps_damped": 8.199765132023738e-05,
+   "latent_grad_rms": 6.282132654021526e-08,
+   "val_before": {
+    "original": 0.16608760845281267,
+    "quantized": 0.019194178357992087
+   },
+   "val_after": {
+    "original": 0.16116518542003178,
+    "quantized": 0.02086051926357868
+   },
+   "objective_before": 0.16608760845281267,
+   "objective_after": 0.16116518542003178,
+   "rollback": false,
+   "changed": true,
+   "flips": 0.001092209265782283,
+   "sign_flips": 0.0,
+   "zero_flips": 0.001092209265782283,
+   "zeros_before": 0.4558461354329036,
+   "zeros_after": 0.4555540314087501,
+   "scale_drift_mean": 0.014435496055213786,
+   "scale_drift_max": 0.07391735072729642,
+   "scales_changed": 0.9853333693284255,
+   "modules": {
+    "layers.20.linear_attn.out_proj": {
+     "flips": 0.0011120438575744629,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0011120438575744629,
+     "zeros_before": 0.45512980222702026,
+     "zeros_after": 0.45482170581817627,
+     "scale_drift_mean": 0.013780109841786993,
+     "scale_drift_max": 0.06704165135568968,
+     "scales_changed": 0.98272705078125
+    },
+    "layers.20.linear_attn.in_proj_qkv": {
+     "flips": 0.0005599856376647949,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0005599856376647949,
+     "zeros_before": 0.4557373523712158,
+     "zeros_after": 0.45555609464645386,
+     "scale_drift_mean": 0.014260260433463989,
+     "scale_drift_max": 0.06636739166692823,
+     "scales_changed": 0.9845085144042969
+    },
+    "layers.20.linear_attn.in_proj_z": {
+     "flips": 0.000648200511932373,
+     "sign_flips": 0.0,
+     "zero_flips": 0.000648200511932373,
+     "zeros_before": 0.4558168649673462,
+     "zeros_after": 0.45563608407974243,
+     "scale_drift_mean": 0.01459813015031312,
+     "scale_drift_max": 0.0634630044018007,
+     "scales_changed": 0.984710693359375
+    },
+    "layers.20.mlp.gate_proj": {
+     "flips": 0.0010531147321065266,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0010531147321065266,
+     "zeros_before": 0.45580120881398517,
+     "zeros_after": 0.45554500818252563,
+     "scale_drift_mean": 0.01514962211382613,
+     "scale_drift_max": 0.071786537484378,
+     "scales_changed": 0.9868367513020834
+    },
+    "layers.20.mlp.up_proj": {
+     "flips": 0.0011005798975626628,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0011005798975626628,
+     "zeros_before": 0.45582443475723267,
+     "zeros_after": 0.45552049080530804,
+     "scale_drift_mean": 0.014562034770199505,
+     "scale_drift_max": 0.07391735072729642,
+     "scales_changed": 0.9857635498046875
+    },
+    "layers.20.mlp.down_proj": {
+     "flips": 0.0016191403071085613,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0016191403071085613,
+     "zeros_before": 0.45623381932576496,
+     "zeros_after": 0.4558119773864746,
+     "scale_drift_mean": 0.013875905735558067,
+     "scale_drift_max": 0.06938785519900871,
+     "scales_changed": 0.9850260416666666
+    }
+   },
+   "seconds": 26.931092023849487,
+   "peak_vram_gb": 9.914981842041016,
+   "peak_reserved_gb": 17.544921875
+  },
+  {
+   "layers": [
+    21
+   ],
+   "kinds": [
+    "linear_attention"
+   ],
+   "steps": 512,
+   "code_steps": 410,
+   "train_loss_first": 0.17687612789450213,
+   "train_loss_last": 0.17276615067385137,
+   "eps_damped": 8.177757263183594e-05,
+   "latent_grad_rms": 6.339994627053837e-08,
+   "val_before": {
+    "original": 0.1734581731484468,
+    "quantized": 0.018668137048109656
+   },
+   "val_after": {
+    "original": 0.16921579772827045,
+    "quantized": 0.02023821678633908
+   },
+   "objective_before": 0.1734581731484468,
+   "objective_after": 0.16921579772827045,
+   "rollback": false,
+   "changed": true,
+   "flips": 0.0011985668769249548,
+   "sign_flips": 0.0,
+   "zero_flips": 0.0011985668769249548,
+   "zeros_before": 0.4558276121432965,
+   "zeros_after": 0.45550060272216797,
+   "scale_drift_mean": 0.014494177749546224,
+   "scale_drift_max": 0.07248327642671999,
+   "scales_changed": 0.9855188223031851,
+   "modules": {
+    "layers.21.linear_attn.out_proj": {
+     "flips": 0.0008423328399658203,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0008423328399658203,
+     "zeros_before": 0.4553312063217163,
+     "zeros_after": 0.4550809860229492,
+     "scale_drift_mean": 0.013291961790401766,
+     "scale_drift_max": 0.06529638400067313,
+     "scales_changed": 0.981781005859375
+    },
+    "layers.21.linear_attn.in_proj_qkv": {
+     "flips": 0.0005242526531219482,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0005242526531219482,
+     "zeros_before": 0.45588555932044983,
+     "zeros_after": 0.45571959018707275,
+     "scale_drift_mean": 0.01416869667756836,
+     "scale_drift_max": 0.07127025803262992,
+     "scales_changed": 0.9847526550292969
+    },
+    "layers.21.linear_attn.in_proj_z": {
+     "flips": 0.0007880330085754395,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0007880330085754395,
+     "zeros_before": 0.45551419258117676,
+     "zeros_after": 0.4553092122077942,
+     "scale_drift_mean": 0.014608969976936843,
+     "scale_drift_max": 0.06888837281921432,
+     "scales_changed": 0.9846267700195312
+    },
+    "layers.21.mlp.gate_proj": {
+     "flips": 0.0011648138364156087,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0011648138364156087,
+     "zeros_before": 0.4558395743370056,
+     "zeros_after": 0.4555300871531169,
+     "scale_drift_mean": 0.01519480274535179,
+     "scale_drift_max": 0.07248327642671999,
+     "scales_changed": 0.9864959716796875
+    },
+    "layers.21.mlp.up_proj": {
+     "flips": 0.0011248588562011719,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0011248588562011719,
+     "zeros_before": 0.45587752262751263,
+     "zeros_after": 0.455558717250824,
+     "scale_drift_mean": 0.014667656332647444,
+     "scale_drift_max": 0.07067648258204413,
+     "scales_changed": 0.9862035115559896
+    },
+    "layers.21.mlp.down_proj": {
+     "flips": 0.002011160055796305,
+     "sign_flips": 0.0,
+     "zero_flips": 0.002011160055796305,
+     "zeros_before": 0.4559970498085022,
+     "zeros_after": 0.4554706811904907,
+     "scale_drift_mean": 0.014199536129209295,
+     "scale_drift_max": 0.07015498666712874,
+     "scales_changed": 0.9859110514322916
+    }
+   },
+   "seconds": 27.028584003448486,
+   "peak_vram_gb": 9.914981842041016,
+   "peak_reserved_gb": 17.544921875
+  },
+  {
+   "layers": [
+    22
+   ],
+   "kinds": [
+    "linear_attention"
+   ],
+   "steps": 512,
+   "code_steps": 410,
+   "train_loss_first": 0.1893567438237369,
+   "train_loss_last": 0.1846551705384627,
+   "eps_damped": 4.938932565542368e-05,
+   "latent_grad_rms": 6.952737676142548e-08,
+   "val_before": {
+    "original": 0.18656729749454826,
+    "quantized": 0.0195236231953686
+   },
+   "val_after": {
+    "original": 0.18151214061413157,
+    "quantized": 0.022732267351301516
+   },
+   "objective_before": 0.18656729749454826,
+   "objective_after": 0.18151214061413157,
+   "rollback": false,
+   "changed": true,
+   "flips": 0.0011227681086613582,
+   "sign_flips": 0.0,
+   "zero_flips": 0.0011227681086613582,
+   "zeros_before": 0.45570598198817325,
+   "zeros_after": 0.4554011271550105,
+   "scale_drift_mean": 0.014654311095191155,
+   "scale_drift_max": 0.07735437690946853,
+   "scales_changed": 0.9857523991511419,
+   "modules": {
+    "layers.22.linear_attn.out_proj": {
+     "flips": 0.0014873743057250977,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0014873743057250977,
+     "zeros_before": 0.4547033905982971,
+     "zeros_after": 0.4542754292488098,
+     "scale_drift_mean": 0.014586272918000043,
+     "scale_drift_max": 0.06312349330842348,
+     "scales_changed": 0.98388671875
+    },
+    "layers.22.linear_attn.in_proj_qkv": {
+     "flips": 0.0008511543273925781,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0008511543273925781,
+     "zeros_before": 0.4557081162929535,
+     "zeros_after": 0.45544251799583435,
+     "scale_drift_mean": 0.01482563715095586,
+     "scale_drift_max": 0.07463269370558044,
+     "scales_changed": 0.9856185913085938
+    },
+    "layers.22.linear_attn.in_proj_z": {
+     "flips": 0.0008842945098876953,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0008842945098876953,
+     "zeros_before": 0.45586860179901123,
+     "zeros_after": 0.45562517642974854,
+     "scale_drift_mean": 0.014793884371793388,
+     "scale_drift_max": 0.07647704330467038,
+     "scales_changed": 0.9851760864257812
+    },
+    "layers.22.mlp.gate_proj": {
+     "flips": 0.0009521643320719401,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0009521643320719401,
+     "zeros_before": 0.4557033181190491,
+     "zeros_after": 0.4554643432299296,
+     "scale_drift_mean": 0.015343303196638283,
+     "scale_drift_max": 0.07365290957476545,
+     "scales_changed": 0.9867197672526041
+    },
+    "layers.22.mlp.up_proj": {
+     "flips": 0.000972290833791097,
+     "sign_flips": 0.0,
+     "zero_flips": 0.000972290833791097,
+     "zeros_before": 0.4559655388196309,
+     "zeros_after": 0.4556998411814372,
+     "scale_drift_mean": 0.014547295452760336,
+     "scale_drift_max": 0.07735437690946853,
+     "scales_changed": 0.9861043294270834
+    },
+    "layers.22.mlp.down_proj": {
+     "flips": 0.0015828808148701985,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0015828808148701985,
+     "zeros_before": 0.45572765668233234,
+     "zeros_after": 0.4553121527036031,
+     "scale_drift_mean": 0.013934272232528003,
+     "scale_drift_max": 0.0681528882372264,
+     "scales_changed": 0.9853363037109375
+    }
+   },
+   "seconds": 27.0273220539093,
+   "peak_vram_gb": 9.914981842041016,
+   "peak_reserved_gb": 17.544921875
+  },
+  {
+   "layers": [
+    23
+   ],
+   "kinds": [
+    "full_attention"
+   ],
+   "steps": 512,
+   "code_steps": 410,
+   "train_loss_first": 0.18677497247699648,
+   "train_loss_last": 0.182168145023752,
+   "eps_damped": 1.9073486328125e-08,
+   "latent_grad_rms": 7.736192196101572e-08,
+   "val_before": {
+    "original": 0.1828265831718454,
+    "quantized": 0.017882847553607917
+   },
+   "val_after": {
+    "original": 0.1771792246863697,
+    "quantized": 0.02224460875618206
+   },
+   "objective_before": 0.1828265831718454,
+   "objective_after": 0.1771792246863697,
+   "rollback": false,
+   "changed": true,
+   "flips": 0.001044921875,
+   "sign_flips": 0.0,
+   "zero_flips": 0.001044921875,
+   "zeros_before": 0.455777907371521,
+   "zeros_after": 0.4554834127426147,
+   "scale_drift_mean": 0.013989333315160652,
+   "scale_drift_max": 0.07537813617562336,
+   "scales_changed": 0.9844561767578125,
+   "modules": {
+    "layers.23.self_attn.q_proj": {
+     "flips": 0.0006487667560577393,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0006487667560577393,
+     "zeros_before": 0.45560452342033386,
+     "zeros_after": 0.45540475845336914,
+     "scale_drift_mean": 0.013408381238998478,
+     "scale_drift_max": 0.07537813617562336,
+     "scales_changed": 0.9824066162109375
+    },
+    "layers.23.self_attn.k_proj": {
+     "flips": 0.0009944438934326172,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0009944438934326172,
+     "zeros_before": 0.45540571212768555,
+     "zeros_after": 0.4551217555999756,
+     "scale_drift_mean": 0.013926820369302314,
+     "scale_drift_max": 0.06603058152308582,
+     "scales_changed": 0.9825439453125
+    },
+    "layers.23.self_attn.v_proj": {
+     "flips": 0.00010752677917480469,
+     "sign_flips": 0.0,
+     "zero_flips": 0.00010752677917480469,
+     "zeros_before": 0.45488548278808594,
+     "zeros_after": 0.45482945442199707,
+     "scale_drift_mean": 0.011117436086749689,
+     "scale_drift_max": 0.06038051098890748,
+     "scales_changed": 0.98095703125
+    },
+    "layers.23.self_attn.o_proj": {
+     "flips": 0.0003699064254760742,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0003699064254760742,
+     "zeros_before": 0.45535993576049805,
+     "zeros_after": 0.4552351236343384,
+     "scale_drift_mean": 0.013179745337073931,
+     "scale_drift_max": 0.057751056620703047,
+     "scales_changed": 0.9845428466796875
+    },
+    "layers.23.mlp.gate_proj": {
+     "flips": 0.0013615091641743977,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0013615091641743977,
+     "zeros_before": 0.4557240804036458,
+     "zeros_after": 0.4553581277529399,
+     "scale_drift_mean": 0.014849185350652577,
+     "scale_drift_max": 0.0730148767634088,
+     "scales_changed": 0.9857915242513021
+    },
+    "layers.23.mlp.up_proj": {
+     "flips": 0.0012571414311726887,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0012571414311726887,
+     "zeros_before": 0.45593998829523724,
+     "zeros_after": 0.4555901885032654,
+     "scale_drift_mean": 0.014392185680409841,
+     "scale_drift_max": 0.07229444273089432,
+     "scales_changed": 0.9850896199544271
+    },
+    "layers.23.mlp.down_proj": {
+     "flips": 0.0010875463485717773,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0010875463485717773,
+     "zeros_before": 0.4560299515724182,
+     "zeros_after": 0.4557217558224996,
+     "scale_drift_mean": 0.013628327139079003,
+     "scale_drift_max": 0.06873983504835429,
+     "scales_changed": 0.9842758178710938
+    }
+   },
+   "seconds": 28.272552728652954,
+   "peak_vram_gb": 9.637144088745117,
+   "peak_reserved_gb": 17.54296875
+  },
+  {
+   "layers": [
+    24
+   ],
+   "kinds": [
+    "linear_attention"
+   ],
+   "steps": 512,
+   "code_steps": 410,
+   "train_loss_first": 0.19126584706827998,
+   "train_loss_last": 0.18820555682759732,
+   "eps_damped": 0.0003933264659001277,
+   "latent_grad_rms": 7.717444538256395e-08,
+   "val_before": {
+    "original": 0.18699464118731157,
+    "quantized": 0.01637626122099789
+   },
+   "val_after": {
+    "original": 0.18395012409837364,
+    "quantized": 0.01709843266029054
+   },
+   "objective_before": 0.18699464118731157,
+   "objective_after": 0.18395012409837364,
+   "rollback": false,
+   "changed": true,
+   "flips": 0.0007730768277094915,
+   "sign_flips": 0.0,
+   "zero_flips": 0.0007730768277094915,
+   "zeros_before": 0.4558174655987666,
+   "zeros_after": 0.4555983726794903,
+   "scale_drift_mean": 0.013651037458990862,
+   "scale_drift_max": 0.07149495786318906,
+   "scales_changed": 0.9836243849534255,
+   "modules": {
+    "layers.24.linear_attn.out_proj": {
+     "flips": 0.0002205967903137207,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0002205967903137207,
+     "zeros_before": 0.4547327160835266,
+     "zeros_after": 0.45467185974121094,
+     "scale_drift_mean": 0.011691711963516458,
+     "scale_drift_max": 0.06093580899803435,
+     "scales_changed": 0.9793319702148438
+    },
+    "layers.24.linear_attn.in_proj_qkv": {
+     "flips": 0.0007489919662475586,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0007489919662475586,
+     "zeros_before": 0.45582136511802673,
+     "zeros_after": 0.4555933177471161,
+     "scale_drift_mean": 0.015035193977465153,
+     "scale_drift_max": 0.06507716914413113,
+     "scales_changed": 0.9860420227050781
+    },
+    "layers.24.linear_attn.in_proj_z": {
+     "flips": 0.0010018348693847656,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0010018348693847656,
+     "zeros_before": 0.4557015299797058,
+     "zeros_after": 0.45538395643234253,
+     "scale_drift_mean": 0.014449699731842002,
+     "scale_drift_max": 0.07149495786318906,
+     "scales_changed": 0.9848175048828125
+    },
+    "layers.24.mlp.gate_proj": {
+     "flips": 0.0010338823000590007,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0010338823000590007,
+     "zeros_before": 0.4558762113253276,
+     "zeros_after": 0.455599308013916,
+     "scale_drift_mean": 0.01409093447850403,
+     "scale_drift_max": 0.07084187047289865,
+     "scales_changed": 0.9840545654296875
+    },
+    "layers.24.mlp.up_proj": {
+     "flips": 0.0007065137227376302,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0007065137227376302,
+     "zeros_before": 0.45599915583928424,
+     "zeros_after": 0.45580166578292847,
+     "scale_drift_mean": 0.01350021692732957,
+     "scale_drift_max": 0.07066615453753025,
+     "scales_changed": 0.9841232299804688
+    },
+    "layers.24.mlp.down_proj": {
+     "flips": 0.0007027983665466309,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0007027983665466309,
+     "zeros_before": 0.45597465833028156,
+     "zeros_after": 0.4557778239250183,
+     "scale_drift_mean": 0.012826077699697222,
+     "scale_drift_max": 0.06510312075734967,
+     "scales_changed": 0.98211669921875
+    }
+   },
+   "seconds": 27.041726112365723,
+   "peak_vram_gb": 9.914981842041016,
+   "peak_reserved_gb": 17.544921875
+  },
+  {
+   "layers": [
+    25
+   ],
+   "kinds": [
+    "linear_attention"
+   ],
+   "steps": 512,
+   "code_steps": 410,
+   "train_loss_first": 0.19327200402040035,
+   "train_loss_last": 0.19086588767822832,
+   "eps_damped": 0.0006931103192842924,
+   "latent_grad_rms": 5.4106975938713575e-08,
+   "val_before": {
+    "original": 0.18883222189174376,
+    "quantized": 0.012418120535159005
+   },
+   "val_after": {
+    "original": 0.18666590871225708,
+    "quantized": 0.013304730227091
+   },
+   "objective_before": 0.18883222189174376,
+   "objective_after": 0.18666590871225708,
+   "rollback": false,
+   "changed": true,
+   "flips": 0.0007369334881122296,
+   "sign_flips": 0.0,
+   "zero_flips": 0.0007369334881122296,
+   "zeros_before": 0.45568259404255795,
+   "zeros_after": 0.455476151062892,
+   "scale_drift_mean": 0.013281358156558305,
+   "scale_drift_max": 0.07617515635238685,
+   "scales_changed": 0.9830856323242188,
+   "modules": {
+    "layers.25.linear_attn.out_proj": {
+     "flips": 0.00034564733505249023,
+     "sign_flips": 0.0,
+     "zero_flips": 0.00034564733505249023,
+     "zeros_before": 0.45433229207992554,
+     "zeros_after": 0.4542398452758789,
+     "scale_drift_mean": 0.011926698751164887,
+     "scale_drift_max": 0.06606461170786312,
+     "scales_changed": 0.9812698364257812
+    },
+    "layers.25.linear_attn.in_proj_qkv": {
+     "flips": 0.0005644559860229492,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0005644559860229492,
+     "zeros_before": 0.455639123916626,
+     "zeros_after": 0.45546573400497437,
+     "scale_drift_mean": 0.013499930509934187,
+     "scale_drift_max": 0.0700724354480025,
+     "scales_changed": 0.9839515686035156
+    },
+    "layers.25.linear_attn.in_proj_z": {
+     "flips": 0.0010875463485717773,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0010875463485717773,
+     "zeros_before": 0.4556935429573059,
+     "zeros_after": 0.4553670287132263,
+     "scale_drift_mean": 0.013748205142363851,
+     "scale_drift_max": 0.06622278661313585,
+     "scales_changed": 0.9832077026367188
+    },
+    "layers.25.mlp.gate_proj": {
+     "flips": 0.0010028878847757976,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0010028878847757976,
+     "zeros_before": 0.45592860380808514,
+     "zeros_after": 0.45566266775131226,
+     "scale_drift_mean": 0.01386750082561966,
+     "scale_drift_max": 0.07227224441734653,
+     "scales_changed": 0.9834238688151041
+    },
+    "layers.25.mlp.up_proj": {
+     "flips": 0.0006611148516337076,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0006611148516337076,
+     "zeros_before": 0.4557589093844096,
+     "zeros_after": 0.45557252566019696,
+     "scale_drift_mean": 0.013324604864692674,
+     "scale_drift_max": 0.07617515635238685,
+     "scales_changed": 0.9840545654296875
+    },
+    "layers.25.mlp.down_proj": {
+     "flips": 0.000675340493520101,
+     "sign_flips": 0.0,
+     "zero_flips": 0.000675340493520101,
+     "zeros_before": 0.4558357000350952,
+     "zeros_after": 0.45564868052800495,
+     "scale_drift_mean": 0.012802191350307952,
+     "scale_drift_max": 0.06247595595122279,
+     "scales_changed": 0.9817657470703125
+    }
+   },
+   "seconds": 27.04790163040161,
+   "peak_vram_gb": 9.914981842041016,
+   "peak_reserved_gb": 17.544921875
+  },
+  {
+   "layers": [
+    26
+   ],
+   "kinds": [
+    "linear_attention"
+   ],
+   "steps": 512,
+   "code_steps": 410,
+   "train_loss_first": 0.2095654261065647,
+   "train_loss_last": 0.20639463572297245,
+   "eps_damped": 0.0003284491025484525,
+   "latent_grad_rms": 9.826248496677764e-08,
+   "val_before": {
+    "original": 0.2054946810377487,
+    "quantized": 0.012534177361942511
+   },
+   "val_after": {
+    "original": 0.20211656914625564,
+    "quantized": 0.01573709236667753
+   },
+   "objective_before": 0.2054946810377487,
+   "objective_after": 0.20211656914625564,
+   "rollback": false,
+   "changed": true,
+   "flips": 0.0007050633430480957,
+   "sign_flips": 0.0,
+   "zero_flips": 0.0007050633430480957,
+   "zeros_before": 0.4556804895401001,
+   "zeros_after": 0.4554789478962238,
+   "scale_drift_mean": 0.01339501342759879,
+   "scale_drift_max": 0.08863607271663171,
+   "scales_changed": 0.9829477163461539,
+   "modules": {
+    "layers.26.linear_attn.out_proj": {
+     "flips": 0.0006656050682067871,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0006656050682067871,
+     "zeros_before": 0.4537801742553711,
+     "zeros_after": 0.45359593629837036,
+     "scale_drift_mean": 0.013341388241183673,
+     "scale_drift_max": 0.06432555127200203,
+     "scales_changed": 0.983154296875
+    },
+    "layers.26.linear_attn.in_proj_qkv": {
+     "flips": 0.0005716085433959961,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0005716085433959961,
+     "zeros_before": 0.4557402729988098,
+     "zeros_after": 0.45556360483169556,
+     "scale_drift_mean": 0.013127818004842785,
+     "scale_drift_max": 0.0682162478191429,
+     "scales_changed": 0.9834175109863281
+    },
+    "layers.26.linear_attn.in_proj_z": {
+     "flips": 0.0009520649909973145,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0009520649909973145,
+     "zeros_before": 0.45602911710739136,
+     "zeros_after": 0.4557616710662842,
+     "scale_drift_mean": 0.013419559957630823,
+     "scale_drift_max": 0.0693034787265973,
+     "scales_changed": 0.9832229614257812
+    },
+    "layers.26.mlp.gate_proj": {
+     "flips": 0.0009473760922749838,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0009473760922749838,
+     "zeros_before": 0.45587875445683795,
+     "zeros_after": 0.45562247435251874,
+     "scale_drift_mean": 0.013769620799974715,
+     "scale_drift_max": 0.08004270767353637,
+     "scales_changed": 0.9826507568359375
+    },
+    "layers.26.mlp.up_proj": {
+     "flips": 0.0005989869435628256,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0005989869435628256,
+     "zeros_before": 0.4559471011161804,
+     "zeros_after": 0.4557786186536153,
+     "scale_drift_mean": 0.013312771980748492,
+     "scale_drift_max": 0.08863607271663171,
+     "scales_changed": 0.9835255940755209
+    },
+    "layers.26.mlp.down_proj": {
+     "flips": 0.0005886157353719076,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0005886157353719076,
+     "zeros_before": 0.455692986647288,
+     "zeros_after": 0.45551274220148724,
+     "scale_drift_mean": 0.013290470669371529,
+     "scale_drift_max": 0.0678063971535798,
+     "scales_changed": 0.9821929931640625
+    }
+   },
+   "seconds": 26.978124141693115,
+   "peak_vram_gb": 9.914981842041016,
+   "peak_reserved_gb": 17.544921875
+  },
+  {
+   "layers": [
+    27
+   ],
+   "kinds": [
+    "full_attention"
+   ],
+   "steps": 512,
+   "code_steps": 410,
+   "train_loss_first": 0.20014393294695765,
+   "train_loss_last": 0.19567390019074082,
+   "eps_damped": 0.0,
+   "latent_grad_rms": 1.0594108620356946e-07,
+   "val_before": {
+    "original": 0.19570155507790332,
+    "quantized": 0.017732351155800075
+   },
+   "val_after": {
+    "original": 0.19049019369049347,
+    "quantized": 0.022659857923798654
+   },
+   "objective_before": 0.19570155507790332,
+   "objective_after": 0.19049019369049347,
+   "rollback": false,
+   "changed": true,
+   "flips": 0.000957951545715332,
+   "sign_flips": 0.0,
+   "zero_flips": 0.000957951545715332,
+   "zeros_before": 0.45568042755126953,
+   "zeros_after": 0.45541359424591066,
+   "scale_drift_mean": 0.014002545030721085,
+   "scale_drift_max": 0.07747807338261746,
+   "scales_changed": 0.98364501953125,
+   "modules": {
+    "layers.27.self_attn.q_proj": {
+     "flips": 0.0007632076740264893,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0007632076740264893,
+     "zeros_before": 0.45519164204597473,
+     "zeros_after": 0.4549843668937683,
+     "scale_drift_mean": 0.014196591598456074,
+     "scale_drift_max": 0.07382727039749284,
+     "scales_changed": 0.9842643737792969
+    },
+    "layers.27.self_attn.k_proj": {
+     "flips": 0.0009775161743164062,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0009775161743164062,
+     "zeros_before": 0.45412755012512207,
+     "zeros_after": 0.4538538455963135,
+     "scale_drift_mean": 0.01437430630857876,
+     "scale_drift_max": 0.07140139511537218,
+     "scales_changed": 0.9832763671875
+    },
+    "layers.27.self_attn.v_proj": {
+     "flips": 0.0002446174621582031,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0002446174621582031,
+     "zeros_before": 0.45488452911376953,
+     "zeros_after": 0.45475196838378906,
+     "scale_drift_mean": 0.012447003637357517,
+     "scale_drift_max": 0.06576411876975513,
+     "scales_changed": 0.98028564453125
+    },
+    "layers.27.self_attn.o_proj": {
+     "flips": 0.00039523839950561523,
+     "sign_flips": 0.0,
+     "zero_flips": 0.00039523839950561523,
+     "zeros_before": 0.4556998610496521,
+     "zeros_after": 0.4555872678756714,
+     "scale_drift_mean": 0.012789958856711546,
+     "scale_drift_max": 0.060624621816434854,
+     "scales_changed": 0.9851303100585938
+    },
+    "layers.27.mlp.gate_proj": {
+     "flips": 0.0009674231211344401,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0009674231211344401,
+     "zeros_before": 0.45574655135472614,
+     "zeros_after": 0.4554837743441264,
+     "scale_drift_mean": 0.014098398636061563,
+     "scale_drift_max": 0.07747807338261746,
+     "scales_changed": 0.9828974405924479
+    },
+    "layers.27.mlp.up_proj": {
+     "flips": 0.000725706418355306,
+     "sign_flips": 0.0,
+     "zero_flips": 0.000725706418355306,
+     "zeros_before": 0.4560478130976359,
+     "zeros_after": 0.455846905708313,
+     "scale_drift_mean": 0.01370204757566283,
+     "scale_drift_max": 0.07242494230342887,
+     "scales_changed": 0.9834391276041666
+    },
+    "layers.27.mlp.down_proj": {
+     "flips": 0.001555939515431722,
+     "sign_flips": 0.0,
+     "zero_flips": 0.001555939515431722,
+     "zeros_before": 0.45576202869415283,
+     "zeros_after": 0.4553234775861104,
+     "scale_drift_mean": 0.01458066823624421,
+     "scale_drift_max": 0.07297666685119365,
+     "scales_changed": 0.9840011596679688
+    }
+   },
+   "seconds": 28.350204706192017,
+   "peak_vram_gb": 9.637144088745117,
+   "peak_reserved_gb": 17.54296875
+  },
+  {
+   "layers": [
+    28
+   ],
+   "kinds": [
+    "linear_attention"
+   ],
+   "steps": 512,
+   "code_steps": 410,
+   "train_loss_first": 0.19136295380303636,
+   "train_loss_last": 0.18778098718030378,
+   "eps_damped": 0.0015212480838482196,
+   "latent_grad_rms": 5.812878992663965e-08,
+   "val_before": {
+    "original": 0.18657444635050524,
+    "quantized": 0.011312520883869581
+   },
+   "val_after": {
+    "original": 0.1825558817554338,
+    "quantized": 0.014331630064120304
+   },
+   "objective_before": 0.18657444635050524,
+   "objective_after": 0.1825558817554338,
+   "rollback": false,
+   "changed": true,
+   "flips": 0.001083516157590426,
+   "sign_flips": 0.0,
+   "zero_flips": 0.001083516157590426,
+   "zeros_before": 0.4555818851177509,
+   "zeros_after": 0.4552780252236586,
+   "scale_drift_mean": 0.014224785771902698,
+   "scale_drift_max": 0.0808520966290949,
+   "scales_changed": 0.9839236919696515,
+   "modules": {
+    "layers.28.linear_attn.out_proj": {
+     "flips": 0.0005039572715759277,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0005039572715759277,
+     "zeros_before": 0.4537186026573181,
+     "zeros_after": 0.45357775688171387,
+     "scale_drift_mean": 0.013396049955040209,
+     "scale_drift_max": 0.05945286991347218,
+     "scales_changed": 0.983184814453125
+    },
+    "layers.28.linear_attn.in_proj_qkv": {
+     "flips": 0.0009015798568725586,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0009015798568725586,
+     "zeros_before": 0.4557865262031555,
+     "zeros_after": 0.4555351734161377,
+     "scale_drift_mean": 0.01388430611930109,
+     "scale_drift_max": 0.06828340001341773,
+     "scales_changed": 0.984344482421875
+    },
+    "layers.28.linear_attn.in_proj_z": {
+     "flips": 0.0018222928047180176,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0018222928047180176,
+     "zeros_before": 0.45543044805526733,
+     "zeros_after": 0.4548853635787964,
+     "scale_drift_mean": 0.015161857844606209,
+     "scale_drift_max": 0.07253597000978296,
+     "scales_changed": 0.9857025146484375
+    },
+    "layers.28.mlp.gate_proj": {
+     "flips": 0.001295169194539388,
+     "sign_flips": 0.0,
+     "zero_flips": 0.001295169194539388,
+     "zeros_before": 0.4557437300682068,
+     "zeros_after": 0.45539893706639606,
+     "scale_drift_mean": 0.014946751188186959,
+     "scale_drift_max": 0.0808520966290949,
+     "scales_changed": 0.9842783610026041
+    },
+    "layers.28.mlp.up_proj": {
+     "flips": 0.0007215142250061035,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0007215142250061035,
+     "zeros_before": 0.4559703270594279,
+     "zeros_after": 0.45576252539952594,
+     "scale_drift_mean": 0.01390231506434098,
+     "scale_drift_max": 0.07435856731854666,
+     "scales_changed": 0.9837493896484375
+    },
+    "layers.28.mlp.down_proj": {
+     "flips": 0.0013020833333333333,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0013020833333333333,
+     "zeros_before": 0.45556674400965375,
+     "zeros_after": 0.45519882440567017,
+     "scale_drift_mean": 0.014016165412967555,
+     "scale_drift_max": 0.07032265891695301,
+     "scales_changed": 0.9831161499023438
+    }
+   },
+   "seconds": 27.19787096977234,
+   "peak_vram_gb": 9.914981842041016,
+   "peak_reserved_gb": 17.544921875
+  },
+  {
+   "layers": [
+    29
+   ],
+   "kinds": [
+    "linear_attention"
+   ],
+   "steps": 512,
+   "code_steps": 410,
+   "train_loss_first": 0.19007066579069942,
+   "train_loss_last": 0.1867796972510405,
+   "eps_damped": 0.001430048392369197,
+   "latent_grad_rms": 4.744393976307923e-08,
+   "val_before": {
+    "original": 0.18453564191645455,
+    "quantized": 0.010044386472827682
+   },
+   "val_after": {
+    "original": 0.18103706013880583,
+    "quantized": 0.013078179415600744
+   },
+   "objective_before": 0.18453564191645455,
+   "objective_after": 0.18103706013880583,
+   "rollback": false,
+   "changed": true,
+   "flips": 0.001025850956256573,
+   "sign_flips": 0.0,
+   "zero_flips": 0.001025850956256573,
+   "zeros_before": 0.45549837901042056,
+   "zeros_after": 0.4552010802122263,
+   "scale_drift_mean": 0.014144784351402014,
+   "scale_drift_max": 0.0879118723228799,
+   "scales_changed": 0.9833104060246394,
+   "modules": {
+    "layers.29.linear_attn.out_proj": {
+     "flips": 0.0008939504623413086,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0008939504623413086,
+     "zeros_before": 0.4533007740974426,
+     "zeros_after": 0.45304960012435913,
+     "scale_drift_mean": 0.013534759433866441,
+     "scale_drift_max": 0.0628534848888737,
+     "scales_changed": 0.9841079711914062
+    },
+    "layers.29.linear_attn.in_proj_qkv": {
+     "flips": 0.0008702278137207031,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0008702278137207031,
+     "zeros_before": 0.45589062571525574,
+     "zeros_after": 0.45564427971839905,
+     "scale_drift_mean": 0.014071763888180547,
+     "scale_drift_max": 0.07107403769077593,
+     "scales_changed": 0.9840431213378906
+    },
+    "layers.29.linear_attn.in_proj_z": {
+     "flips": 0.0018551349639892578,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0018551349639892578,
+     "zeros_before": 0.4557148814201355,
+     "zeros_after": 0.45514971017837524,
+     "scale_drift_mean": 0.015036552644841886,
+     "scale_drift_max": 0.06554185840847132,
+     "scales_changed": 0.984954833984375
+    },
+    "layers.29.mlp.gate_proj": {
+     "flips": 0.0014206965764363606,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0014206965764363606,
+     "zeros_before": 0.4557434916496277,
+     "zeros_after": 0.4553321401278178,
+     "scale_drift_mean": 0.015135836200679353,
+     "scale_drift_max": 0.0879118723228799,
+     "scales_changed": 0.9837137858072916
+    },
+    "layers.29.mlp.up_proj": {
+     "flips": 0.0007503231366475424,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0007503231366475424,
+     "zeros_before": 0.4559336105982463,
+     "zeros_after": 0.455708642800649,
+     "scale_drift_mean": 0.013785264527281847,
+     "scale_drift_max": 0.07165598890643517,
+     "scales_changed": 0.9827016194661459
+    },
+    "layers.29.mlp.down_proj": {
+     "flips": 0.0007778207461039225,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0007778207461039225,
+     "zeros_before": 0.455216904481252,
+     "zeros_after": 0.4550012747446696,
+     "scale_drift_mean": 0.013468018176424386,
+     "scale_drift_max": 0.06927206462061394,
+     "scales_changed": 0.9822133382161459
+    }
+   },
+   "seconds": 26.944117784500122,
+   "peak_vram_gb": 9.914981842041016,
+   "peak_reserved_gb": 17.544921875
+  },
+  {
+   "layers": [
+    30
+   ],
+   "kinds": [
+    "linear_attention"
+   ],
+   "steps": 512,
+   "code_steps": 410,
+   "train_loss_first": 0.21198038500733674,
+   "train_loss_last": 0.20721435674931854,
+   "eps_damped": 0.00020644756463857798,
+   "latent_grad_rms": 7.919510777491245e-08,
+   "val_before": {
+    "original": 0.20799502216118526,
+    "quantized": 0.015280679441772804
+   },
+   "val_after": {
+    "original": 0.20263832015484695,
+    "quantized": 0.020680342429727716
+   },
+   "objective_before": 0.20799502216118526,
+   "objective_after": 0.20263832015484695,
+   "rollback": false,
+   "changed": true,
+   "flips": 0.0010686883559593787,
+   "sign_flips": 0.0,
+   "zero_flips": 0.0010686883559593787,
+   "zeros_before": 0.4554070555246793,
+   "zeros_after": 0.45509276023277867,
+   "scale_drift_mean": 0.01441585618857116,
+   "scale_drift_max": 0.08107331685473079,
+   "scales_changed": 0.9839970515324519,
+   "modules": {
+    "layers.30.linear_attn.out_proj": {
+     "flips": 0.00078582763671875,
+     "sign_flips": 0.0,
+     "zero_flips": 0.00078582763671875,
+     "zeros_before": 0.4541400074958801,
+     "zeros_after": 0.4539298415184021,
+     "scale_drift_mean": 0.012980063258590937,
+     "scale_drift_max": 0.07089310958844075,
+     "scales_changed": 0.9833602905273438
+    },
+    "layers.30.linear_attn.in_proj_qkv": {
+     "flips": 0.0009552240371704102,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0009552240371704102,
+     "zeros_before": 0.4556538164615631,
+     "zeros_after": 0.45539453625679016,
+     "scale_drift_mean": 0.014207844522875563,
+     "scale_drift_max": 0.07453973244711806,
+     "scales_changed": 0.9840240478515625
+    },
+    "layers.30.linear_attn.in_proj_z": {
+     "flips": 0.0018641352653503418,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0018641352653503418,
+     "zeros_before": 0.45539724826812744,
+     "zeros_after": 0.4548012614250183,
+     "scale_drift_mean": 0.015961139210556786,
+     "scale_drift_max": 0.07256268639765995,
+     "scales_changed": 0.9856719970703125
+    },
+    "layers.30.mlp.gate_proj": {
+     "flips": 0.0010449687639872234,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0010449687639872234,
+     "zeros_before": 0.45564619700113934,
+     "zeros_after": 0.4553363521893819,
+     "scale_drift_mean": 0.014828460855650932,
+     "scale_drift_max": 0.08107331685473079,
+     "scales_changed": 0.9843699137369791
+    },
+    "layers.30.mlp.up_proj": {
+     "flips": 0.0007883310317993164,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0007883310317993164,
+     "zeros_before": 0.4556751052538554,
+     "zeros_after": 0.45542067289352417,
+     "scale_drift_mean": 0.01430742050967905,
+     "scale_drift_max": 0.07434252123419202,
+     "scales_changed": 0.9836018880208334
+    },
+    "layers.30.mlp.down_proj": {
+     "flips": 0.0012775460879007976,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0012775460879007976,
+     "zeros_before": 0.4551609754562378,
+     "zeros_after": 0.4548048774401347,
+     "scale_drift_mean": 0.014213864946845421,
+     "scale_drift_max": 0.06815288823722646,
+     "scales_changed": 0.9836552937825521
+    }
+   },
+   "seconds": 27.16391611099243,
+   "peak_vram_gb": 9.913516998291016,
+   "peak_reserved_gb": 17.544921875
+  },
+  {
+   "layers": [
+    31
+   ],
+   "kinds": [
+    "full_attention"
+   ],
+   "steps": 512,
+   "code_steps": 410,
+   "train_loss_first": 0.21319761709310114,
+   "train_loss_last": 0.20761629403568804,
+   "eps_damped": 4.544258117675781e-06,
+   "latent_grad_rms": 1.9856153473811876e-07,
+   "val_before": {
+    "original": 0.2171101854768267,
+    "quantized": 0.019300832854952432
+   },
+   "val_after": {
+    "original": 0.20690500784394317,
+    "quantized": 0.024705441004357453
+   },
+   "objective_before": 0.2171101854768267,
+   "objective_after": 0.20690500784394317,
+   "rollback": false,
+   "changed": true,
+   "flips": 0.0007259941101074219,
+   "sign_flips": 0.0,
+   "zero_flips": 0.0007259941101074219,
+   "zeros_before": 0.4554132556915283,
+   "zeros_after": 0.4551913928985596,
+   "scale_drift_mean": 0.013639954585919895,
+   "scale_drift_max": 0.0704700564576932,
+   "scales_changed": 0.9835491943359375,
+   "modules": {
+    "layers.31.self_attn.q_proj": {
+     "flips": 0.0006870031356811523,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0006870031356811523,
+     "zeros_before": 0.45553165674209595,
+     "zeros_after": 0.45532745122909546,
+     "scale_drift_mean": 0.013130639388330903,
+     "scale_drift_max": 0.06820138616101046,
+     "scales_changed": 0.9818077087402344
+    },
+    "layers.31.self_attn.k_proj": {
+     "flips": 0.0008122920989990234,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0008122920989990234,
+     "zeros_before": 0.45470118522644043,
+     "zeros_after": 0.45447444915771484,
+     "scale_drift_mean": 0.013418458572690424,
+     "scale_drift_max": 0.06323784894032991,
+     "scales_changed": 0.98345947265625
+    },
+    "layers.31.self_attn.v_proj": {
+     "flips": 0.0004334449768066406,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0004334449768066406,
+     "zeros_before": 0.4547240734100342,
+     "zeros_after": 0.4544827938079834,
+     "scale_drift_mean": 0.013264928873531793,
+     "scale_drift_max": 0.05868350182809018,
+     "scales_changed": 0.982574462890625
+    },
+    "layers.31.self_attn.o_proj": {
+     "flips": 0.00042116641998291016,
+     "sign_flips": 0.0,
+     "zero_flips": 0.00042116641998291016,
+     "zeros_before": 0.4550461769104004,
+     "zeros_after": 0.4549415111541748,
+     "scale_drift_mean": 0.012820714658413652,
+     "scale_drift_max": 0.06983765499931348,
+     "scales_changed": 0.98419189453125
+    },
+    "layers.31.mlp.gate_proj": {
+     "flips": 0.0008833408355712891,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0008833408355712891,
+     "zeros_before": 0.4555132985115051,
+     "zeros_after": 0.45524118343989056,
+     "scale_drift_mean": 0.013810426527295352,
+     "scale_drift_max": 0.06953966818334203,
+     "scales_changed": 0.9831034342447916
+    },
+    "layers.31.mlp.up_proj": {
+     "flips": 0.0006725390752156576,
+     "sign_flips": 0.0,
+     "zero_flips": 0.0006725390752156576,
+     "zeros_before": 0.4556640386581421,
+     "zeros_after": 0.4554373025894165,
+     "scale_drift_mean": 0.014069309532387627,
+     "scale_drift_max": 0.0704700564576932,
+     "scales_changed": 0.9825210571289062
+    },
+    "layers.31.mlp.down_proj": {
+     "flips": 0.000766893227895101,
+     "sign_flips": 0.0,
+     "zero_flips": 0.000766893227895101,
+     "zeros_before": 0.45522262652715045,
+     "zeros_after": 0.45500707626342773,
+     "scale_drift_mean": 0.013702461282772917,
+     "scale_drift_max": 0.06643283340766606,
+     "scales_changed": 0.9860585530598959
+    }
+   },
+   "seconds": 28.289777755737305,
+   "peak_vram_gb": 9.640562057495117,
+   "peak_reserved_gb": 17.54296875
+  }
+ ],
+ "rolled_back": []
+}

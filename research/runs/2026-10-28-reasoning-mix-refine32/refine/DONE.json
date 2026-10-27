@@ -1,0 +1,13 @@
+{
+ "stage": "refine",
+ "config_hash": "d173ce76db88aa57a9a4e466b93b7ccbe445643ff9e97aeb6b5a3e6a6605b1f9",
+ "output_sha256": "d7496c418a2ad3d904d335ee49947db6aa48daf9c8a9144aa2cc0f6d68bc8e99",
+ "result": {
+  "layers": [
+   0,
+   32
+  ],
+  "rolled_back": [],
+  "modules": 200
+ }
+}

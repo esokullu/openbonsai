@@ -41,7 +41,7 @@ Three datasets feed the pipeline, all at pinned revisions. The numbers below are
 - **Calibration (quantize and endpoints).** 256 blocks of 2,048 tokens: 128 from WikiText-2 *train*, 96 UltraChat conversations from row 6,000 on (rendered with the chat template), and 32 from the traces.
 - **Distillation.** 2,048 sequences of 2,048 tokens (4.2M tokens): 512 WikiText-2 *train*, 24 traces and 1,512 UltraChat.
 
-`examples/qwen3_5-9b-reasoning.yaml` (not measured yet) moves the data toward reasoning, as the ScaleQ paper suggests: traces from GSM8K, MATH, MBPP and OpenCodeInstruct *training* prompts answered with thinking on, some GSM8K and MBPP ones without thinking, plus UltraChat without thinking (`traces.sources`), then 128 of 256 calibration blocks and 640 of 1,536 distillation sequences from those traces.
+`examples/qwen3_5-9b-reasoning.yaml` (measured: GSM8K 69/100 and HumanEval 19/50 with thinking off, against 30/100 and 6/50 for the generic-calibration model; this is the Hugging Face model, `research/runs/2026-10-27-reasoning-mix-v1/`) moves the data toward reasoning, as the ScaleQ paper suggests: traces from GSM8K, MATH, MBPP and OpenCodeInstruct *training* prompts answered with thinking on, some GSM8K and MBPP ones without thinking, plus UltraChat without thinking (`traces.sources`), then 128 of 256 calibration blocks and 640 of 1,536 distillation sequences from those traces.
 
 The reasoning suites' test problems are refused everywhere (see [evaluation.md](evaluation.md#reasoning-suites-gsm8k-humaneval)). WikiText-2 *train* in the data makes our WikiText *test* numbers partly in-domain. The measured runs took their traces from a fixed set of 128 prompts, disjoint from the chat-NLL prompts; the example config's sampled prompts are not (see [evaluation.md](evaluation.md#keeping-test-data-out)).
 
@@ -104,7 +104,7 @@ None of the dev generations in these runs was a usable answer: they looped, stop
 
 These results say CAT-Q *alone at small budgets* failed here. They say nothing about CAT-Q at the paper's settings, or as a refinement of GPTQ's codes. That combination is the next experiment. CAT-Q moves into the package only if it beats GPTQ plus distillation on the same data. The reports are in `research/runs/2026-10-26-*` and `research/docs/`.
 
-A different refinement of GPTQ's codes, block-wise training of latent weights and scales with a straight-through estimator (EfficientQAT's Block-AP, started from GPTQ's codes), is in the package as the optional `refine` stage, off by default. It has not run on 9B yet: [refine.md](refine.md).
+A different refinement of GPTQ's codes, block-wise training of latent weights and scales with a straight-through estimator (EfficientQAT's Block-AP, started from GPTQ's codes), is in the package as the optional `refine` stage, off by default. On 9B it lowered the error before distillation (dev NLL 3.69 → 3.40), but after distillation its GSM8K and HumanEval scores were within noise of the model without it, so it stays off: [refine.md](refine.md#9b-results).
 
 ## Endpoints: ternary head and embedding
 
@@ -124,7 +124,7 @@ The run: a teacher pass stores the top-64 log-probabilities of 4.2M tokens (abou
 
 **Evidence.** All ternary, 3.480 → 2.892 dev NLL, ARC 13 → 19, ARC /100 62 → 87, chat NLL 2.225 → 1.318. Most of it comes early: after 64 of 256 steps the model was at 2.911 and ARC 19. Also training the high-precision tensors (norms, `conv1d`, `A_log`, `dt_bias`, `in_proj_a`/`in_proj_b`; `distill.train.small: true`) adds little (2.884), so it is off by default.
 
-**Where it falls short.** Chat NLL is still 0.76 nats above BF16, against 0.47 on WikiText. On the dev prompts, the distilled model gets the chickens-and-rabbits word problem wrong, and its Turkish rewrite collapses into repetition. Our distillation data is English WikiText, UltraChat and the model's own English answers, with little math. Data with the skills you want to keep is the obvious next lever. Data from test sets is refused.
+**Where it falls short.** Chat NLL is still 0.76 nats above BF16, against 0.47 on WikiText. On the dev prompts, the distilled model gets the chickens-and-rabbits word problem wrong, and its Turkish rewrite collapses into repetition. Our distillation data is English WikiText, UltraChat and the model's own English answers, with little math. Data with the skills you want to keep was the next lever: calibrating and distilling on the model's own math and code answers (`examples/qwen3_5-9b-reasoning.yaml`) raised GSM8K to 69/100 and HumanEval to 19/50 with thinking off ([README](../README.md#results)). Data from test sets is refused.
 
 ## Export
 
