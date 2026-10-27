@@ -4,6 +4,11 @@ One global Hadamard block per model: the largest power of two <= max_block
 that divides every rotated input width. One sign vector per width. Prism's
 PTQ1_0 runtime stores exactly one ``block_size`` and one sign vector per width,
 so a model whose widths would need mixed blocks is not representable.
+
+Prism's runtime builds its rotation for any power-of-two block, but it has
+only been run with block 4096 (Ternary-Bonsai-2-9B and our 9B export);
+``block_note`` says so for any other block (quantize logs it, the export
+records it).
 """
 from __future__ import annotations
 
@@ -17,6 +22,7 @@ from .hadamard import seeded_signs, validate_rotation
 
 MAX_BLOCK = 4096
 GROUP = 128
+PRISM_VERIFIED_BLOCK = 4096   # the only Hadamard block Prism's runtime has been verified with
 
 
 class UnsupportedGeometry(ValueError):
@@ -54,6 +60,14 @@ def derive_block(widths, *, group: int = GROUP, max_block: int = MAX_BLOCK) -> i
     if block < group:
         raise UnsupportedGeometry(f"derived Hadamard block {block} is smaller than group {group}")
     return block
+
+
+def block_note(block: int) -> str | None:
+    """A note for a block Prism's runtime has not been verified with (None for 4096)."""
+    if int(block) == PRISM_VERIFIED_BLOCK:
+        return None
+    return (f"Hadamard block {block}: Prism's runtime has been verified with block {PRISM_VERIFIED_BLOCK} only "
+            "(it accepts any power of two; check the exported model in Prism)")
 
 
 def derive_geometry(widths, hidden: int, *, group: int = GROUP, max_block: int = MAX_BLOCK) -> Geometry:

@@ -303,7 +303,7 @@ def test_a_wrong_layout_permutation_fails_verification(run_copy, monkeypatch):
     assert {x["check"] for x in failed} >= {
         "layout permutations and F32 transforms == the adapter's independent rule",
         "decoded PTQ1_0 codes and fp16 scale bits == permuted, canonical state (exact)",
-        "F32 tensors bit-identical to the transformed sources"}
+        "float tensors (F32, and BF16/F16 tables) bit-identical to the transformed sources"}
     assert "blk.0.attn_gate.weight rows" in failed[0]["detail"] and "blk.0.ssm_a rows" in failed[0]["detail"]
 
 

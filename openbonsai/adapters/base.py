@@ -84,6 +84,7 @@ class ModelAdapter:
     name: ClassVar[str] = "base"
     model_types: ClassVar[tuple[str, ...]] = ()
     gguf_arch: ClassVar[str | None] = None     # Prism GGUF architecture; None = not exportable
+    gguf_endpoints_optional: ClassVar[bool] = False  # the GGUF layout can hold high-precision head/embedding
     add_bos: ClassVar[bool] = False            # start every packed block / eval sequence with BOS
     zero_centered_norm: ClassVar[bool] = False  # norm is (1 + w) * x_hat instead of w * x_hat
     modeling_module: ClassVar[str | None] = None  # transformers module of the model (see import_for_device)
@@ -210,9 +211,24 @@ class ModelAdapter:
     # An exportable adapter sets ``gguf_arch`` and describes its file layout;
     # writing, reading and verifying are architecture-agnostic
     # (openbonsai.stages.export, openbonsai.formats.gguf).
+    def gguf_unsupported(self, model_dir=None) -> str | None:
+        """Why this config cannot be written as a Prism PTQ1_0 GGUF (None: it can). With
+        ``model_dir`` the tokenizer files are checked too. The export then writes a latent
+        checkpoint instead (``export.format: auto``) or refuses (``ptq1_0-gguf``)."""
+        return None if self.gguf_arch else f"the {self.name} adapter has no PTQ1_0 GGUF layout"
+
     def gguf_tensors(self) -> list:
         """The file's tensors in file order (``formats.gguf.TensorMap``), derived from the config."""
         raise NotImplementedError(f"{self.name}: no PTQ1_0 GGUF layout")
+
+    def gguf_plan(self, state_keys) -> list:
+        """The layout for a state holding ``state_keys`` (an adapter whose layout can keep the head or
+        embedding in high precision picks those from the state; the default ignores it)."""
+        return self.gguf_tensors()
+
+    def gguf_plan_for_file(self, reader) -> list:
+        """The layout a file to be read was written with (default: the config's one layout)."""
+        return self.gguf_tensors()
 
     def gguf_kvs(self, model_dir, *, name: str, signs: dict, block: int, tensors: list,
                  size_label: str | None = None) -> tuple[list[tuple[str, str, object]], list[str]]:
@@ -254,12 +270,12 @@ class ModelAdapter:
         from ..formats.gguf import GGUFError, GGUFReader, f32_inverse, prism_signs
         from ..formats.ptq1_0 import QK
         from ..formats.state import TernaryState, TernaryTensor
-        plan = self.gguf_tensors()
         with GGUFReader(path) as r:
             arch = r.value("general.architecture")
             if arch != self.gguf_arch:
                 raise GGUFError(f"{path}: architecture {arch!r}, this adapter reads {self.gguf_arch!r}")
             self.gguf_check(r.kvd)
+            plan = self.gguf_plan_for_file(r)
             got = {t.name: (t.gtype, tuple(t.ne)) for t in r.tensors}
             want = {t.name: (t.gtype, tuple(t.ne)) for t in plan}
             if got != want:
@@ -277,7 +293,7 @@ class ModelAdapter:
                         codes, scales = codes[inv], scales[inv]
                     tensors[t.source] = TernaryTensor(torch.from_numpy(np.ascontiguousarray(codes)),
                                                       torch.from_numpy(np.ascontiguousarray(scales)))
-                else:
+                elif t.data is None:   # generated constants (rope_freqs) have no model tensor
                     a = r.array(t.name)
                     if inv is not None:
                         a = a[inv]
@@ -307,8 +323,11 @@ class ModelAdapter:
         state, floats, _ = self.read_gguf(path, log=log)
         self.prepare_device(device)
         model = self.empty_model(dtype=dtype, attn=attn)
-        install_ternary(self, model, state.records(), device)
+        # floats first: a Linear's bias (F32 in the file) must be real before TernaryLinear takes it over
         apply_small(self, model, floats, device=device, dtype=dtype, keep_fp32_vectors=small_fp32)
+        install_ternary(self, model, state.records(), device)
+        if self.tied:
+            model.tie_weights()   # the head shares the table the file supplied for the embedding
         meta = [n for n, t in list(model.named_parameters()) + list(model.named_buffers()) if t.is_meta]
         if meta:
             raise ValueError(f"{path}: the GGUF leaves {len(meta)} tensors unset, e.g. {meta[:4]}")

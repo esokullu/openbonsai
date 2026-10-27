@@ -1,4 +1,9 @@
-"""Export a ternary state to Prism's PTQ1_0 GGUF (runs in Prism's llama.cpp fork).
+"""Export a ternary state to Prism's PTQ1_0 GGUF (runs in Prism's llama.cpp fork),
+or to a latent Hugging Face checkpoint when no GGUF can be written for the model.
+
+``export.format``: ``ptq1_0-gguf``, ``latent`` or ``auto`` (the default: the
+GGUF when the adapter can write one for this model, else latent, with the
+reason logged and recorded; ``adapter.gguf_unsupported``).
 
 The run's final state (quantize codes, ternary endpoints, distilled scales,
 and the distilled high-precision tensors when ``distill.train.small``) is
@@ -11,8 +16,12 @@ loads; for the 9B config the bytes are identical (tests/test_export_parity.py).
   canonicalized (formats.ptq1_0.canonicalize), packed in row chunks.
 - F32 tensors: the checkpoint's tensor, or the distilled one, transformed
   (``+1``, ``-exp``, squeeze) and permuted in FP32.
-- Refused: a state without ternary ``lm_head``/``embed_tokens`` (the layout
-  stores both as PTQ1_0), a state with per-module signs (the file holds one
+- High-precision tensors of an adapter whose layout can hold them (the dense
+  adapter's untied BF16 head/embedding or a tied model's shared table) are
+  written in the checkpoint's float type (BF16/F16/F32), outside
+  ``prism.hadamard``.
+- Refused: a state without ternary ``lm_head``/``embed_tokens`` when the layout
+  stores both as PTQ1_0 (Qwen3.5), a state with per-module signs (the file holds one
   sign vector per input width), group sizes other than 128, codes outside
   {-1, 0, 1}, non-finite scales, distilled tensors without a slot, and
   checkpoint tensors of the text model without a slot (e.g. biases).
@@ -27,6 +36,16 @@ loads; for the 9B config the bytes are identical (tests/test_export_parity.py).
   take rows and F32 transforms from the adapter's independent rule
   (``gguf_source_rows`` / ``gguf_f32_op``), so a wrong permutation in the
   layout fails. A report goes to ``<out>.export.json``.
+
+Latent checkpoint (``<run>/export/<name>/``): ``model.safetensors`` (and
+config, generation config, tokenizer) loadable by plain transformers, with
+every ternary tensor holding its dequantized weight (C * s) R^T in the model
+dtype (the weights ``eval --from quantize`` installs); ``ternary.safetensors``
+with the exact codes, fp16 scales, per-width signs and block (a TernaryState:
+``eval --from <dir>/ternary.safetensors`` installs the ternary modules, and a
+later Prism layout can be written from it); ``openbonsai.json`` says what the
+directory is, why it is not a GGUF, and the SHA256 of every file. Verification
+re-reads every saved tensor and the state bit for bit.
 """
 from __future__ import annotations
 
@@ -39,11 +58,16 @@ import numpy as np
 import torch
 
 from ..adapters.gguf_common import model_basename, reference_kv_equal
+from ..core.geometry import block_note
 from ..formats import ptq1_0
 from ..formats.atomic import atomic_write_json
 from ..formats.checkpoint import Checkpoint
-from ..formats.gguf import GGML_PTQ1_0, GGUFReader, f32_forward, layout, prism_signs, write_gguf
-from ..formats.state import LegacyTensor, TernaryState, legacy_to_state
+from ..formats.gguf import (GGML_BF16, GGML_F16, GGML_F32, GGML_PTQ1_0, GGUFReader, f32_forward, float_payload,
+                            layout, prism_signs, write_gguf)
+from ..formats.state import LegacyTensor, TernaryState, legacy_to_state, load_state, save_state
+
+FORMATS = ("auto", "ptq1_0-gguf", "latent")
+LATENT_FORMAT = "openbonsai-latent"
 
 ENDPOINTS = ("lm_head", "embed_tokens")
 FUNC_TOL = 1e-6
@@ -57,8 +81,24 @@ class ExportError(RuntimeError):
     """The state cannot be expressed in the GGUF layout, or verification failed."""
 
 
-def default_name(model_path) -> str:
-    return f"OpenBonsai-{model_basename(model_path)}-PTQ1_0"
+def default_name(model_path, fmt: str = "ptq1_0-gguf") -> str:
+    return f"OpenBonsai-{model_basename(model_path)}-" + ("PTQ1_0" if fmt == "ptq1_0-gguf" else "ternary")
+
+
+def resolve_format(cfg: dict, adapter, model_dir=None) -> tuple[str, str | None]:
+    """(``ptq1_0-gguf`` or ``latent``, why not the GGUF). ``auto`` falls back to latent when the adapter
+    cannot write this model as a GGUF; an explicit ``ptq1_0-gguf`` it cannot write is refused. With
+    ``model_dir`` the tokenizer is checked too."""
+    from ..config import ConfigError
+    fmt = cfg["export"].get("format") or "auto"
+    if fmt not in FORMATS:
+        raise ConfigError(f"export.format {fmt!r}: use one of {FORMATS}")
+    if fmt == "latent":
+        return "latent", None
+    reason = adapter.gguf_unsupported(model_dir)
+    if fmt == "ptq1_0-gguf" and reason:
+        raise ConfigError(f"export.format ptq1_0-gguf: {reason}. Use export.format latent (or auto)")
+    return ("latent", reason) if reason else ("ptq1_0-gguf", None)
 
 
 # -- inputs ------------------------------------------------------------------
@@ -111,8 +151,8 @@ def check_inputs(plan, state: TernaryState, small: dict) -> list[str]:
             raise ExportError(f"distilled {key}: shape {tuple(v.shape)} != {floats[key].shape}")
     if small:
         notes.append(f"distilled high-precision tensors: {len(small)} of {len(floats)} F32 tensors")
-    if state.block != 4096:
-        notes.append(f"Hadamard block {state.block}: Prism's runtime was verified with block 4096 only")
+    if block_note(state.block):
+        notes.append(block_note(state.block))
     return notes
 
 
@@ -120,9 +160,12 @@ def check_coverage(adapter, plan, ckpt) -> None:
     """Every checkpoint tensor of the text model and the head has a slot in the layout (a bias, say,
     would otherwise be dropped without a word). MTP and vision tensors are outside the text model."""
     prefix = adapter.checkpoint_name("")
-    slots = {adapter.checkpoint_name(t.source + ".weight" if t.ternary else t.source) for t in plan}
+    slots = {adapter.checkpoint_name(t.source + ".weight" if t.ternary else t.source) for t in plan
+             if t.data is None}
+    if adapter.tied:   # some tied checkpoints also store the shared table as lm_head.weight
+        slots.add("lm_head.weight")
     extra = sorted(n for n in ckpt.map if (n.startswith(prefix) or n.split(".", 1)[0] == "lm_head")
-                   and n not in slots)
+                   and n not in slots and not n.endswith("rotary_emb.inv_freq"))
     if extra:
         raise ExportError(f"{len(extra)} checkpoint tensors have no slot in the {adapter.gguf_arch} GGUF layout "
                           f"and would be dropped: {extra[:4]}")
@@ -139,6 +182,8 @@ class _Producer:
                       "zero_scale_codes_cleared": 0, "distilled_f32": 0}
 
     def source_float(self, t) -> torch.Tensor:
+        if t.data is not None:
+            return torch.from_numpy(np.array(t.data, dtype=np.float32))
         if t.source in self.small:
             return self.small[t.source]
         return self.ckpt.get(self.adapter.checkpoint_name(t.source))
@@ -180,7 +225,7 @@ class _Producer:
         x = f32_forward(t.op, self.source_float(t))
         if t.perm is not None:
             x = x[torch.from_numpy(t.perm.astype(np.int64))]
-        a = np.ascontiguousarray(x.numpy(), dtype="<f4")
+        a = float_payload(x, t.gtype)
         if tuple(reversed(a.shape)) != tuple(t.ne):
             raise ExportError(f"{t.name}: source shape {a.shape} does not give ne {t.ne}")
         return a
@@ -258,9 +303,22 @@ def _f32_reference(op: str, x: torch.Tensor) -> np.ndarray:
         return -torch.exp(x.to(torch.float32)).numpy()
     if op == "squeeze":
         return a.reshape(a.shape[0], -1)
-    if op == "copy":
+    if op in ("copy", "const"):
         return a
     raise ExportError(f"unknown F32 op {op!r}")
+
+
+def _float_bits(a: np.ndarray, gtype: int) -> np.ndarray:
+    """FP32 values as the bits of a float payload, written out again (numpy; BF16 rounds to nearest even)."""
+    a = np.ascontiguousarray(a, dtype="<f4")
+    if gtype == GGML_F32:
+        return a.view("<u4")
+    if gtype == GGML_F16:
+        return a.astype("<f2").view("<u2")
+    if gtype == GGML_BF16:
+        bits = a.view("<u4").astype(np.uint64)
+        return ((bits + 0x7FFF + ((bits >> 16) & 1)) >> 16).astype("<u2")
+    raise ExportError(f"type {gtype} is not a float type")
 
 
 class Verifier:
@@ -378,13 +436,13 @@ class Verifier:
         for t in self.plan:
             if t.ternary:
                 continue
-            got = self.r.read(t.name).reshape(-1).view("<u4")
+            got = self.r.read(t.name).reshape(-1).view("<u4" if t.gtype == GGML_F32 else "<u2")
             a = _f32_reference(self.ops[t.name], self.producer.source_float(t))
-            want = np.ascontiguousarray(a[self.rows[t.name]], dtype="<f4").reshape(-1).view("<u4")
+            want = _float_bits(a[self.rows[t.name]], t.gtype).reshape(-1)
             if got.shape != want.shape or not np.array_equal(got, want):
                 bad.append(t.name)
             n += 1
-        self.check(not bad, "F32 tensors bit-identical to the transformed sources",
+        self.check(not bad, "float tensors (F32, and BF16/F16 tables) bit-identical to the transformed sources",
                    f"{n} tensors, rows and transforms by {self.basis}" + (f"; MISMATCH {bad[:4]}" if bad else ""))
 
     def functional(self, layers=None, rows=8, vecs=4):
@@ -476,13 +534,15 @@ def export_gguf(adapter, source, model_dir, out, *, name: str, small: dict | Non
     ``load_legacy_pt`` dict; ``small``: distilled high-precision tensors (FP32,
     names relative to the text model); ``model_dir``: the model's files (config,
     tokenizer, checkpoint tensors kept in F32)."""
-    if adapter.gguf_arch is None:
-        raise ExportError(f"the {adapter.name} adapter has no PTQ1_0 GGUF layout")
+    reason = adapter.gguf_unsupported(model_dir)
+    if reason:
+        raise ExportError(f"no PTQ1_0 GGUF for this model: {reason}. Export a latent checkpoint instead "
+                          "(export.format latent or auto)")
     t0 = time.time()
     out = Path(out)
     state = as_state(source)
     small = dict(small or {})
-    plan = adapter.gguf_tensors()
+    plan = adapter.gguf_plan(state.tensors)
     notes = check_inputs(plan, state, small)
     infos = [t.info() for t in plan]
     layout(infos)
@@ -538,25 +598,163 @@ def export_gguf(adapter, source, model_dir, out, *, name: str, small: dict | Non
     return report
 
 
+# -- latent checkpoint ------------------------------------------------------------
+
+def _tensor_bits_equal(a: torch.Tensor, b: torch.Tensor) -> bool:
+    if a.dtype != b.dtype or a.shape != b.shape:
+        return False
+    a, b = a.detach().cpu().contiguous(), b.detach().cpu().contiguous()
+    if a.dtype.is_floating_point:
+        view = {2: torch.int16, 4: torch.int32, 8: torch.int64}[a.element_size()]
+        return torch.equal(a.view(view), b.view(view))
+    return torch.equal(a, b)
+
+
+def verify_latent(folder, model, state: TernaryState, adapter, log=print) -> list[dict]:
+    """Every saved tensor equals the model's in memory bit for bit, every model tensor is saved (a tied
+    head may be left out), the saved state is the state, and each ternary tensor's saved weight is its
+    dequantized (C * s) R^T."""
+    from ..core.ternary import dense_weight
+    from .common import resolve_module
+    results = []
+
+    def check(ok, what, detail=""):
+        results.append({"ok": bool(ok), "check": what, "detail": detail})
+        log(f"  {'PASS' if ok else 'FAIL'}  {what}" + (f": {detail}" if detail else ""))
+
+    want = {k: v for k, v in model.state_dict().items()}
+    with Checkpoint(folder) as ckpt:
+        saved = set(ckpt.map)
+        bad = [n for n in sorted(saved) if n not in want or not _tensor_bits_equal(ckpt.get(n), want[n])]
+        missing = sorted(set(want) - saved - ({"lm_head.weight"} if adapter.tied else set()))
+        check(not bad and not missing, "saved tensors == the model's tensors (bitwise), none missing",
+              f"{len(saved)} tensors" + (f"; DIFFERENT {bad[:4]}" if bad else "")
+              + (f"; MISSING {missing[:4]}" if missing else ""))
+        back = load_state(Path(folder) / "ternary.safetensors")
+        same = (back.block == state.block and back.group == state.group and set(back.tensors) == set(state.tensors)
+                and all(torch.equal(back.tensors[k].codes, t.codes) and _tensor_bits_equal(back.tensors[k].scales,
+                                                                                            t.scales)
+                        for k, t in state.tensors.items())
+                and set(back.signs) == set(state.signs)
+                and all(torch.equal(back.signs[w], s) for w, s in state.signs.items()))
+        check(same, "ternary.safetensors == the exported state (codes, scales, signs, block)",
+              f"{len(back.tensors)} tensors, block {back.block}")
+        wrong = []
+        for key, t, signs, block in state.records():
+            _, _, module = resolve_module(adapter, model, key)
+            name = adapter.checkpoint_name(key + ".weight")
+            if adapter.tied and key == "lm_head":
+                continue
+            w = dense_weight(t.codes, t.scales, signs, block, device="cpu", dtype=module.weight.dtype)
+            if name not in saved or not _tensor_bits_equal(ckpt.get(name), w):
+                wrong.append(name)
+        check(not wrong, "each ternary tensor is saved as its dequantized weight (C * s) R^T",
+              f"{len(state.tensors)} tensors" + (f"; DIFFERENT {wrong[:4]}" if wrong else ""))
+    return results
+
+
+def export_latent(adapter, source, model, tokenizer, out, *, name: str, small: dict | None = None,
+                  reason: str | None = None, base_model: str | None = None, stage: str | None = None,
+                  verify: bool = True, log=print) -> dict:
+    """Write the latent checkpoint folder ``out`` from ``model`` (the unmodified model, loaded by the
+    adapter) and a ternary state; returns the report (also ``out/openbonsai.json``).
+
+    The model gets the dequantized weights (``apply_dense``) and the distilled high-precision tensors
+    (``small``), is saved with ``save_pretrained`` next to the tokenizer and the state, verified, and
+    the folder is put in place (a previous one is replaced)."""
+    import shutil
+    from ..digest import file_sha256
+    from .common import apply_dense, apply_small
+    t0 = time.time()
+    out = Path(out)
+    state = as_state(source)
+    tmp = out.with_name(out.name + ".tmp")
+    shutil.rmtree(tmp, ignore_errors=True)
+    n_dense = apply_dense(adapter, model, state.records())
+    n_small = apply_small(adapter, model, dict(small or {}))
+    log(f"latent: {n_dense} ternary tensors dequantized into the model, {n_small} distilled high-precision tensors")
+    text_config = adapter.text_model(model).config
+    use_cache = text_config.use_cache
+    text_config.use_cache = True     # the loader turned it off for the pipeline; keep the model's default
+    try:
+        model.save_pretrained(tmp, safe_serialization=True)
+        tokenizer.save_pretrained(tmp)
+        save_state(tmp / "ternary.safetensors", state)
+    except BaseException:
+        shutil.rmtree(tmp, ignore_errors=True)
+        raise
+    finally:
+        text_config.use_cache = use_cache
+    dtype = str(next(model.parameters()).dtype).removeprefix("torch.")
+    notes = [f"not a Prism PTQ1_0 GGUF: {reason}" if reason else "latent checkpoint requested (export.format latent)"]
+    if block_note(state.block):
+        notes.append(block_note(state.block))
+    report = {
+        "format": LATENT_FORMAT, "version": 1, "name": name, "base_model": base_model, "stage": stage,
+        "adapter": adapter.name, "model_type": adapter.config.model_type, "why_not_gguf": reason,
+        "weights": (f"model*.safetensors: every ternary tensor holds its dequantized weight (C * s) R^T in {dtype}; "
+                    "the other tensors are the checkpoint's (or the distilled ones). Loads with "
+                    "transformers AutoModelForCausalLM.from_pretrained(<this folder>)."),
+        "ternary": {"file": "ternary.safetensors", "tensors": len(state.tensors), "block": state.block,
+                    "group": state.group, "sign_widths": sorted(int(w) for w in state.signs),
+                    "keys": sorted(state.tensors),
+                    "use": "openbonsai eval --from <this folder>/ternary.safetensors installs the exact ternary "
+                           "modules (codes in {-1, 0, 1}, fp16 scale per 128 weights, rotation R per width)"},
+        "tied_embedding_head": bool(adapter.tied),
+        "notes": notes,
+    }
+    if verify:
+        log("verify: latent checkpoint")
+        report["verify"] = verify_latent(tmp, model, state, adapter, log=log)
+        failed = [x["check"] for x in report["verify"] if not x["ok"]]
+        if failed:
+            raise ExportError(f"latent verification failed ({failed[:3]}); the unverified folder is {tmp}")
+    report["files"] = {f.name: file_sha256(f) for f in sorted(tmp.iterdir()) if f.is_file()}
+    report["seconds"] = time.time() - t0
+    atomic_write_json(tmp / "openbonsai.json", report)
+    if out.exists():
+        shutil.rmtree(out)
+    os.replace(tmp, out)
+    return report
+
+
 def run(ctx) -> dict:
     from ..config import ConfigError, distill_uses_endpoints, upstream
+    from .common import free
     e = ctx.cfg["export"]
-    if (e.get("format") or "ptq1_0-gguf") != "ptq1_0-gguf":
-        raise ConfigError(f"export.format {e.get('format')!r}: only ptq1_0-gguf is supported")
     log = ctx.log("export")
     adapter = ctx.adapter()
+    fmt, reason = resolve_format(ctx.cfg, adapter, ctx.model_dir(weights=False))
     source = upstream(ctx.cfg, "export")[0]
-    if source == "distill" and not distill_uses_endpoints(ctx.cfg):
+    if fmt == "ptq1_0-gguf" and source == "distill" and not distill_uses_endpoints(ctx.cfg) \
+            and not adapter.gguf_endpoints_optional:
         raise ConfigError(EXPORT_NEEDS_DISTILLED_ENDPOINTS)
     state = ctx.state_through(source)
     small = ctx.distill_small() if source == "distill" else {}
-    name = e.get("name") or default_name(ctx.model_path())
+    name = e.get("name") or default_name(ctx.model_path(), fmt)
+    verify = bool(e.get("verify", True))
+    if fmt == "latent":
+        out = Path(e["out"]) if e.get("out") else ctx.run.stage_dir("export") / name
+        log(f"exporting the {source} state as a latent checkpoint to {out}"
+            + (f" (no PTQ1_0 GGUF: {reason})" if reason else ""))
+        m = ctx.cfg["model"]
+        # keep_vision: a multimodal checkpoint keeps its (unquantized) vision tower, so the folder loads whole
+        model, tok = adapter.load(ctx.model_path(), revision=m.get("revision"), device=ctx.device, dtype=ctx.dtype,
+                                  attn=m.get("attn") or "sdpa", local_files_only=bool(m.get("local_files_only")),
+                                  keep_vision=True)
+        report = export_latent(adapter, state, model, tok, out, name=name, small=small, reason=reason,
+                               base_model=ctx.model_path(), stage=source, verify=verify, log=log)
+        del model
+        free(ctx.device)
+        checks = report.get("verify") or []
+        return {"output": str(out / "openbonsai.json"), "folder": str(out), "format": "latent", "source": source,
+                "why_not_gguf": reason, "verified": bool(checks), "checks_passed": sum(x["ok"] for x in checks)}
     out = Path(e["out"]) if e.get("out") else ctx.run.stage_dir("export") / f"{name}.gguf"
     log(f"exporting the {source} state to {out}")
     report = export_gguf(adapter, state, ctx.model_dir(), out, name=name, small=small,
-                         size_label=e.get("size_label"), verify=bool(e.get("verify", True)),
+                         size_label=e.get("size_label"), verify=verify,
                          chunk_rows=int(e.get("chunk_rows") or 16384), log=log)
     checks = report.get("verify") or []
-    return {"output": str(out), "source": source, "file_size": report["write"]["file_size"],
-            "distilled_f32": report["write"]["distilled_f32"], "verified": bool(checks),
-            "checks_passed": sum(x["ok"] for x in checks)}
+    return {"output": str(out), "format": "ptq1_0-gguf", "source": source,
+            "file_size": report["write"]["file_size"], "distilled_f32": report["write"]["distilled_f32"],
+            "verified": bool(checks), "checks_passed": sum(x["ok"] for x in checks)}

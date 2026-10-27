@@ -6,13 +6,14 @@
     openbonsai <stage> --run runs/my-model [--set section.key=value ...] [--force]
         stages: traces calibrate quantize endpoints distill export eval
 
-    openbonsai export --run runs/my-model [--out X.gguf] [--name NAME] [--verify | --no-verify]
+    openbonsai export --run runs/my-model [--out X.gguf|DIR] [--name NAME] [--verify | --no-verify]
+        a PTQ1_0 GGUF, or a latent checkpoint folder when the model has no GGUF layout (export.format)
     openbonsai eval --run runs/my-model --from bf16|quantize|endpoints|distill|PATH --suite dev,extended,compare,teacher
         PATH: state.safetensors, legacy .pt[,.pt], or a PTQ1_0 .gguf (ours or the official
         Ternary Bonsai; --run defaults to <gguf>.eval and --model gives the config and tokenizer)
     openbonsai eval --run runs/my-model --from distill --suite gsm8k,humaneval --set 'eval.reasoning.thinking=[off,on]'
         greedy chat generation on frozen GSM8K/HumanEval TEST subsets (docs/evaluation.md)
-    openbonsai inspect PATH            summary of a state file, GGUF or run directory
+    openbonsai inspect PATH            summary of a state file, GGUF, latent checkpoint folder or run directory
 
 A stage whose output exists with the same config hash is skipped; ``--force``
 reruns it from scratch, discarding its resumable work (with ``run``, also every
@@ -173,22 +174,21 @@ def execute(ctx, stage: str, *, force=False, **kwargs) -> str:
 def preflight(ctx, stages=STAGES) -> None:
     """Fail before any work on settings a later stage of ``stages`` (those this command runs) would refuse."""
     from .config import distill_uses_endpoints, upstream
-    from .stages.export import EXPORT_NEEDS_DISTILLED_ENDPOINTS
-    e = ctx.cfg["endpoints"]
-    if stage_enabled(ctx.cfg, "endpoints") and "ternary" in (e.get("head"), e.get("embedding")) \
-            and ctx.adapter().tied and "endpoints" in stages:
-        raise ConfigError("this model ties its embedding and head; ternary endpoints are not supported yet. "
-                          "Set endpoints.head and endpoints.embedding to bf16 (or endpoints.enabled=false)")
+    from .stages.endpoints import ternary_endpoints
+    from .stages.export import EXPORT_NEEDS_DISTILLED_ENDPOINTS, resolve_format
+    adapter = ctx.adapter()
+    endpoints_on = stage_enabled(ctx.cfg, "endpoints")
+    if endpoints_on and "endpoints" in stages:
+        ternary_endpoints(ctx.cfg, adapter)    # unknown modes; ternary for a tied table
     if stage_enabled(ctx.cfg, "export") and "export" in stages:
-        ternary_ends = stage_enabled(ctx.cfg, "endpoints") and e.get("head") == "ternary" \
-            and e.get("embedding") == "ternary"
-        if ctx.adapter().gguf_arch is None:
-            raise ConfigError(f"the {ctx.adapter().name} adapter has no PTQ1_0 GGUF layout; set export.enabled=false")
-        if not ternary_ends:
-            raise ConfigError("the PTQ1_0 GGUF stores the LM head and the token embedding as ternary: enable the "
-                              "endpoints stage with head and embedding ternary, or set export.enabled=false")
-        if upstream(ctx.cfg, "export")[0] == "distill" and not distill_uses_endpoints(ctx.cfg):
-            raise ConfigError(EXPORT_NEEDS_DISTILLED_ENDPOINTS)
+        fmt, _ = resolve_format(ctx.cfg, adapter)   # refuses an explicit ptq1_0-gguf the model cannot take
+        if fmt == "ptq1_0-gguf" and not adapter.gguf_endpoints_optional:
+            head, emb = ternary_endpoints(ctx.cfg, adapter) if endpoints_on else (False, False)
+            if not (head and emb):
+                raise ConfigError("the PTQ1_0 GGUF stores the LM head and the token embedding as ternary: enable "
+                                  "the endpoints stage with head and embedding ternary, or set export.enabled=false")
+            if upstream(ctx.cfg, "export")[0] == "distill" and not distill_uses_endpoints(ctx.cfg):
+                raise ConfigError(EXPORT_NEEDS_DISTILLED_ENDPOINTS)
 
 
 def cmd_run(args) -> int:
@@ -242,6 +242,10 @@ def cmd_inspect(args) -> int:
             print(json.dumps({"path": str(path), "bytes": r.size, "tensors": len(r.tensors),
                               "tensor_types": {str(k): v for k, v in sorted(types.items())}, "kv": kv}, indent=1))
         return 0
+    if path.is_dir() and (path / "openbonsai.json").is_file():   # a latent checkpoint folder
+        manifest = json.loads((path / "openbonsai.json").read_text(encoding="utf-8"))
+        print(json.dumps({k: v for k, v in manifest.items() if k not in ("verify",)}, indent=1))
+        return 0
     if path.is_dir():
         run = RunDir(path)
         info = {"run": str(path), "stages": {s: run.done_info(s) for s in STAGES if run.done_info(s)}}
@@ -292,13 +296,14 @@ def build_parser() -> argparse.ArgumentParser:
             s.add_argument("--gguf-small-fp32", action="store_true",
                            help="GGUF source: keep 1-D F32 tensors (norms, A_log, dt_bias) in FP32 as Prism does")
         if stage == "export":
-            s.add_argument("--out", default=None, help="output .gguf (default: <run>/export/<name>.gguf)")
+            s.add_argument("--out", default=None, help="output .gguf, or folder for a latent checkpoint "
+                                                       "(default: <run>/export/<name>.gguf or <run>/export/<name>/)")
             s.add_argument("--name", default=None, help="general.name (default: OpenBonsai-<model>-PTQ1_0)")
             s.add_argument("--verify", dest="verify", action="store_true", default=None,
                            help="verify the written file (the default)")
             s.add_argument("--no-verify", dest="verify", action="store_false", help="skip verification")
         s.set_defaults(func=cmd_stage, stage=stage)
-    i = sub.add_parser("inspect", help="summarize a state file, GGUF or run directory")
+    i = sub.add_parser("inspect", help="summarize a state file, GGUF, latent checkpoint folder or run directory")
     i.add_argument("path")
     i.set_defaults(func=cmd_inspect)
     return ap

@@ -14,8 +14,11 @@ proportional to gain * e (gain = 1 + w for zero-centered norms, w otherwise;
 the adapter decides). GPTQ with H = R^T diag(gain^2) R minimizes the error
 the first layer actually sees, up to the per-token RMS factor.
 
-Tied embedding/head tables stay high precision in this release (joint GPTQ
-on a shared table is unproven); requesting ternary for a tied model fails.
+``endpoints.head`` / ``endpoints.embedding``: ``ternary``, ``bf16`` (kept
+high precision) or ``auto`` (ternary unless the model ties them). Tied
+embedding/head tables (Qwen3 0.6B-4B, Llama 3.2 1B/3B) stay high precision in
+this release and get no GPTQ (a joint GPTQ of the shared table is unproven);
+requesting ternary for a tied model fails.
 """
 from __future__ import annotations
 
@@ -23,9 +26,30 @@ import time
 
 import torch
 
+from ..config import ConfigError
 from ..core.gptq import quantize_rows
 from ..formats.state import TernaryState, TernaryTensor, save_state
 from .common import apply_dense, free
+
+
+MODES = ("auto", "ternary", "bf16")
+TIED_TERNARY = ("this model has a tied embedding and head (one shared table): ternary for a tied table (one joint "
+                "GPTQ) is not supported yet. Keep it high precision: endpoints.head and endpoints.embedding auto or "
+                "bf16 (or endpoints.enabled=false)")
+
+
+def ternary_endpoints(cfg: dict, adapter) -> tuple[bool, bool]:
+    """(head ternary, embedding ternary) under the config: ``auto`` is ternary unless the model ties them."""
+    e = cfg["endpoints"]
+    out = []
+    for key in ("head", "embedding"):
+        mode = e.get(key) or "auto"
+        if mode not in MODES:
+            raise ConfigError(f"endpoints.{key}: {mode!r}; use one of {MODES}")
+        if mode == "ternary" and adapter.tied:
+            raise NotImplementedError(TIED_TERNARY)
+        out.append(mode == "ternary" or (mode == "auto" and not adapter.tied))
+    return out[0], out[1]
 
 
 @torch.no_grad()
@@ -45,12 +69,11 @@ def run(ctx) -> dict:
     log = ctx.log("endpoints")
     out = ctx.run.stage_dir("endpoints")
     adapter = ctx.adapter()
+    want_head, want_emb = ternary_endpoints(ctx.cfg, adapter)
+    if adapter.tied:
+        log("tied embedding/head: the shared table stays high precision (no GPTQ)")
     model, _ = ctx.load_model()
     signs, geo = ctx.signs(model)
-    want_head, want_emb = e.get("head") == "ternary", e.get("embedding") == "ternary"
-    if adapter.tied and (want_head or want_emb):
-        raise NotImplementedError("tied embedding/head: ternary endpoints are not supported yet; "
-                                  "set endpoints.head and endpoints.embedding to bf16")
     hidden = adapter.hidden_size
     tensors = {}
     damp, chunk, impl = float(e["damp"]), int(e["chunk"]), ctx.cfg["rotation"]["impl"]
@@ -80,7 +103,8 @@ def run(ctx) -> dict:
         tensors["embed_tokens"] = TernaryTensor(ec, es)
         log(f"embedding {tuple(ec.shape)} quantized in {time.time() - t0:.0f}s")
     state = TernaryState(tensors, {hidden: signs[hidden]} if tensors else {}, geo.block, geo.group,
-                         {"stage": "endpoints", "head": e.get("head"), "embedding": e.get("embedding"),
+                         {"stage": "endpoints", "head": "ternary" if want_head else "bf16",
+                          "embedding": "ternary" if want_emb else "bf16",
                           "damp": damp, "tied": adapter.tied})
     save_state(out / "state.safetensors", state)
     return {"tensors": sorted(tensors)}

@@ -307,7 +307,7 @@ def install_ternary(adapter: ModelAdapter, model, records, device) -> list:
 def apply_small(adapter: ModelAdapter, model, values: dict, *, device=None, dtype=None,
                 keep_fp32_vectors: bool = False) -> int:
     """Set high-precision tensors named relative to the text model (``norm.weight``,
-    ``layers.0.linear_attn.A_log``).
+    ``layers.0.linear_attn.A_log``), or the head's ``lm_head.weight``.
 
     A real parameter keeps its dtype and device and gets the values copied in.
     A meta parameter (a model built for a GGUF) is replaced by one in ``dtype``
@@ -315,7 +315,10 @@ def apply_small(adapter: ModelAdapter, model, values: dict, *, device=None, dtyp
     lm = adapter.text_model(model)
     for key, value in values.items():
         parent_name, _, attr = key.rpartition(".")
-        parent = lm.get_submodule(parent_name) if parent_name else lm
+        if parent_name == "lm_head":
+            parent = adapter.head(model)
+        else:
+            parent = lm.get_submodule(parent_name) if parent_name else lm
         current = getattr(parent, attr, None)
         if not isinstance(current, torch.nn.Parameter):
             raise KeyError(f"{key}: no such parameter in the text model")

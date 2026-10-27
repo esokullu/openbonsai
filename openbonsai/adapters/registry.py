@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from .base import ModelAdapter
+from .dense import DenseAdapter
 from .qwen3_5 import Qwen35Adapter
 
 _REGISTRY: dict[str, type[ModelAdapter]] = {}
@@ -14,6 +15,11 @@ def register(cls: type[ModelAdapter]) -> type[ModelAdapter]:
 
 
 register(Qwen35Adapter)
+register(DenseAdapter)
+
+
+def registered_adapters() -> list[type[ModelAdapter]]:
+    return sorted(set(_REGISTRY.values()), key=lambda c: c.name)
 
 
 def supported_model_types() -> list[str]:

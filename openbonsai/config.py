@@ -51,7 +51,9 @@ DEFAULTS: dict = {
         ],
     },
     "quantize": {"damp": 0.01, "batch": 4},
-    "endpoints": {"enabled": True, "head": "ternary", "embedding": "ternary", "damp": 0.01,
+    # head / embedding: ternary, bf16 (kept high precision) or auto (ternary unless the model ties the
+    # two: a tied table stays high precision; ternary for a tied table is refused)
+    "endpoints": {"enabled": True, "head": "auto", "embedding": "auto", "damp": 0.01,
                   "chunk": 16384, "batch": 4},
     "distill": {
         "enabled": True,
@@ -74,9 +76,12 @@ DEFAULTS: dict = {
     },
     "export": {
         "enabled": True,
-        "format": "ptq1_0-gguf",   # Prism's PTQ1_0 GGUF (runs in Prism's llama.cpp fork)
-        "out": None,               # default: <run>/export/<name>.gguf
-        "name": None,              # general.name; default OpenBonsai-<model name>-PTQ1_0
+        # ptq1_0-gguf: Prism's PTQ1_0 GGUF (runs in Prism's llama.cpp fork); latent: a Hugging Face
+        # checkpoint of the dequantized weights plus the exact codes and scales (ternary.safetensors);
+        # auto: the GGUF when the adapter can write one for this model, else latent (the reason is logged)
+        "format": "auto",
+        "out": None,               # default: <run>/export/<name>.gguf (latent: <run>/export/<name>/)
+        "name": None,              # general.name; default OpenBonsai-<model name>-PTQ1_0 (latent: -ternary)
         "size_label": None,        # general.size_label; default from the model name (e.g. 9B)
         "verify": True,            # re-read the file: structure, exact codes/scales/F32, function check
         "chunk_rows": 16384,

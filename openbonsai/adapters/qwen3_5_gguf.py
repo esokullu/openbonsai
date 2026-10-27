@@ -102,6 +102,15 @@ class Qwen35GGUF:
         return k
 
     # -- layout ------------------------------------------------------------
+    def gguf_unsupported(self, model_dir=None) -> str | None:
+        if self.tied:
+            return "tied embedding/head: Prism's prism.hadamard version 1 forbids a tied output"
+        try:
+            self._gguf_dims()
+        except GGUFError as error:
+            return str(error)
+        return None
+
     def gguf_tensors(self) -> list[TensorMap]:
         if self.tied:
             raise GGUFError("tied embedding/head: Prism's prism.hadamard version 1 forbids a tied output")

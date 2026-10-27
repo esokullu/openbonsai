@@ -22,6 +22,7 @@ import time
 
 import torch
 
+from ..core.geometry import block_note
 from ..core.gptq import Hessian, quantize_linear
 from ..core.ternary import dense_weight
 from ..formats.atomic import atomic_write_json
@@ -186,12 +187,15 @@ def run(ctx) -> dict:
     adapter = ctx.adapter()
     signs, geo = ctx.signs(model)
     log(f"geometry: widths {list(geo.widths)}, block {geo.block}, group {geo.group}")
+    if block_note(geo.block):
+        log(f"note: {block_note(geo.block)}")
     calib = ctx.calib_tokens()
     t0 = time.time()
     state, report = quantize_model(model, adapter, calib, signs, geo, batch=int(q["batch"]),
                                    damp=float(q["damp"]), impl=ctx.cfg["rotation"]["impl"],
                                    layers_dir=layers_dir, log=log)
     save_state(out / "state.safetensors", state)
-    atomic_write_json(out / "report.json", {"seconds": time.time() - t0, "modules": report})
+    atomic_write_json(out / "report.json", {"seconds": time.time() - t0, "geometry": geo.to_json(),
+                                            "notes": [n for n in [block_note(geo.block)] if n], "modules": report})
     log(f"quantized {len(state.tensors)} linears in {time.time() - t0:.0f}s")
     return {"modules": len(state.tensors)}

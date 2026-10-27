@@ -2,8 +2,8 @@
 
 Only what Prism's PTQ1_0 files need: typed KVs (scalars, strings, arrays),
 tensor infos with ``ne`` in GGUF order (``ne[0]`` = the contiguous input
-width), alignment 32 (no ``general.alignment`` key), and F32 / F16 / PTQ1_0
-(type 143) payloads. The writer streams each tensor's bytes from a producer,
+width), alignment 32 (no ``general.alignment`` key), and F32 / F16 / BF16 /
+PTQ1_0 (type 143) payloads. The writer streams each tensor's bytes from a producer,
 so a 2 GB file never sits in memory; the reader parses the header and reads
 tensor rows on demand through an ordinary file handle (no memory map, so the
 file can be renamed or replaced as soon as the reader is closed).
@@ -32,6 +32,8 @@ GGUF_VERSION = 3
 ALIGN = 32
 GGML_F32 = 0
 GGML_F16 = 1
+GGML_BF16 = 30
+FLOAT_TYPES = {GGML_F32: "<f4", GGML_F16: "<f2", GGML_BF16: "<u2"}   # numpy element of each float payload
 GGML_PTQ1_0 = ptq1_0.GGML_TYPE_PTQ1_0
 
 VT = {"u8": 0, "i8": 1, "u16": 2, "i16": 3, "u32": 4, "i32": 5, "f32": 6, "bool": 7, "str": 8, "arr": 9,
@@ -41,7 +43,7 @@ SCALAR_FMT = {"u8": "<B", "i8": "<b", "u16": "<H", "i16": "<h", "u32": "<I", "i3
               "bool": "<?", "u64": "<Q", "i64": "<q", "f64": "<d"}
 NP_ELEM = {"u8": "<u1", "i8": "<i1", "u16": "<u2", "i16": "<i2", "u32": "<u4", "i32": "<i4", "f32": "<f4",
            "bool": "<u1", "u64": "<u8", "i64": "<i8", "f64": "<f8"}
-F32_OPS = ("copy", "plus1", "neg_exp", "squeeze")
+F32_OPS = ("copy", "plus1", "neg_exp", "squeeze", "const")
 
 
 class GGUFError(ValueError):
@@ -60,7 +62,7 @@ def tensor_nbytes(gtype: int, ne) -> int:
         return n // ptq1_0.QK * ptq1_0.BLOCK_BYTES
     if gtype == GGML_F32:
         return 4 * n
-    if gtype == GGML_F16:
+    if gtype in (GGML_F16, GGML_BF16):
         return 2 * n
     raise GGUFError(f"unsupported ggml type {gtype}")
 
@@ -96,6 +98,9 @@ class TensorMap:
     ``op`` transforms an F32 source (see ``f32_forward``); ``shape`` is the
     source tensor's shape. ``role`` names the Prism Hadamard list the tensor
     belongs to: ``fold`` (weight_names) or ``inverse`` (inverse_weight_names).
+    A float tensor may be F32, F16 or BF16 (a high-precision embedding table
+    in the checkpoint's own type). ``data``: a generated constant (op
+    ``const``, ``source`` empty), e.g. llama3 ``rope_freqs``.
     """
     name: str
     gtype: int
@@ -105,6 +110,7 @@ class TensorMap:
     perm: np.ndarray | None = None
     role: str = ""
     shape: tuple[int, ...] | None = None
+    data: np.ndarray | None = None
 
     @property
     def ternary(self) -> bool:
@@ -132,10 +138,11 @@ def f32_forward(op: str, x):
     """Source tensor (torch, any float dtype) -> the FP32 tensor GGUF stores (before ``perm``).
 
     copy; plus1 = 1 + w (zero-centered norms); neg_exp = -exp(x) (A_log -> A);
-    squeeze = [C, 1, K] -> [C, K] (depthwise conv). FP32 arithmetic, as Prism's converter."""
+    squeeze = [C, 1, K] -> [C, K] (depthwise conv); const = a generated tensor, as is. FP32
+    arithmetic, as Prism's converter."""
     import torch
     x = x.to(torch.float32)
-    if op == "copy":
+    if op in ("copy", "const"):
         return x
     if op == "plus1":
         return x + 1
@@ -156,7 +163,7 @@ def f32_inverse(op: str, x, shape):
         if bool((x >= 0).any()):
             raise GGUFError("neg_exp tensor holds non-negative values; expected -exp(A_log) < 0")
         x = torch.log(-x.double()).float()
-    elif op not in ("copy", "squeeze"):
+    elif op not in ("copy", "squeeze", "const"):
         raise GGUFError(f"unknown F32 op {op!r}")
     return x.reshape(tuple(shape))
 
@@ -344,11 +351,12 @@ class GGUFReader:
         return np.frombuffer(data, np.uint8).reshape(r1 - r0, rb)
 
     def array(self, name) -> np.ndarray:
-        """An F32/F16 tensor as float32 with numpy shape ``reversed(ne)``."""
+        """An F32/F16/BF16 tensor as float32 (exact) with numpy shape ``reversed(ne)``."""
         t = self.info(name)
-        if t.gtype not in (GGML_F32, GGML_F16):
+        if t.gtype not in FLOAT_TYPES:
             raise GGUFError(f"{name}: type {t.gtype} is not a float tensor")
-        a = self.read(name).reshape(-1).view("<f4" if t.gtype == GGML_F32 else "<f2").astype(np.float32)
+        raw = self.read(name).reshape(-1).view(FLOAT_TYPES[t.gtype])
+        a = (raw.astype(np.uint32) << 16).view("<f4") if t.gtype == GGML_BF16 else raw.astype(np.float32)
         return a.reshape(tuple(reversed(t.ne)))
 
     def ptq1_0(self, name, r0: int = 0, r1: int | None = None, chunk_rows: int = 16384):
@@ -393,3 +401,16 @@ def prism_signs(reader: GGUFReader) -> dict[int, np.ndarray]:
         out[int(w)] = np.asarray(values[off:off + int(w)], np.int8)
         off += int(w)
     return out
+
+
+def float_payload(x, gtype: int) -> np.ndarray:
+    """A float tensor (torch, FP32 values) as the little-endian payload elements of ``gtype``
+    (F32, F16, or BF16 rounded to nearest even as torch rounds)."""
+    import torch
+    if gtype == GGML_F32:
+        return np.ascontiguousarray(x.to(torch.float32).numpy(), dtype="<f4")
+    if gtype == GGML_F16:
+        return np.ascontiguousarray(x.to(torch.float16).numpy(), dtype="<f2")
+    if gtype == GGML_BF16:
+        return np.ascontiguousarray(x.to(torch.bfloat16).view(torch.int16).numpy()).view("<u2")
+    raise GGUFError(f"type {gtype} is not a float type")
