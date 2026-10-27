@@ -17,7 +17,8 @@
     openbonsai inspect PATH            summary of a state file, GGUF, latent checkpoint folder or run directory
 
 Errors print one line (``openbonsai: error: ...``) and exit 2; ``--debug`` (or
-OPENBONSAI_DEBUG=1) shows the traceback instead.
+OPENBONSAI_DEBUG=1) shows the traceback instead. A stage that fails also writes
+its traceback to the run's ``logs/<stage>.log``.
 
 A stage whose output exists with the same config hash is skipped; ``--force``
 reruns it from scratch, discarding its resumable work (with ``run``, also every
@@ -164,6 +165,10 @@ def execute(ctx, stage: str, *, force=False, **kwargs) -> str:
     ctx.run.clear_done(stage)
     try:
         result = _stage_module(stage).run(ctx, **kwargs)
+    except Exception:          # main() prints one line; keep the traceback of a long stage in its log
+        import traceback
+        ctx.run.logger(stage, echo=False)("failed:\n" + traceback.format_exc().rstrip())
+        raise
     finally:
         free(ctx.device)
     if stage != "eval":
@@ -395,7 +400,8 @@ def main(argv=None) -> int:
         if debug:
             raise
         print(f"openbonsai: error: {_one_line(error)}", file=sys.stderr)
-        print("openbonsai: hint: rerun with --debug (or OPENBONSAI_DEBUG=1) for the traceback", file=sys.stderr)
+        print("openbonsai: hint: rerun with --debug (or OPENBONSAI_DEBUG=1) for the traceback; if a stage "
+              "failed, its log <run>/logs/<stage>.log has it too", file=sys.stderr)
         return 2
 
 

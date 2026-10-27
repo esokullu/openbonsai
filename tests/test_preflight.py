@@ -124,6 +124,8 @@ def test_errors_print_one_line_and_debug_shows_the_traceback(tiny_dir, tmp_path,
     err = capsys.readouterr().err.splitlines()
     assert len(err) == 2 and "unknown calibration source kind" in err[0] and "(ValueError)" in err[0]
     assert "--debug" in err[1]
+    log = (tmp_path / "run" / "logs" / "calibrate.log").read_text(encoding="utf-8")
+    assert "Traceback" in log and "unknown calibration source kind" in log   # the stage log keeps the traceback
     with pytest.raises(ValueError, match="unknown calibration source kind"):
         cli.main(args + ["--debug"])
     with pytest.raises(ValueError, match="unknown calibration source kind"):
