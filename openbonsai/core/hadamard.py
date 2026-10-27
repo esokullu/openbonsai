@@ -1,8 +1,20 @@
-"""Local normalized sign/Hadamard transforms, not a quantization algorithm.
+"""Signed block-Hadamard rotation, the same contract as Prism's PTQ1_0 runtime.
 
-Row vectors use R = D H. Forward: signs then H; inverse: H then signs.
-FP16/BF16 butterflies accumulate in FP32 and cast back once. Rounding remains
-possible and is separate from the algebraic full-precision identity.
+Row vectors use R = D H with D = diag(signs) and H = blockdiag(H_block), the
+normalized Sylvester matrix in natural order. Stored weights are W_rot = W R;
+the runtime computes x' = x R (signs first, then H) and y = W_rot x'.
+
+Two implementations are kept:
+
+- ``rotate``/``inverse_rotate``/``rotate_hessian``: a fast Walsh-Hadamard
+  transform that never builds R. FP16/BF16 inputs accumulate in FP32 and are
+  cast back once.
+- ``hadamard_matrix``/``rotation_matrix``: the dense construction used by the
+  proven experiment scripts. The quantize and endpoint stages use it by
+  default (``rotation.impl: dense``) so their codes match those runs bitwise.
+
+Signs are one int8 vector per input width, shared by every tensor of that
+width, and are always stored explicitly (Prism keys them by width).
 """
 from __future__ import annotations
 
@@ -59,3 +71,39 @@ def inverse_rotate(x: Tensor, signs: Tensor, block_size: int) -> Tensor:
         raise ValueError("rotation input must have a last axis")
     validate_rotation(signs, block_size, x.shape[-1])
     return normalized_hadamard(x, block_size) * signs.to(device=x.device, dtype=x.dtype)
+
+
+def rotate_hessian(h: Tensor, signs: Tensor, block_size: int) -> Tensor:
+    """R^T H R for a symmetric [width, width] H without forming R."""
+    return rotate(rotate(h, signs, block_size).transpose(0, 1).contiguous(), signs, block_size)
+
+
+# Dense construction (parity path with research/experiments/gptq_ternary.py).
+
+def hadamard_matrix(n: int, device=None) -> Tensor:
+    """Dense normalized Sylvester H_n in FP32 (natural order)."""
+    if type(n) is not int or n <= 0 or n & (n - 1):
+        raise ValueError("Hadamard size must be a positive power of two")
+    h = torch.ones(1, 1, device=device)
+    while h.shape[0] < n:
+        h = torch.cat([torch.cat([h, h], 1), torch.cat([h, -h], 1)], 0)
+    return h / math.sqrt(n)
+
+
+def rotation_matrix(signs: Tensor, block_size: int, device=None) -> Tensor:
+    """Dense FP32 R = diag(signs) @ blockdiag(H_block); W_rot = W R, x_rot = x R."""
+    width = signs.numel()
+    validate_rotation(signs, block_size, width)
+    s = signs.to(device=device, dtype=torch.float32)
+    h = hadamard_matrix(block_size, device)
+    r = torch.block_diag(*([h] * (width // block_size)))
+    return s[:, None] * r
+
+
+def seeded_signs(seed: int, width: int) -> Tensor:
+    """int8 +/-1 from torch's CPU generator; seed == width reproduces the
+    experiments' shared-sign mode (``--shared-signs``)."""
+    if type(width) is not int or width <= 0:
+        raise ValueError("width must be a positive integer")
+    g = torch.Generator().manual_seed(int(seed))
+    return (torch.randint(0, 2, (width,), generator=g) * 2 - 1).to(torch.int8)
