@@ -248,6 +248,26 @@ def test_humaneval_canonical_solutions_pass_and_wrong_ones_fail():
             ["passed", "passed", "failed"], p["id"]
 
 
+def test_every_canonical_solution_passes_as_a_body_and_as_a_function():
+    """All frozen problems (every problem when the split is cached): canonical solutions continue the
+    prompt (some open with a nested helper def, which must not be dedented), and prompt + solution is a
+    full function (whose repeated prompt may lose an unused constant, HumanEval/64's FIX)."""
+    problems = R.load_frozen("humaneval")["problems"]
+    try:
+        problems = [R._problem("humaneval", i, r) for i, r in enumerate(R.read_rows("humaneval", local_files_only=True))]
+    except Exception:
+        pass
+    programs = []
+    for p in problems:
+        body = SC.prepare_program(p["prompt"], p["canonical_solution"], p["test"], p["entry_point"])
+        whole = SC.prepare_program(p["prompt"], p["prompt"] + p["canonical_solution"], p["test"], p["entry_point"])
+        assert (body["mode"], whole["mode"], body["dropped"]) == ("continuation", "function", 0), p["id"]
+        programs += [body["program"], whole["program"]]
+    results = SC.run_programs(programs, workers=4)
+    failed = [(problems[k // 2]["id"], r["stderr"][-200:]) for k, r in enumerate(results) if r["status"] != "passed"]
+    assert failed == []
+
+
 # -- frozen manifests -----------------------------------------------------------------
 
 @pytest.mark.parametrize("name, n", [("gsm8k", 100), ("humaneval", 50)])

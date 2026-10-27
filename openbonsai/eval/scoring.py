@@ -281,28 +281,40 @@ def clean_program(body: str, first_line: int) -> tuple[str, int]:
     return "\n".join(future + kept), dropped
 
 
+def _parses(source: str) -> bool:
+    try:
+        ast.parse(source)
+        return True
+    except (SyntaxError, ValueError):
+        return False
+
+
+def _indent(code: str) -> str:
+    return "".join(("    " + ln if ln.strip() else ln) + "\n" for ln in code.rstrip("\n").split("\n"))
+
+
 def prepare_program(prompt: str, code: str, test: str, entry_point: str, *, clean: bool = True) -> dict:
     """{"program", "mode", "dropped"}. Modes: ``function`` (the code defines the entry point; it follows
     the prompt, so the prompt's imports and helpers stay), ``continuation`` (indented code continues the
     prompt's function body), ``body`` (an unindented body without definitions; indented under the
-    prompt), ``module`` (other definitions). Code indented as a whole is dedented first. With
-    ``clean``, ``clean_program`` drops the model's other top-level statements (``dropped`` counts them)."""
+    prompt), ``module`` (other definitions). Code that defines the entry point while indented as a
+    whole (a fence under a markdown list item) is dedented; an indented body stays as written when
+    it parses after the prompt (it may open with a nested helper ``def``), else it is re-indented
+    under the prompt (a body indented by 3 spaces). With ``clean``, ``clean_program`` drops the
+    model's other top-level statements (``dropped`` counts them)."""
     code = code.replace("\r\n", "\n")
-    indents = [len(ln) - len(ln.lstrip()) for ln in code.split("\n") if ln.strip()]
-    common = min(indents, default=0)
     first = next((ln for ln in code.split("\n") if ln.strip()), "")
-    indented = first[:1] in (" ", "\t")
-    if common:
-        code = textwrap.dedent(code)
-    code = strip_main_block(code).rstrip() + "\n"
     head = prompt if prompt.endswith("\n") else prompt + "\n"
-    if _defines(code, entry_point):
-        lead, mode = head + "\n", "function"
-    elif indented and not common:      # a body whose later lines return to the top level
+    flat = strip_main_block(textwrap.dedent(code)).rstrip() + "\n"
+    code = strip_main_block(code).rstrip() + "\n"
+    if _defines(flat, entry_point):
+        code, lead, mode = flat, head + "\n", "function"
+    elif first[:1] in (" ", "\t"):
         lead, mode = head, "continuation"
+        if not _parses(head + code) and _parses(head + _indent(flat)):
+            code = _indent(flat)
     elif not re.search(r"^(def|class|async\s+def)\s", code, re.M):
-        lead, mode = head, "continuation" if indented else "body"
-        code = "".join(("    " + ln if ln.strip() else ln) + "\n" for ln in code.rstrip("\n").split("\n"))
+        lead, mode, code = head, "body", _indent(code)
     else:
         lead, mode = head + "\n", "module"
     body, dropped = lead + code, 0
