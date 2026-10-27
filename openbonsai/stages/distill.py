@@ -15,6 +15,9 @@ Two phases, both resumable:
 - train: AdamW on the log multipliers with warmup + cosine; a checkpoint
   (parameters, optimizer, scheduler, position) every ``ckpt_every`` steps is
   resumed exactly. The result is ``distill/scales.safetensors`` (fp16).
+
+``max_steps`` shortens training: the cosine schedule ends at that step. With
+it unset the schedule spans ``epochs * n_seq / accum`` steps, as in the script.
 """
 from __future__ import annotations
 
@@ -96,6 +99,17 @@ def load_teacher(data_dir):
     return ids, np.concatenate(idx), np.concatenate(lp)
 
 
+def _teacher_complete(out, shard: int) -> tuple[int, int] | None:
+    """(rows, seq_len) when the inputs and every shard exist."""
+    ids_path = out / "input_ids.npy"
+    if not ids_path.exists():
+        return None
+    n, t = np.load(ids_path, mmap_mode="r").shape
+    if all((out / f"topk_{s0:06d}.npz").exists() for s0 in range(0, n, shard)):
+        return int(n), int(t)
+    return None
+
+
 def run_teacher(ctx) -> dict:
     d = ctx.cfg["distill"]
     t = d["teacher"]
@@ -103,6 +117,10 @@ def run_teacher(ctx) -> dict:
     out = ctx.run.stage_dir("distill") / "teacher"
     out.mkdir(parents=True, exist_ok=True)
     ids_path = out / "input_ids.npy"
+    done = _teacher_complete(out, int(t["shard"]))
+    if done is not None:
+        log(f"teacher: all {done[0]} rows present; model not loaded")
+        return {"rows": done[0], "seq_len": done[1]}
     adapter = ctx.adapter()
     model, tok = ctx.load_model()
     if ids_path.exists():
@@ -118,9 +136,12 @@ def run_teacher(ctx) -> dict:
     return {"rows": int(data.shape[0]), "seq_len": int(data.shape[1])}
 
 
-def train(model, adapter, ids, tidx_all, tlogp_all, out_dir, *, lr=2e-3, epochs=1, accum=8, warmup=10,
-          chunk=512, log_every=5, ckpt_every=16, max_steps=None, device, log=print):
-    """Train every TernaryLinear/TernaryEmbedding log multiplier; returns the per-step loss history."""
+def train(model, adapter, ids, tidx_all, tlogp_all, out_dir, *, lr=1e-3, epochs=1, accum=8, warmup=10,
+          chunk=512, log_every=5, ckpt_every=16, max_steps=None, device, log=print, stop_after=None):
+    """Train every TernaryLinear/TernaryEmbedding log multiplier; returns the per-step loss history.
+
+    ``max_steps`` ends training (and the cosine schedule) early; ``stop_after``
+    (tests) raises KeyboardInterrupt after that step, as a crash would."""
     torch.manual_seed(0)
     for p in model.parameters():
         p.requires_grad_(False)
@@ -135,6 +156,8 @@ def train(model, adapter, ids, tidx_all, tlogp_all, out_dir, *, lr=2e-3, epochs=
     n = ids.shape[0]
     opt = torch.optim.AdamW([{"params": scale_params, "lr": lr}], betas=(0.9, 0.95), weight_decay=0.0, eps=1e-12)
     total_steps = max(1, epochs * n // accum)
+    if max_steps is not None:
+        total_steps = min(total_steps, max(1, int(max_steps)))
     sched = torch.optim.lr_scheduler.LambdaLR(
         opt, lambda s: min(1.0, (s + 1) / warmup) * 0.5 * (1 + math.cos(math.pi * min(s, total_steps) / total_steps)))
     order = []
@@ -151,13 +174,17 @@ def train(model, adapter, ids, tidx_all, tlogp_all, out_dir, *, lr=2e-3, epochs=
         sched.load_state_dict(ck["sched"])
         step, start_it = ck["step"], ck["it"]
         log(json.dumps({"resumed_at_step": step}))
+    if history_path.exists():   # drop records logged after the checkpoint (they are recomputed)
+        kept = [line for line in history_path.read_text(encoding="utf-8").splitlines()
+                if line.strip() and json.loads(line)["step"] <= step]
+        atomic_write_bytes(history_path, "".join(line + "\n" for line in kept).encode("utf-8"))
     model.train()
     t0, run_loss, run_tok, step_loss, step_tok = time.time(), 0.0, 0, 0.0, 0
     history = []
     for it, i in enumerate(order):
         if it < start_it:
             continue
-        if max_steps is not None and step >= max_steps:
+        if step >= total_steps:
             break
         x = torch.from_numpy(ids[i:i + 1].astype(np.int64)).to(device)
         tidx = torch.from_numpy(tidx_all[i].astype(np.int64)).to(device)
@@ -194,6 +221,8 @@ def train(model, adapter, ids, tidx_all, tlogp_all, out_dir, *, lr=2e-3, epochs=
             if step % ckpt_every == 0:
                 durable_save({"params": [p.detach() for p in scale_params], "opt": opt.state_dict(),
                               "sched": sched.state_dict(), "step": step, "it": it + 1}, ckpt)
+            if stop_after is not None and step >= stop_after:
+                raise KeyboardInterrupt(f"stopped after step {step}")
     model.eval()
     return history
 

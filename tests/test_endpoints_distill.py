@@ -107,20 +107,35 @@ def test_resumed_training_equals_uninterrupted_training(endpointed, tmp_path):
     ctx = endpointed
     D.run_teacher(ctx)
     data = D.load_teacher(ctx.run.stage_dir("distill") / "teacher")
-    kw = dict(lr=0.02, epochs=2, accum=2, warmup=1, chunk=32, log_every=10, ckpt_every=1,
+    kw = dict(lr=0.02, epochs=2, accum=2, warmup=1, chunk=32, log_every=10, ckpt_every=2,
               device=torch.device("cpu"), log=lambda m: None)
     a_dir, b_dir = tmp_path / "a", tmp_path / "b"
     a_dir.mkdir(), b_dir.mkdir()
     a = _student(ctx)
-    hist_a = D.train(a, ctx.adapter(), *data, a_dir, max_steps=4, **kw)
+    hist_a = D.train(a, ctx.adapter(), *data, a_dir, **kw)
+    assert [h["step"] for h in hist_a] == [1, 2, 3, 4]
     b = _student(ctx)
-    D.train(b, ctx.adapter(), *data, b_dir, max_steps=2, **kw)
+    with pytest.raises(KeyboardInterrupt):   # crash after step 3; the last checkpoint is step 2
+        D.train(b, ctx.adapter(), *data, b_dir, stop_after=3, **kw)
     b = _student(ctx)  # fresh process state: only the checkpoint carries over
-    hist_b = D.train(b, ctx.adapter(), *data, b_dir, max_steps=4, **kw)
+    hist_b = D.train(b, ctx.adapter(), *data, b_dir, **kw)
     assert [h["step"] for h in hist_b] == [3, 4]
     assert [h["kd_ce"] for h in hist_b] == [h["kd_ce"] for h in hist_a[2:]]
     sa, sb = D.trained_scales(a, ctx.adapter()), D.trained_scales(b, ctx.adapter())
     assert all(torch.equal(sa[k], sb[k]) for k in sa)
+    # The step-3 record written before the crash is replaced, not duplicated.
+    logged = [json.loads(line) for line in (b_dir / "train.jsonl").read_text().splitlines()]
+    assert [r["step"] for r in logged] == [1, 2, 3, 4] and logged[2]["kd_ce"] == hist_a[2]["kd_ce"]
+
+
+def test_max_steps_ends_the_cosine_schedule(endpointed, tmp_path):
+    ctx = endpointed
+    D.run_teacher(ctx)
+    data = D.load_teacher(ctx.run.stage_dir("distill") / "teacher")
+    history = D.train(_student(ctx), ctx.adapter(), *data, tmp_path, lr=0.02, epochs=4, accum=2, warmup=1,
+                      chunk=32, max_steps=3, device=torch.device("cpu"), log=lambda m: None)
+    assert [h["step"] for h in history] == [1, 2, 3] and history[-1]["lr"] == 0.0
+    assert history[0]["lr"] > history[1]["lr"] > 0.0
 
 
 def test_distill_stage_writes_scales_and_eval_uses_them(endpointed):
