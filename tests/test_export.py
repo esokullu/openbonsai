@@ -198,7 +198,8 @@ def test_gguf_model_reproduces_the_fake_quant_model_and_eval(run_copy):
     assert cli.main(["eval", "--run", str(run_copy), "--from", str(path), "--suite", "compare"]) == 0
     a = json.loads((run_copy / "eval" / "distill.compare.json").read_text())
     b = json.loads((run_copy / "eval" / f"{path.stem}.compare.json").read_text())
-    assert a["nll"] == b["nll"] and a["kl_topk"] == b["kl_topk"] and a["top1_agreement"] == b["top1_agreement"]
+    for key in ("nll", "top1_agreement", "kl_top16", "ear_top16_lb", "ear_full", "kl_full"):
+        assert a[key] == b[key], key
     # Without --run, a GGUF evaluation gets its own run directory next to the file.
     assert cli.main(["eval", "--from", str(path), "--model", str(ctx.model_path()), "--suite", "compare",
                      "--config", "examples/tiny-qwen3_5.yaml"]) == 0

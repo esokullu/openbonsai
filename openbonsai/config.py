@@ -85,7 +85,10 @@ DEFAULTS: dict = {
         "from": "auto",            # auto = the last stage whose output is current
         "suites": ["dev", "extended", "compare"],  # dev/extended need the Qwen3.5 tokenizer; compare works for any
         "generations": True,
-        "compare": {"seq_len": 512, "n": 8, "seed": 7, "topk": 64, "sources": None},
+        # full: keep the BF16 logits (n x (seq_len-1) x vocab on disk) for ear_full/kl_full;
+        # off: top-k metrics only (ear_top{k}_lb/_ub, kl_top{k}). See docs/evaluation.md.
+        "compare": {"seq_len": 512, "n": 8, "seed": 7, "topk": 64, "full": True, "sources": None},
+        "teacher": {"rows": 8},    # suite "teacher": rows of the distillation teacher shards scored
     },
 }
 

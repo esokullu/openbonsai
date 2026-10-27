@@ -110,6 +110,28 @@ def load_teacher(data_dir):
     return ids, np.concatenate(idx), np.concatenate(lp)
 
 
+def read_teacher_rows(data_dir, n: int | None = None):
+    """The first ``n`` rows (all when None) of the teacher shards as (ids, idx, logp),
+    reading only the shards those rows are in."""
+    ids_path = data_dir / "input_ids.npy"
+    if not ids_path.exists():
+        raise FileNotFoundError(f"{ids_path} is missing")
+    ids = np.load(ids_path, mmap_mode="r")
+    n = len(ids) if n is None else min(int(n), len(ids))
+    idx, lp, row = [], [], 0
+    while row < n:
+        path = data_dir / f"topk_{row:06d}.npz"
+        if not path.exists():
+            raise FileNotFoundError(f"{path} is missing")
+        with np.load(path) as z:
+            a, b = z["idx"], z["logp"]
+        take = min(len(a), n - row)
+        idx.append(a[:take])
+        lp.append(b[:take])
+        row += len(a)
+    return np.array(ids[:n]), np.concatenate(idx), np.concatenate(lp)
+
+
 def _teacher_complete(out, shard: int) -> tuple[int, int] | None:
     """(rows, seq_len) when the inputs and every shard exist."""
     ids_path = out / "input_ids.npy"

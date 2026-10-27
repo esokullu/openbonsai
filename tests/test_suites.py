@@ -52,7 +52,7 @@ def test_compare_against_itself_is_exact_and_suites_refuse_other_tokenizers(tiny
     ref = S.compare_reference(model, blocks, topk=8)
     r = S.compare(model, blocks, ref)
     assert r["tokens"] == 46 and r["top1_agreement"] == 1.0
-    assert abs(r["delta_nll"]) < 1e-12 and abs(r["kl_topk"]) < 1e-9
+    assert abs(r["delta_nll"]) < 1e-12 and abs(r["kl_top8"]) < 1e-9
     with pytest.raises(S.SuiteNotApplicable):
         S.dev(model, tok)
     with pytest.raises(S.SuiteNotApplicable):
@@ -75,7 +75,7 @@ def test_eval_stage_sources_and_legacy_states(calibrated, tmp_path):
     execute(ctx, "eval", source="quantize", suites=["compare", "dev"])
     out = ctx.run.stage_dir("eval")
     q = json.loads((out / "quantize.compare.json").read_text())
-    assert q["source"] == "quantize" and q["kl_topk"] > 0 and not (out / "quantize.dev.json").exists()
+    assert q["source"] == "quantize" and q["kl_top16"] > 0 and not (out / "quantize.dev.json").exists()
     # The same decoder state written in the research .pt layout evaluates identically.
     state = ctx.quantize_state()
     modules = {k: {"codes": t.codes, "scales": t.scales, "signs": s, "block": b, "seed": t.codes.shape[1]}
@@ -84,10 +84,10 @@ def test_eval_stage_sources_and_legacy_states(calibrated, tmp_path):
     torch.save({"args": {}, "modules": modules}, legacy)
     execute(ctx, "eval", source=str(legacy), suites=["compare"])
     r = json.loads((out / "ternary_state.compare.json").read_text())
-    assert r["nll"] == q["nll"] and r["kl_topk"] == q["kl_topk"]
+    assert r["nll"] == q["nll"] and r["kl_top16"] == q["kl_top16"]
     execute(ctx, "eval", source="bf16", suites=["compare"])
     b = json.loads((out / "bf16.compare.json").read_text())
-    assert b["kl_topk"] < 1e-9 and b["top1_agreement"] == 1.0
+    assert b["kl_top16"] < 1e-9 and b["top1_agreement"] == 1.0
     execute(ctx, "eval", source="endpoints", suites=["compare"])
     e = json.loads((out / "endpoints.compare.json").read_text())
-    assert e["kl_topk"] > q["kl_topk"] * 0.5
+    assert e["kl_top16"] > q["kl_top16"] * 0.5

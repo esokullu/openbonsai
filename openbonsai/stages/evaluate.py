@@ -16,6 +16,15 @@ Sources (``--from``):
   F32 tensors); only the config and tokenizer come from ``model.path``. The
   ``compare`` reference still comes from the BF16 model.
 
+``compare`` caches the BF16 reference in ``eval/compare-reference-<key>.pt``
+(NLL, top-1, top-k) and, with ``eval.compare.full`` (the default), the
+reference's raw logits per block in ``compare-reference-<key>.logits/`` for
+the full-vocabulary ``ear_full`` and ``kl_full`` (n x (seq_len - 1) x vocab in
+the model's dtype: about 2 GB for Qwen3.5-9B at the defaults). Later
+evaluations of other sources reuse both without loading the BF16 model.
+``teacher`` scores against the first ``eval.teacher.rows`` rows of this run's
+distillation teacher shards (top-k metrics only; no BF16 model).
+
 A stage source must be enabled, complete and current (same config, inputs and
 upstream outputs as when it ran); ``auto`` picks the last such stage. So a
 rerun quantize never meets distilled scales trained on the old codes.
@@ -94,26 +103,51 @@ def compare_blocks(ctx, tok) -> torch.Tensor:
     return blocks
 
 
-def _reference(ctx, blocks, model) -> dict:
+def _reference(ctx, blocks, model) -> tuple[dict, object]:
     """BF16 reference statistics of the unmodified model, cached per model and block set.
 
-    ``model``: the model, or a callable returning it (called only when the cache misses)."""
+    ``model``: the model, or a callable returning it (called only when the cache misses).
+    Returns (statistics, ``ref_logits(b)`` loader of the cached raw logits, or None
+    when ``eval.compare.full`` is off)."""
     from ..config import canonical_hash
     from ..formats.atomic import durable_save
     out = ctx.run.stage_dir("eval")
     m = ctx.cfg["model"]
+    c = ctx.cfg["eval"]["compare"]
     key = canonical_hash({"blocks": blocks.tolist(), "model": [m.get(k) for k in ("path", "revision", "dtype", "attn")],
-                          "model_sha256": ctx.model_digest(),
-                          "topk": int(ctx.cfg["eval"]["compare"]["topk"])})[:16]
+                          "model_sha256": ctx.model_digest(), "topk": int(c["topk"])})[:16]
     path = out / f"compare-reference-{key}.pt"
-    if path.exists():
-        return torch.load(path, weights_only=True)
+    full = bool(c.get("full", True))
+    logits_dir = out / f"compare-reference-{key}.logits"
+    files = [logits_dir / f"block_{b:04d}.pt" for b in range(len(blocks))]
+    loader = (lambda b: torch.load(files[b], weights_only=True)) if full else None
+    if path.exists() and (not full or all(f.exists() for f in files)):
+        return torch.load(path, weights_only=True), loader
     if callable(model) and not isinstance(model, torch.nn.Module):
         model = model()
     model.eval()
-    ref = S.compare_reference(model, blocks, topk=int(ctx.cfg["eval"]["compare"]["topk"]))
+    keep = None
+    if full:
+        vocab = S.vocab_size(model)
+        ctx.log("eval")(f"compare: keeping the reference logits for ear_full/kl_full in {logits_dir.name}: "
+                        f"{len(blocks)} x {blocks.shape[1] - 1} x {vocab} in {ctx.dtype} "
+                        f"(~{len(blocks) * (blocks.shape[1] - 1) * vocab * ctx.dtype.itemsize / 2**30:.2f} GiB)")
+
+        def keep(b, logits):
+            durable_save(logits, files[b])
+    ref = S.compare_reference(model, blocks, topk=int(c["topk"]), keep_logits=keep)
     durable_save(ref, path)
-    return ref
+    return ref, loader
+
+
+def teacher_rows(ctx):
+    """(ids, idx, logp) of the first ``eval.teacher.rows`` rows of the run's distillation teacher shards."""
+    from .distill import read_teacher_rows
+    folder = ctx.run.stage_dir("distill", create=False) / "teacher"
+    try:
+        return read_teacher_rows(folder, int(ctx.cfg["eval"]["teacher"]["rows"]))
+    except FileNotFoundError as error:
+        raise S.SuiteNotApplicable(f"no distillation teacher shards in this run ({error})") from None
 
 
 def load_gguf(ctx, path, *, small_fp32: bool = False):
@@ -134,14 +168,14 @@ def run(ctx, source: str | None = None, suites=None, install_mode: str = "auto",
         raise ValueError(f"unknown suites {sorted(unknown)}; known: {S.SUITES}")
     out = ctx.run.stage_dir("eval")
     results = {}
-    reference = blocks = None
+    reference = blocks = ref_logits = None
     if is_gguf(source):
         if install_mode == "dense":
             raise ConfigError("a GGUF source is installed as ternary modules; --install dense does not apply")
         tok = ctx.load_tokenizer()
         if "compare" in suites:
             blocks = compare_blocks(ctx, tok)
-            reference = _reference(ctx, blocks, lambda: ctx.load_model()[0])
+            reference, ref_logits = _reference(ctx, blocks, lambda: ctx.load_model()[0])
             free(ctx.device)
         model = load_gguf(ctx, source, small_fp32=gguf_small_fp32)
         label = Path(source).stem + ("-fp32small" if gguf_small_fp32 else "")
@@ -150,7 +184,7 @@ def run(ctx, source: str | None = None, suites=None, install_mode: str = "auto",
         if "compare" in suites:
             blocks = compare_blocks(ctx, tok)
             model.eval()
-            reference = _reference(ctx, blocks, model)   # before any ternary weights go in
+            reference, ref_logits = _reference(ctx, blocks, model)   # before any ternary weights go in
         label = install(ctx, model, source, install_mode)
     model.eval()
     for suite in suites:
@@ -159,8 +193,10 @@ def run(ctx, source: str | None = None, suites=None, install_mode: str = "auto",
                 r = S.dev(model, tok, generations=bool(e.get("generations", True)))
             elif suite == "extended":
                 r = S.extended(model, tok)
+            elif suite == "teacher":
+                r = S.teacher(model, *teacher_rows(ctx))
             else:
-                r = S.compare(model, blocks, reference)
+                r = S.compare(model, blocks, reference, ref_logits=ref_logits)
         except S.SuiteNotApplicable as error:
             log(f"{suite}: skipped ({error})")
             results[suite] = {"suite": suite, "skipped": str(error)}
