@@ -415,10 +415,12 @@ def objective(errors: dict | None, target: str, mix: float) -> float | None:
     return (1 - mix) * errors["original"] + mix * errors["quantized"]
 
 
-def eps_damped(opt, latents, eps: float) -> float | None:
-    """Fraction of latent coordinates whose bias-corrected Adam sqrt(v) is below 10 * eps (where eps damps
-    the update rather than the gradient scale setting it); None before any latent step."""
+def eps_damped(opt, latents, eps: float) -> tuple[float | None, float | None]:
+    """(fraction of latent coordinates whose bias-corrected Adam sqrt(v) is below 10 * eps, where eps damps
+    the update rather than the gradient scale setting it; the RMS of the latent gradients, sqrt(mean v),
+    to compare with eps). (None, None) before any latent step."""
     damped = total = 0
+    vsum = 0.0
     for _, m in latents:
         st = opt.state.get(m.latent)
         if not st or "exp_avg_sq" not in st:
@@ -426,8 +428,9 @@ def eps_damped(opt, latents, eps: float) -> float | None:
         step = float(st["step"])
         vhat = st["exp_avg_sq"] / (1 - BETAS[1] ** step)
         damped += int((vhat.sqrt() < 10 * eps).sum())
+        vsum += float(vhat.double().sum())
         total += vhat.numel()
-    return damped / total if total else None
+    return (damped / total, math.sqrt(vsum / total)) if total else (None, None)
 
 
 def anneal_frac(t: int, anneal_steps: int) -> float:
@@ -449,7 +452,7 @@ def train_window(students, xs: Stream, targets: list[tuple[Stream, float]], kwar
     freeze_step = int(round(float(r["freeze_codes_after"]) * total))
     anneal_steps = int(round(float(r["zero_anneal"]) * total))
     stats = {"steps": total, "code_steps": min(freeze_step, total), "train_loss_first": None,
-             "train_loss_last": None, "eps_damped": None}
+             "train_loss_last": None, "eps_damped": None, "latent_grad_rms": None}
     if total == 0:
         return stats
     v_params = [m.latent for _, m in latents]
@@ -469,7 +472,7 @@ def train_window(students, xs: Stream, targets: list[tuple[Stream, float]], kwar
             if t == freeze_step:
                 for _, m in latents:
                     m.set_anneal(anneal_frac(t, anneal_steps))
-                stats["eps_damped"] = eps_damped(opt, latents, eps)
+                stats["eps_damped"], stats["latent_grad_rms"] = eps_damped(opt, latents, eps)
                 for _, m in latents:
                     m.freeze()
                     opt.state.pop(m.latent, None)
@@ -495,7 +498,7 @@ def train_window(students, xs: Stream, targets: list[tuple[Stream, float]], kwar
     if freeze_step >= total:      # never frozen: the codes are the ones the latent gives at the end
         for _, m in latents:
             m.set_anneal(anneal_frac(total, anneal_steps))
-        stats["eps_damped"] = eps_damped(opt, latents, eps)
+        stats["eps_damped"], stats["latent_grad_rms"] = eps_damped(opt, latents, eps)
     stats["train_loss_first"] = sum(losses[:n]) / len(losses[:n])
     stats["train_loss_last"] = sum(losses[-n:]) / len(losses[-n:])
     return stats
@@ -715,7 +718,8 @@ def refine_model(model, adapter, train_ids, val_ids, base: TernaryState, *, sett
                 f"code flips {entry['flips']:.3%} (sign {entry['sign_flips']:.3%}, zero<->nonzero "
                 f"{entry['zero_flips']:.3%}); zeros {entry['zeros_before']:.2%} -> {entry['zeros_after']:.2%}; "
                 f"scale drift mean |log| {entry['scale_drift_mean']:.4f}, max {entry['scale_drift_max']:.4f}; "
-                f"eps-damped {_fmt(entry['eps_damped'], '.2%') if entry['eps_damped'] is not None else 'n/a'}"
+                f"eps-damped {_fmt(entry['eps_damped'], '.2%')} (latent grad rms "
+                f"{_fmt(entry['latent_grad_rms'], '.2e')}, eps {float(r['eps']):.0e})"
                 + (f"; peak VRAM {timing['peak_vram_gb']:.2f} GiB (reserved {timing['peak_reserved_gb']:.2f})"
                    if timing["peak_vram_gb"] is not None else ""))
         for k in span:

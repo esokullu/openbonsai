@@ -217,6 +217,7 @@ def test_training_lowers_the_held_out_error_and_rollback_guards_each_layer(endpo
                    for k, t in layer.items())
         assert same == w["rollback"]                 # a rolled-back layer is exactly its input
         assert 0 <= w["eps_damped"] <= 0.01          # Adam's eps does not damp the latent updates
+        assert w["latent_grad_rms"] > 100 * float(ctx.cfg["refine"]["eps"])
     assert r.meta["rolled_back"] == [w["layers"][0] for w in windows if w["rollback"]]
     log = (ctx.run.root / "logs" / "refine.log").read_text(encoding="utf-8")
     assert "held-out rel err vs target" in log and "code flips" in log and "scale drift" in log
@@ -241,7 +242,8 @@ def test_codes_change_only_when_allowed_and_the_flip_statistics_are_exact(endpoi
     assert execute(ctx, "refine") == "ran"
     r = ctx.refine_state()
     assert _same(q, r, "codes") and not _same(q, r, "scales")
-    assert all(w["code_steps"] == 0 and w["eps_damped"] is None for w in _report(ctx)["windows"])
+    assert all(w["code_steps"] == 0 and w["eps_damped"] is None and w["latent_grad_rms"] is None
+               for w in _report(ctx)["windows"])
     # Bonsai-like: every group ends with exactly `zeros` zeros.
     _sets(ctx, "refine.freeze_codes_after=0.8", "refine.assign=quantile", "refine.zeros=42")
     assert execute(ctx, "refine") == "ran"
