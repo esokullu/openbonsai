@@ -80,7 +80,7 @@ class FakePrism:
 def test_runner_scores_a_manifest_and_writes_the_report(tmp_path):
     manifest = tmp_path / 'm.json'
     manifest.write_text(json.dumps(fixture()))
-    args = ['--worker', 'w', '--model', 'm.gguf', '--prism-source', 'src', '--output', str(tmp_path / 'out'),
+    args = ['--worker', 'w', '--model', 'm.gguf', '--output', str(tmp_path / 'out'),
             '--manifest', str(manifest), '--threads', '2']
     assert runner.main(args, backend_factory=FakePrism) == 0
     fake = FakePrism.instances[-1]
@@ -95,7 +95,7 @@ def test_runner_scores_a_manifest_and_writes_the_report(tmp_path):
 
 
 def test_default_manifest_is_the_pinned_dev_suite():
-    args = runner.build_parser().parse_args(['--worker', 'w', '--model', 'm', '--prism-source', 's', '--output', 'o'])
+    args = runner.build_parser().parse_args(['--worker', 'w', '--model', 'm', '--output', 'o'])
     manifest = runner.load(args)
     assert manifest['frozen_sha256'] == '8021d9cc8f54943a3b816af74cbc41d588173d385f51b73a681e979393ef5fdf'
     assert runner.context_length(manifest) == 513

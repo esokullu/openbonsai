@@ -52,8 +52,10 @@ def test_native_selected_position_scores_match_direct_full_vocab(multimodal):
     assert calls == [2, 2]
     assert result['score_positions'] == selected
     assert result['count'] == 4
-    assert result['target_logprobs'] == pytest.approx(expected, abs=1e-7)
-    assert result['nll_sum'] == pytest.approx(-math.fsum(expected), abs=1e-7)
+    # The head runs on 2-row chunks here and on all rows above: different GEMM
+    # shapes, so FP32 rounding differs by a few ulp (abs 1e-7 was flaky).
+    assert result['target_logprobs'] == pytest.approx(expected, rel=1e-6, abs=1e-6)
+    assert result['nll_sum'] == pytest.approx(-math.fsum(expected), rel=1e-6, abs=1e-6)
     backend.score_tokens([2, 3, 4], [1, 2])
     assert backend.score_tokens(ids, selected) == result
     metadata = backend.metadata()
@@ -186,7 +188,12 @@ def test_from_local_forbids_downloads_and_keeps_saved_source(tmp_path, monkeypat
     backend = TransformersBackend.from_local(root, context_length=32, dtype='float32')
     assert calls == [(str(root), {'device': 'cpu', 'dtype': 'float32', 'local_files_only': True})]
     assert backend.tokenize('hello') == native.tokenize('hello')
-    assert backend.metadata()['source_identity']['files']['fixture-weights']['sha256'] == hashlib.sha256(b'model declaration').hexdigest()
+    assert backend.metadata()['source_identity'] == {'kind': 'local-directory', 'path': str(root),
+                                                     'model_kind': 'original'}
+    # With an expected SHA-256 the directory is hashed and checked first.
+    sha = local_directory_identity(root)['sha256']
+    checked = TransformersBackend.from_local(root, context_length=32, dtype='float32', expected_model_sha256=sha)
+    assert checked.metadata()['source_identity']['files']['fixture-weights']['sha256'] == hashlib.sha256(b'model declaration').hexdigest()
 
 
 FAKE_WORKER = r'''
@@ -250,8 +257,6 @@ for line in sys.stdin:
 @pytest.fixture
 def worker_factory(tmp_path, monkeypatch):
     from openbonsai.eval import backends as eval_backends
-    monkeypatch.setattr(eval_backends, '_runtime_identity', lambda path, expected:
-                        {'path':str(path), 'sha':expected, 'tracked_source_clean':True})
     # Explicit interpreter launch makes these pipe tests runnable on Windows,
     # where an executable Python shebang is not recognized by CreateProcess.
     original_popen = subprocess.Popen
@@ -267,7 +272,7 @@ def worker_factory(tmp_path, monkeypatch):
             .replace('PROTOCOL', repr(PROTOCOL)).replace('REDUCTION', repr(REDUCTION)).replace('SHA', repr(PRISM_RUNTIME_SHA)))
         worker.chmod(0o755)
         model.write_bytes(b'not a real GGUF; protocol fixture only')
-        result = PrismBackend(worker, model, context_length=32, runtime_source_dir=directory,
+        result = PrismBackend(worker, model, context_length=32,
             stderr_path=directory/'stderr.log', request_timeout=kwargs.pop('request_timeout', 3.), **kwargs)
         created[-1] = result
         return result
@@ -345,23 +350,14 @@ def test_stalled_worker_request_write_has_a_portable_timeout(worker_factory):
     assert not worker._writer_thread.is_alive() and not worker._stdout_thread.is_alive()
 
 
-def test_runtime_pin_and_tracked_cleanliness(tmp_path):
-    from openbonsai.eval.backends import _runtime_identity
-    def git(*args):
-        return subprocess.run(['git','-C',str(tmp_path),*args], check=True, capture_output=True, text=True).stdout.strip()
-    git('init')
-    (tmp_path/'source').write_text('original')
-    git('add','source')
-    git('-c','user.name=Fixture','-c','user.email=fixture@example.test','commit','-m','Fixture')
-    sha = git('rev-parse','HEAD')
-    assert _runtime_identity(tmp_path, sha)['sha'] == sha
-    with pytest.raises(ValueError, match='pinned commit'):
-        _runtime_identity(tmp_path, '0'*40)
-    (tmp_path/'source').write_text('modified')
-    with pytest.raises(ValueError, match='local modifications'):
-        _runtime_identity(tmp_path, sha)
+def test_worker_built_from_another_runtime_commit_is_refused(worker_factory):
+    with pytest.raises(RuntimeError, match='disagrees'):
+        worker_factory(runtime_sha='0' * 40)
 
 
-def test_file_hash_mismatch_precedes_process_launch(worker_factory):
+def test_files_are_hashed_only_to_check_an_expected_sha(worker_factory):
+    worker = worker_factory()
+    assert 'sha256' not in worker.metadata()['source_identity']
+    worker.close()
     with pytest.raises(ValueError, match='File SHA256 mismatch'):
         worker_factory(expected_model_sha256='0'*64)

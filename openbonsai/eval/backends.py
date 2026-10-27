@@ -2,6 +2,9 @@
 
 No downloads, templates, BOS insertion, sampling, logits processors or implicit
 retries. These adapters establish an evaluation contract, not model equivalence.
+Files are hashed only when the caller passes an expected SHA-256 to check; the
+Prism worker reports the runtime commit it was built from, which must match
+the pin.
 """
 from __future__ import annotations
 
@@ -63,10 +66,13 @@ def _canonical(value):
     return json.dumps(value, sort_keys=True, separators=(',', ':'), allow_nan=False).encode()
 
 
-def _identity(path, expected_sha256=None):
+def _identity(path, expected_sha256=None, *, hashed=None):
+    """Path and size, plus the SHA-256 when ``hashed`` (default: when an expected SHA-256 is given to check)."""
     path = Path(path).absolute()
     if path.is_symlink() or not path.is_file():
         raise ValueError(f'Expected a materialized regular file: {path}')
+    if not (expected_sha256 is not None if hashed is None else hashed):
+        return {'path': str(path), 'bytes': path.stat().st_size}
     before = path.stat()
     digest = hashlib.sha256()
     with path.open('rb') as handle:
@@ -82,7 +88,7 @@ def _identity(path, expected_sha256=None):
 
 
 def local_directory_identity(directory):
-    """Hash every local artifact file before loading; never resolve a hub ID."""
+    """Hash every local artifact file (for an expected-SHA check); never resolve a hub ID."""
     root = Path(directory).absolute()
     if root.is_symlink() or not root.is_dir():
         raise ValueError('Model/tokenizer must be a materialized local directory')
@@ -91,7 +97,7 @@ def local_directory_identity(directory):
         if path.is_symlink():
             raise ValueError('Source directory cannot contain symlinks')
         if path.is_file():
-            info = _identity(path)
+            info = _identity(path, hashed=True)
             files[path.relative_to(root).as_posix()] = {'sha256': info['sha256'], 'bytes': info['bytes']}
     if not files:
         raise ValueError('Source directory contains no files')
@@ -125,6 +131,19 @@ def _load_native(model_id, device='cpu', dtype='auto', *, revision=None, local_f
     model, _ = adapter.load(model_id, revision=revision, device=device, dtype=dtype, attn='eager',
                             local_files_only=local_files_only)
     return model
+
+
+def _directory(path, expected_sha256, label):
+    """Path only, or the hashed identity when an expected SHA-256 is given to check."""
+    root = Path(path).absolute()
+    if expected_sha256 is None:
+        if root.is_symlink() or not root.is_dir():
+            raise ValueError('Model/tokenizer must be a materialized local directory')
+        return {'kind': 'local-directory', 'path': str(root)}
+    identity = local_directory_identity(root)
+    if identity['sha256'] != expected_sha256:
+        raise ValueError(f'{label} directory SHA256 mismatch')
+    return identity
 
 
 class TransformersBackend:
@@ -175,12 +194,9 @@ class TransformersBackend:
             # Mixed artifacts are a legacy format (research/legacy; tag legacy-staged-pipeline).
             raise ValueError('model_kind must be original')
         tokenizer_path = Path(tokenizer_path).absolute() if tokenizer_path is not None else model_path
-        source = local_directory_identity(model_path)
-        tokens = copy.deepcopy(source) if tokenizer_path == model_path else local_directory_identity(tokenizer_path)
-        if expected_model_sha256 is not None and source['sha256'] != expected_model_sha256:
-            raise ValueError('Model directory SHA256 mismatch')
-        if expected_tokenizer_sha256 is not None and tokens['sha256'] != expected_tokenizer_sha256:
-            raise ValueError('Tokenizer directory SHA256 mismatch')
+        source = _directory(model_path, expected_model_sha256, 'Model')
+        tokens = (copy.deepcopy(source) if tokenizer_path == model_path and expected_tokenizer_sha256 is None
+                  else _directory(tokenizer_path, expected_tokenizer_sha256, 'Tokenizer'))
         tokenizer = AutoTokenizer.from_pretrained(str(tokenizer_path), local_files_only=True, trust_remote_code=False)
         model = _load_native(str(model_path), device=device, dtype=dtype, local_files_only=True)
         source['model_kind'] = model_kind
@@ -234,8 +250,8 @@ class TransformersBackend:
 
     def _hidden(self, ids):
         embedding = self.model.get_input_embeddings()
-        # MixedEmbedding.weight reconstructs the whole table: inspect actual
-        # storage instead of touching that compatibility property.
+        # A TernaryEmbedding keeps its table in buffers: find the device from
+        # whatever storage the module has.
         reference = next(embedding.parameters(), None)
         reference = next(embedding.buffers(), None) if reference is None else reference
         if reference is None:
@@ -301,19 +317,6 @@ class TransformersBackend:
         """The caller owns the in-memory native model; no process to close."""
 
 
-def _runtime_identity(source, expected):
-    source = Path(source).absolute()
-    def git(*args):
-        result = subprocess.run(['git', '-C', str(source), *args], capture_output=True, text=True, check=True)
-        return result.stdout.strip()
-    actual = git('rev-parse', 'HEAD')
-    if actual != expected:
-        raise ValueError('Prism runtime source is not the pinned commit')
-    if git('diff', 'HEAD', '--name-only'):
-        raise ValueError('Prism tracked runtime source has local modifications')
-    return {'path': str(source), 'sha': actual, 'tracked_source_clean': True}
-
-
 def _unique_json(pairs):
     result = {}
     for name, value in pairs:
@@ -325,7 +328,7 @@ def _unique_json(pairs):
 
 class PrismBackend:
     """Persistent strict JSONL subprocess; failures close it without retry."""
-    def __init__(self, executable, model_path, *, context_length, runtime_source_dir,
+    def __init__(self, executable, model_path, *, context_length,
                  stderr_path, threads=1, gpu_layers=0, runtime_sha=PRISM_RUNTIME_SHA,
                  expected_executable_sha256=None, expected_model_sha256=None,
                  request_timeout=300., max_response_bytes=4 << 20, stderr_max_bytes=1 << 20):
@@ -339,7 +342,7 @@ class PrismBackend:
         self._timeout, self._counter = request_timeout, 0
         self._stdout_queue, self._stdout_error = queue.Queue(maxsize=1), None
         self._lock, self._closed = threading.RLock(), False
-        self._runtime = _runtime_identity(runtime_source_dir, runtime_sha)
+        self._runtime = {'sha': runtime_sha}   # the worker must report this commit (_validate_metadata)
         self._executable = _identity(executable, expected_executable_sha256)
         self._model = _identity(model_path, expected_model_sha256)
         self.stderr_path = Path(stderr_path).absolute()
@@ -487,7 +490,7 @@ class PrismBackend:
 
     def metadata(self):
         return copy.deepcopy({**self._worker, 'backend': 'prism', 'source_identity': self._model,
-            'tokenizer_identity': {'kind': 'embedded-gguf', 'model_sha256': self._model['sha256']},
+            'tokenizer_identity': {'kind': 'embedded-gguf', 'model': self._model},
             'runtime': {**self._runtime, 'executable': self._executable}, 'argv': self._argv,
             'stderr': {'path': str(self.stderr_path), 'max_bytes': self._stderr_max,
                        'truncated': self._stderr_seen > self._stderr_max}})

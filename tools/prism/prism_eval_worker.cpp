@@ -16,7 +16,7 @@
 #include <vector>
 
 #ifndef OPENBONSAI_PRISM_SHA
-#error "Build with tools/build_prism_eval.py to verify the pinned source"
+#error "Build with tools/prism/build_prism_eval.py to verify the pinned source"
 #endif
 #ifndef OPENBONSAI_CUDA_BUILD
 #define OPENBONSAI_CUDA_BUILD 0
