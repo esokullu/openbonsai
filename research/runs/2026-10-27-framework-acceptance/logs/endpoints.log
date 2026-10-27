@@ -1,0 +1,4 @@
+[13:54:55] endpoints: applied 200 ternary decoder linears
+[13:56:12] endpoints: head (248320, 4096) quantized in 77s
+[13:56:39] endpoints: embedding (248320, 4096) quantized in 28s
+[16:03:16] endpoints: up to date (d595df713408); skipped

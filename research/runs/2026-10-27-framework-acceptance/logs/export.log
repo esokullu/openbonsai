@@ -1,0 +1,30 @@
+[16:55:42] export: exporting the distill state to runs\accept-shared\export\OpenBonsai-Qwen3.5-9B-PTQ1_0.gguf
+[16:55:43] export: note: layout equals the reference file's (Ternary-Bonsai-2-9B): names, order, types, ne, offsets and KV keys
+[16:55:43] export: writing runs\accept-shared\export\OpenBonsai-Qwen3.5-9B-PTQ1_0.gguf.tmp (427 tensors, 49 KVs)
+[16:55:47] export:   [1/427] output.weight 222.5 MB t=4s
+[16:55:52] export:   [3/427] token_embd.weight 222.5 MB t=9s
+[16:55:56] export:   [65/427] blk.4.ssm_alpha.weight 0.5 MB t=13s
+[16:56:01] export:   [129/427] blk.9.ffn_up.weight 11.0 MB t=18s
+[16:56:05] export:   [193/427] blk.14.attn_qkv.weight 7.3 MB t=22s
+[16:56:09] export:   [257/427] blk.18.ssm_out.weight 3.7 MB t=26s
+[16:56:13] export:   [321/427] blk.23.post_attention_norm.weight 0.0 MB t=30s
+[16:56:18] export:   [385/427] blk.28.ssm_conv1d.weight 0.1 MB t=35s
+[16:56:21] export: wrote 1,997,486,976 B in 38s; 8,946,450,432 ternary weights, 0 negative-scale groups normalized, 0 zero-scale groups (0 had nonzero codes, cleared)
+[16:56:21] export: verify: structure and KVs
+[16:56:21] export:   PASS  GGUF v3, alignment 32: 3, 32
+[16:56:21] export:   PASS  tensor names, order, types, ne and offsets as planned: 427 tensors
+[16:56:21] export:   PASS  file size = data start + tensor data: 1997486976 vs 1997486976
+[16:56:21] export:   PASS  KVs read back equal the KVs written: 49 KVs
+[16:56:21] export:   PASS  weight_names + inverse_weight_names cover each PTQ1_0 tensor once: 201 + 1 of 202
+[16:56:21] export:   PASS  sign table covers every PTQ1_0 input width: widths [4096, 12288]
+[16:56:21] export:   PASS  general.file_type = 143 (LLAMA_FTYPE_MOSTLY_PTQ1_0)
+[16:56:21] export: verify: against the reference file's header
+[16:56:21] export:   PASS  KV keys, order and types identical to the reference file
+[16:56:21] export:   PASS  tensor names, order, types, ne and offsets identical to the reference file
+[16:56:21] export:   PASS  data section starts where the reference's does: header end 11039597 (reference 11039588), data 11039616
+[16:56:21] export:   PASS  Prism runtime KVs equal the reference file's: differences (expected: name, sign values; a fine-tune may change tokenizer KVs): ['general.name', 'prism.hadamard.sign_values']
+[16:56:21] export: verify: content
+[16:57:22] export:   PASS  decoded PTQ1_0 codes and fp16 scale bits == permuted, canonical state (exact): 8,946,450,432 weights in 61s
+[16:57:22] export:   PASS  F32 tensors bit-identical to the transformed sources: 225 tensors
+[16:57:22] export:   PASS  function check (FP64, runtime transform vs fake-quant source rows): 22 tensors in layers [0, 3, 31] + endpoints, worst rel 1.13e-15
+[16:57:22] export: verify: 14 passed, 0 failed

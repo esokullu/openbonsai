@@ -1,0 +1,6 @@
+09:21:42 1: eval legacy per-module state
+09:36:28 2: run until quantize
+13:53:18 3: full run (endpoints, distill, export, eval)
+13:56:53 3 failed
+16:03:10 3b: full run retry with explicit distill teacher sources
+16:58:41 3b done

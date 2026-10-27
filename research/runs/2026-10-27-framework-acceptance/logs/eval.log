@@ -1,0 +1,5 @@
+[13:52:05] eval: {"source": "quantize", "suite": "dev", "nll": 3.3183112722263854, "ppl": 27.6136791750229, "scored_tokens": 2048, "arc_correct": 15, "arc_total": 20, "arc_preds": "CBABDCAABCADBCCBBBBB", "manifest_frozen_sha256": "8021d9cc8f54943a3b816af74cbc41d588173d385f51b73a681e979393ef5fdf"}
+[13:52:16] eval: {"source": "quantize", "suite": "extended", "wiki16k_nll": 3.1027483891376155, "arc100": 78, "chat_nll": 1.9644299887156509}
+[16:58:24] eval: {"source": "distill", "suite": "dev", "nll": 2.8871947288302606, "ppl": 17.9429042223111, "scored_tokens": 2048, "arc_correct": 19, "arc_total": 20, "arc_preds": "ABABAAAACCADBCCBCBBB", "manifest_frozen_sha256": "8021d9cc8f54943a3b816af74cbc41d588173d385f51b73a681e979393ef5fdf"}
+[16:58:38] eval: {"source": "distill", "suite": "extended", "wiki16k_nll": 2.6302044595094958, "arc100": 89, "chat_nll": 1.3217734791549804}
+[16:58:39] eval: {"source": "distill", "suite": "compare", "tokens": 4088, "nll": 2.5708901420559025, "ref_nll": 2.22213217243816, "delta_nll": 0.3487579696177425, "top1_agreement": 0.7206457925636007, "kl_topk": 0.4159477788015521}
