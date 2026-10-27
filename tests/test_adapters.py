@@ -103,3 +103,7 @@ def test_load_text_and_multimodal_checkpoints(tiny_dir, tiny_mm_dir):
             logits = model(input_ids=ids, use_cache=False).logits
         assert logits.shape == (1, ids.shape[1], 320) and torch.isfinite(logits).all()
         assert adapter.eos_ids(tok, model) == [tok.convert_tokens_to_ids("<|im_end|>")]
+        with torch.no_grad():  # traces and the dev suite generate through the (vision-less) wrapper
+            out = model.generate(input_ids=ids, max_new_tokens=3, do_sample=False, use_cache=True,
+                                 eos_token_id=[0], pad_token_id=0)
+        assert out.shape[1] <= ids.shape[1] + 3 and torch.equal(out[0, :ids.shape[1]], ids[0])

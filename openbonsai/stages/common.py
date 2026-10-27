@@ -2,8 +2,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from pathlib import Path
-
 import numpy as np
 import torch
 
@@ -11,7 +9,7 @@ from ..adapters import ModelAdapter, load_adapter
 from ..config import canonical_hash, stage_inputs, upstream
 from ..core.geometry import Geometry, check_signs, derive_geometry, make_signs
 from ..core.ternary import TernaryEmbedding, TernaryLinear, dense_weight, shared_hadamard
-from ..formats.state import TernaryState, load_scales, load_signs, load_state, save_signs
+from ..formats.state import TernaryState, TernaryTensor, load_scales, load_signs, load_state, save_signs
 from ..rundir import RunDir
 
 _DTYPES = {"bfloat16": torch.bfloat16, "float16": torch.float16, "float32": torch.float32}
@@ -112,7 +110,8 @@ class StageContext:
     def state_through(self, stage: str) -> TernaryState:
         """Decoder state, plus endpoints, plus distilled scales, up to ``stage``."""
         state = self.quantize_state()
-        if stage in ("endpoints", "distill"):
+        # Distillation trains (and so evaluates) the endpoints only when it installed them.
+        if stage == "endpoints" or (stage == "distill" and self.cfg["distill"].get("endpoints", True)):
             ep = self.endpoints_state()
             if ep is not None and ep.tensors:
                 state = state.merged(ep)
@@ -177,24 +176,12 @@ def install_ternary(adapter: ModelAdapter, model, records, device) -> list:
 
 
 def legacy_records(legacy: dict):
+    """Records from ``load_legacy_pt``: each module keeps its own signs and block."""
     for key in sorted(legacy):
         t = legacy[key]
-        from ..formats.state import TernaryTensor
         yield key, TernaryTensor(t.codes, t.scales), t.signs, t.block
 
 
 def free(device) -> None:
     if getattr(device, "type", device) == "cuda":
         torch.cuda.empty_cache()
-
-
-def read_jsonl(path) -> list[dict]:
-    import json
-    rows = []
-    for n, line in enumerate(Path(path).read_text(encoding="utf-8").splitlines(), 1):
-        if line.strip():
-            try:
-                rows.append(json.loads(line))
-            except json.JSONDecodeError as error:
-                raise ValueError(f"{path}:{n}: invalid JSON: {error}") from error
-    return rows
