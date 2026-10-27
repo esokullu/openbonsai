@@ -1,0 +1,59 @@
+# Qwen3.5-9B -> ternary, the settings of the decoder run that measured dev NLL 3.30
+# (ARC 13/20; BF16 2.42, official Ternary Bonsai 3.19): 256 x 2048 calibration
+# blocks (128 WikiText-2 train, 96 UltraChat, 32 own traces), damp 0.01,
+# group 128, block 4096, no scale refit. That run used per-module signs; this
+# config uses one shared sign vector per width, which Prism's PTQ1_0 needs.
+#
+#   openbonsai run --config examples/qwen3_5-9b.yaml --out runs/qwen3_5-9b
+#
+# For your own fine-tune, pass --model <dir or HF id>: it becomes the teacher,
+# writes its own traces with its own chat template, and is the BF16 reference.
+model:
+  path: Qwen/Qwen3.5-9B
+  revision: c202236235762e1c871ad0ccb60c8ee5ba337b9a
+  dtype: bfloat16
+  device: auto
+  attn: sdpa
+rotation:
+  group: 128
+  max_block: 4096          # derived block for 9B (widths 4096, 12288): 4096
+  signs: {mode: seeded, seed: width}
+  impl: dense              # the experiments' arithmetic; fwht avoids the dense R
+traces:
+  # 128 first-turn UltraChat prompts from rows below the calibration rows,
+  # answered greedily without thinking (the AYOT settings of the 3.30 run).
+  prompts: {kind: ultrachat, rows: [0, 6000], n: 128, seed: 5090}
+  max_new_tokens: 512
+  thinking: false
+  batch: 8
+calibrate:
+  seq_len: 2048
+  seed: 0
+  sources:
+    - {kind: wikitext2, n: 128}               # Salesforce/wikitext @ b08601e, train split
+    - {kind: ultrachat, n: 96, min_row: 6000}  # HuggingFaceH4/ultrachat_200k @ 8049631, train_sft shard 0
+    - {kind: traces, n: 32}                    # traces/traces.jsonl from the traces stage
+    # - {kind: jsonl, path: my-data.jsonl, n: 32}   # your own chat/text data
+quantize:
+  damp: 0.01
+  batch: 4
+endpoints:
+  head: ternary            # GPTQ with the final-hidden-state Hessian
+  embedding: ternary       # GPTQ weighted by layer 0's (1 + w) norm gain
+  damp: 0.01
+  chunk: 16384
+  batch: 4
+distill:
+  teacher: {n_seq: 2048, seq_len: 2048, seed: 1, shard: 64, topk: 64}
+  train: [scales]
+  lr: 2.0e-3
+  epochs: 1
+  accum: 8
+  warmup: 10
+  chunk: 512
+  log_every: 5
+  ckpt_every: 16
+eval:
+  from: auto
+  suites: [dev, extended]
+  generations: true

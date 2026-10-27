@@ -1,147 +1,206 @@
-"""Validated token-ID calibration data; no dataset or tokenizer downloads."""
+"""Fixed-length calibration token blocks from configurable sources.
 
+Port of research/experiments/calib_data.py with the same block arithmetic:
+WikiText-2 *train* windows at a seed-dependent phase, chat conversations
+rendered with the model's own chat template (rows below ``min_row`` are left
+for trace prompts), the model's self-generated traces (AYOT), and the user's
+own JSONL. Blocks are concatenated in source order and permuted with the seed.
+
+Files come from a local ``path`` or from the Hugging Face hub at a pinned
+revision (no machine-specific paths). For adapters that add BOS, every block
+starts with BOS and carries seq_len - 1 data tokens.
+
+Output: ``calib/tokens.npy`` (int32 [N, seq_len]) and ``calib/sources.json``.
+"""
 from __future__ import annotations
 
 import hashlib
+import io
 import json
+import random
 from pathlib import Path
-from typing import Any
+
+import numpy as np
+import torch
+
+from ..formats.atomic import atomic_write_bytes, atomic_write_json
+
+HUB = {
+    "wikitext2": {"repo": "Salesforce/wikitext", "revision": "b08601e04326c79dfdd32d625aee71d232d685c3",
+                  "file": "wikitext-2-raw-v1/train-00000-of-00001.parquet"},
+    "ultrachat": {"repo": "HuggingFaceH4/ultrachat_200k", "revision": "8049631c405ae6576f93f445c6b8166f76f5505a",
+                  "file": "data/train_sft-00000-of-00003-a3ecf92756993583.parquet"},
+}
+KINDS = ("wikitext2", "ultrachat", "traces", "jsonl")
 
 
-def _positive_integer(value: Any, name: str) -> None:
-    if type(value) is not int or value < 1:
-        raise ValueError(f"{name} must be a positive integer")
+def resolve_file(src: dict, *, local_files_only: bool = False, default_path=None) -> Path:
+    """A local ``path``, or ``repo``/``file``/``revision`` downloaded from the hub (dataset repo)."""
+    if src.get("path"):
+        path = Path(src["path"])
+        if not path.exists():
+            raise FileNotFoundError(f"{src['kind']} source not found: {path}")
+        return path
+    if default_path is not None:
+        return Path(default_path)
+    hub = {**HUB.get(src["kind"], {}), **{k: src[k] for k in ("repo", "revision", "file") if src.get(k)}}
+    if not hub.get("repo") or not hub.get("file"):
+        raise ValueError(f"{src['kind']} source needs a path or repo/file")
+    from huggingface_hub import hf_hub_download
+    return Path(hf_hub_download(hub["repo"], hub["file"], revision=hub.get("revision"), repo_type="dataset",
+                                local_files_only=local_files_only))
 
 
-def _token_ids(value: Any, location: str) -> list[int]:
-    if not isinstance(value, list) or not value:
-        raise ValueError(f"{location}: input_ids must be a nonempty list")
-    if any(type(token) is not int or token < 0 or token > 2**63 - 1 for token in value):
-        raise ValueError(f"{location}: input_ids must contain nonnegative int64 integers")
-    return value
-
-
-def load_calibration(
-    path: str | Path,
-    model_id: str,
-    sequence_length: int,
-    pad_token_id: int = 0,
-    max_samples: int | None = None,
-    expected_revision: str | None = None,
-) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    """Read JSONL into CPU long tensors of shape ``[1, sequence_length]``.
-
-    Each record contains ``input_ids`` and optionally ``attention_mask`` and
-    ``model_id`` (the alias ``model`` is also checked). Existing padding masks
-    are preserved. Right truncation and right padding are explicitly counted
-    in the returned JSON-serializable manifest. No reasoning tokens are removed.
-    Missing provenance is allowed for user-created token files and counted.
-    If ``expected_revision`` is given, every present ``resolved_revision`` or
-    ``revision`` must equal that pinned revision exactly; branch aliases are
-    not resolved implicitly. Observed revisions are recorded in the manifest.
-    """
-    _positive_integer(sequence_length, "sequence_length")
-    if max_samples is not None:
-        _positive_integer(max_samples, "max_samples")
-    if type(pad_token_id) is not int or not 0 <= pad_token_id <= 2**63 - 1:
-        raise ValueError("pad_token_id must be a nonnegative int64 integer")
-    if not isinstance(model_id, str) or not model_id.strip():
-        raise ValueError("model_id must be a nonempty string")
-    if expected_revision is not None and (
-        not isinstance(expected_revision, str) or not expected_revision.strip()
-    ):
-        raise ValueError("expected_revision must be a nonempty string or None")
-
-    # Kept lazy so inspecting the data helpers does not load the ML runtime.
-    import torch
-
-    source = Path(path)
-    samples: list[dict[str, Any]] = []
-    revisions: set[str] = set()
-    manifest: dict[str, Any] = {
-        "source": str(source.resolve()),
-        "model_id": model_id,
-        "expected_revision": expected_revision,
-        "sequence_length": sequence_length,
-        "pad_token_id": pad_token_id,
-        "truncation_side": "right",
-        "padding_side": "right",
-        "max_samples": max_samples,
-        "num_samples": 0,
-        "source_tokens": 0,
-        "retained_tokens": 0,
-        "active_tokens": 0,
-        "padding_tokens": 0,
-        "truncated_tokens": 0,
-        "truncated_records": 0,
-        "records_without_model_id": 0,
-        "records_without_revision": 0,
-        "prepared_records_hitting_generation_limit": 0,
-    }
+def file_sha256(path) -> str:
     digest = hashlib.sha256()
-    with source.open("rb") as stream:
-        for line_number, raw_line in enumerate(stream, 1):
-            if max_samples is not None and len(samples) >= max_samples:
-                break
-            digest.update(raw_line)
-            if not raw_line.strip():
-                continue
-            location = f"{source}:{line_number}"
-            try:
-                record = json.loads(raw_line)
-            except (json.JSONDecodeError, UnicodeDecodeError) as error:
-                raise ValueError(f"{location}: invalid JSON: {error}") from error
-            if not isinstance(record, dict):
-                raise ValueError(f"{location}: expected a JSON object")
-            provenance_keys = [key for key in ("model_id", "model") if key in record]
-            for key in provenance_keys:
-                if record[key] != model_id:
-                    raise ValueError(
-                        f"{location}: {key} {record[key]!r} does not match target {model_id!r}"
-                    )
-            revision_keys = [key for key in ("resolved_revision", "revision") if key in record]
-            for key in revision_keys:
-                revision = record[key]
-                if not isinstance(revision, str) or not revision.strip():
-                    raise ValueError(f"{location}: {key} must be a nonempty revision string")
-                if expected_revision is not None and revision != expected_revision:
-                    raise ValueError(
-                        f"{location}: {key} {revision!r} does not match expected revision {expected_revision!r}"
-                    )
-                revisions.add(revision)
-            ids = _token_ids(record.get("input_ids"), location)
-            mask = record.get("attention_mask", [1] * len(ids))
-            if (
-                not isinstance(mask, list)
-                or len(mask) != len(ids)
-                or any(type(value) is not int or value not in (0, 1) for value in mask)
-            ):
-                raise ValueError(f"{location}: attention_mask must be a matching list of 0/1 integers")
-            kept = min(len(ids), sequence_length)
-            removed = len(ids) - kept
-            missing = sequence_length - kept
-            kept_mask = mask[:kept]
-            if not any(kept_mask):
-                raise ValueError(f"{location}: no active tokens remain after truncation")
-            samples.append({
-                "input_ids": torch.tensor([ids[:kept] + [pad_token_id] * missing], dtype=torch.long),
-                "attention_mask": torch.tensor([kept_mask + [0] * missing], dtype=torch.long),
-            })
-            manifest["source_tokens"] += len(ids)
-            manifest["retained_tokens"] += kept
-            manifest["active_tokens"] += sum(kept_mask)
-            manifest["padding_tokens"] += missing
-            manifest["truncated_tokens"] += removed
-            manifest["truncated_records"] += int(removed > 0)
-            manifest["records_without_model_id"] += int(not provenance_keys)
-            manifest["records_without_revision"] += int(not revision_keys)
-            manifest["prepared_records_hitting_generation_limit"] += int(
-                record.get("hit_generation_limit") is True
-            )
-    if not samples:
-        raise ValueError(f"{source}: no calibration records found")
-    manifest["num_samples"] = len(samples)
-    manifest["revisions"] = sorted(revisions)
-    # With max_samples, this identifies exactly the consumed input prefix.
-    manifest["consumed_jsonl_sha256"] = digest.hexdigest()
-    return samples, manifest
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(8 << 20), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def pack(stream, seq_len, n_blocks, bos=None):
+    """Concatenate token lists and cut consecutive blocks (BOS-prefixed when ``bos``)."""
+    take = seq_len - (bos is not None)
+    blocks, buf = [], []
+    for ids in stream:
+        buf.extend(ids)
+        while len(buf) >= take and len(blocks) < n_blocks:
+            blocks.append(([bos] if bos is not None else []) + buf[:take])
+            buf = buf[take:]
+        if len(blocks) >= n_blocks:
+            break
+    return blocks
+
+
+def chat_text(tok, messages, chat_kwargs) -> str:
+    if getattr(tok, "chat_template", None):
+        return tok.apply_chat_template(messages, tokenize=False, **chat_kwargs)
+    return "\n\n".join(str(m.get("content", "")) for m in messages)   # base model: plain text
+
+
+def wiki_blocks(tok, path, seq_len, n, seed, bos=None):
+    import pyarrow.parquet as pq
+    text = "".join(pq.read_table(path).column("text").to_pylist())
+    ids = tok(text, add_special_tokens=False)["input_ids"]
+    take = seq_len - (bos is not None)
+    rng = random.Random(seed)
+    off = rng.randrange(take)  # non-overlapping windows at a seed-dependent phase
+    starts = sorted(rng.sample(range(off, len(ids) - take, take), n))
+    return [([bos] if bos is not None else []) + ids[s:s + take] for s in starts]
+
+
+def ultrachat_blocks(tok, path, seq_len, n, seed, *, min_row=6000, chat_kwargs=None, bos=None):
+    import pyarrow.parquet as pq
+    # Rows < min_row are the pool for trace prompts.
+    rows = pq.read_table(path, columns=["messages"]).column("messages").to_pylist()[min_row:]
+    random.Random(seed).shuffle(rows)
+    kwargs = chat_kwargs or {}
+
+    def gen():
+        for msgs in rows:
+            yield tok(chat_text(tok, msgs, kwargs), add_special_tokens=False)["input_ids"]
+
+    return pack(gen(), seq_len, n, bos)
+
+
+def trace_blocks(path, seq_len, n, bos=None):
+    def gen():
+        for line in Path(path).read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                r = json.loads(line)
+                mask = r.get("attention_mask") or [1] * len(r["input_ids"])
+                yield [t for t, m in zip(r["input_ids"], mask) if m]
+
+    return pack(gen(), seq_len, n, bos)
+
+
+def jsonl_blocks(tok, path, seq_len, n, seed, *, chat_kwargs=None, bos=None, shuffle=False):
+    """User data: one JSON object per line with ``messages`` (chat), ``text`` or ``input_ids``."""
+    rows = []
+    for k, line in enumerate(Path(path).read_text(encoding="utf-8").splitlines(), 1):
+        if not line.strip():
+            continue
+        r = json.loads(line)
+        if not isinstance(r, dict) or not ({"messages", "text", "input_ids"} & set(r)):
+            raise ValueError(f"{path}:{k}: expected an object with messages, text or input_ids")
+        rows.append(r)
+    if shuffle:
+        random.Random(seed).shuffle(rows)
+    kwargs = chat_kwargs or {}
+
+    def gen():
+        for r in rows:
+            if "input_ids" in r:
+                yield [int(t) for t in r["input_ids"]]
+            elif "messages" in r:
+                yield tok(chat_text(tok, r["messages"], kwargs), add_special_tokens=False)["input_ids"]
+            else:
+                yield tok(r["text"], add_special_tokens=False)["input_ids"]
+
+    return pack(gen(), seq_len, n, bos)
+
+
+def build(tok, sources, *, seq_len=2048, seed=0, chat_kwargs=None, bos=None, traces_path=None,
+          local_files_only=False):
+    """Blocks from every source in order, then one seeded permutation.
+
+    Returns (LongTensor [N, seq_len], per-source report).
+    """
+    blocks, report = [], []
+    for src in sources:
+        kind, n = src.get("kind"), int(src.get("n") or 0)
+        if kind not in KINDS:
+            raise ValueError(f"unknown calibration source kind {kind!r}; known: {KINDS}")
+        if n <= 0:
+            continue
+        s_seed = int(src.get("seed", seed))
+        path = resolve_file(src, local_files_only=local_files_only,
+                            default_path=traces_path if kind == "traces" and not src.get("path") else None)
+        if kind == "wikitext2":
+            got = wiki_blocks(tok, path, seq_len, n, s_seed, bos)
+        elif kind == "ultrachat":
+            got = ultrachat_blocks(tok, path, seq_len, n, s_seed, min_row=int(src.get("min_row", 6000)),
+                                   chat_kwargs=chat_kwargs, bos=bos)
+        elif kind == "traces":
+            if not Path(path).exists():
+                raise FileNotFoundError(f"traces file {path} missing; run the traces stage or set a path")
+            got = trace_blocks(path, seq_len, n, bos)
+        else:
+            got = jsonl_blocks(tok, path, seq_len, n, s_seed, chat_kwargs=chat_kwargs, bos=bos,
+                               shuffle=bool(src.get("shuffle", False)))
+        if len(got) != n:
+            raise ValueError(f"{kind}: only {len(got)} blocks of {seq_len} tokens available, {n} requested")
+        blocks += got
+        report.append({"kind": kind, "blocks": n, "path": str(path), "sha256": file_sha256(path),
+                       **{k: src[k] for k in ("repo", "revision", "file", "min_row", "seed") if k in src}})
+    if not blocks:
+        raise ValueError("no calibration blocks requested")
+    out = torch.tensor(blocks, dtype=torch.long)
+    perm = torch.randperm(len(out), generator=torch.Generator().manual_seed(seed))
+    return out[perm], report
+
+
+def save_tokens(path, tokens: torch.Tensor) -> None:
+    buf = io.BytesIO()
+    np.save(buf, tokens.numpy().astype(np.int32))
+    atomic_write_bytes(path, buf.getvalue())
+
+
+def run(ctx) -> dict:
+    c = ctx.cfg["calibrate"]
+    log = ctx.log("calibrate")
+    adapter = ctx.adapter()
+    tok = ctx.load_tokenizer()
+    out = ctx.run.stage_dir("calibrate")
+    tokens, report = build(tok, c["sources"], seq_len=int(c["seq_len"]), seed=int(c["seed"]),
+                           chat_kwargs=adapter.chat_kwargs(thinking=False), bos=adapter.bos_id(tok),
+                           traces_path=ctx.run.stage_dir("traces", create=False) / "traces.jsonl",
+                           local_files_only=bool(ctx.cfg["model"].get("local_files_only")))
+    save_tokens(out / "tokens.npy", tokens)
+    summary = {"shape": list(tokens.shape), "tokens": int(tokens.numel()), "seed": int(c["seed"]),
+               "sources": report}
+    atomic_write_json(out / "sources.json", summary)
+    log(f"calibration {tuple(tokens.shape)} = {tokens.numel()} tokens from "
+        + ", ".join(f"{r['kind']}x{r['blocks']}" for r in report))
+    return summary

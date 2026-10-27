@@ -4,25 +4,29 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "openbonsai"
-version = "0.1.0"
-description = "OpenBonsai: experimental rotated ternary calibration and packing for native Qwen3.5"
+version = "0.2.0"
+description = "OpenBonsai: ternary (Prism PTQ1_0) compression of dense language models: rotation, sequential GPTQ, distilled scales"
 requires-python = ">=3.12"
 license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]
-dependencies = ["torch>=2.6,<3", "transformers>=5.20.2,<5.21", "accelerate>=1.15,<2", "safetensors>=0.8,<1"]
+dependencies = ["torch>=2.6,<3", "transformers>=5.20.2,<5.21", "accelerate>=1.15,<2", "safetensors>=0.8,<1",
+                "numpy>=2", "pyarrow>=17", "pyyaml>=6", "huggingface_hub>=1"]
 
 [project.optional-dependencies]
 test = ["pytest>=9,<10"]
-evaluation = ["psutil>=7.2,<8"]
+prism = ["psutil>=7.2,<8"]
 
 [project.scripts]
-openbonsai = "openbonsai.__main__:main"
+openbonsai = "openbonsai.cli:main"
 
 [project.urls]
 Repository = "https://github.com/esokullu/openbonsai"
 
 [tool.setuptools.packages.find]
 include = ["openbonsai*"]
+
+[tool.setuptools.package-data]
+"openbonsai.eval" = ["assets/bonsai-dev/*.json", "assets/bonsai-dev/*.jsonl", "assets/bonsai-dev/*.md"]
 
 [tool.pytest.ini_options]
 # research/ keeps legacy tests for reading only; CI never collects or imports it.

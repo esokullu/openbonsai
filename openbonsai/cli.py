@@ -1,0 +1,200 @@
+"""``openbonsai`` command line.
+
+    openbonsai run --model Qwen/Qwen3.5-9B --config examples/qwen3_5-9b.yaml --out runs/my-model
+        = traces -> calibrate -> quantize -> endpoints -> distill -> (export, P2) -> eval
+
+    openbonsai <stage> --run runs/my-model [--set section.key=value ...] [--force]
+        stages: traces calibrate quantize endpoints distill export eval
+
+    openbonsai eval --run runs/my-model --from bf16|quantize|endpoints|distill|PATH --suite dev,extended,compare
+    openbonsai inspect PATH            summary of a state file or run directory
+
+A stage whose output exists with the same config hash is skipped; ``--force``
+reruns it (and, with ``run``, everything after it). Interrupted stages resume:
+quantize per layer, traces per batch, distill per teacher shard and checkpoint.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import shutil
+import sys
+from pathlib import Path
+
+from . import __version__
+from .config import STAGES, ConfigError, load_config
+from .rundir import RunDir
+
+# Resumable units that are valid only for the inputs they were made from.
+_RESUMABLE = {"traces": ("parts",), "quantize": ("layers",)}
+
+
+def _stage_module(stage: str):
+    from .stages import calibrate, distill, endpoints, evaluate, export, quantize, traces
+    return {"traces": traces, "calibrate": calibrate, "quantize": quantize, "endpoints": endpoints,
+            "distill": distill, "export": export, "eval": evaluate}[stage]
+
+
+def _enabled(cfg: dict, stage: str) -> bool:
+    section = cfg.get(stage) or {}
+    return section.get("enabled", True) is not False
+
+
+def resolve_config(args, run: RunDir) -> dict:
+    saved = run.load_config()
+    if args.config is not None:
+        cfg = load_config(args.config, args.set or (), model=args.model)
+    elif saved is not None:
+        from .config import apply_set, check_keys, deep_merge, DEFAULTS
+        cfg = check_keys(deep_merge(DEFAULTS, saved))
+        for assignment in args.set or ():
+            apply_set(cfg, assignment)
+        if args.model is not None:
+            cfg["model"]["path"] = args.model
+    else:
+        cfg = load_config(None, args.set or (), model=args.model)
+    if not cfg["model"].get("path"):
+        raise ConfigError("no model: pass --model or set model.path in the config")
+    run.root.mkdir(parents=True, exist_ok=True)
+    run.save_config(cfg)
+    return cfg
+
+
+def _prepare(ctx, stage: str, config_hash: str) -> None:
+    """Drop resumable units made under different inputs; record the current inputs."""
+    from .formats.atomic import atomic_write_json
+    if stage not in _RESUMABLE:
+        return
+    d = ctx.run.stage_dir(stage)
+    marker = d / "INPUTS.json"
+    if marker.exists() and json.loads(marker.read_text(encoding="utf-8")).get("config_hash") != config_hash:
+        for sub in _RESUMABLE.get(stage, ()):
+            shutil.rmtree(d / sub, ignore_errors=True)
+    atomic_write_json(marker, {"config_hash": config_hash})
+
+
+def execute(ctx, stage: str, *, force: bool = False, **kwargs) -> str:
+    """Run one stage unless it is complete with the same config hash. Returns a status word."""
+    log = ctx.log(stage)
+    if not _enabled(ctx.cfg, stage):
+        log("disabled in config; skipped")
+        return "disabled"
+    config_hash = ctx.stage_hash(stage)
+    if stage != "eval" and not force and ctx.run.is_done(stage, config_hash):
+        log(f"up to date ({config_hash[:12]}); skipped")
+        return "skipped"
+    _prepare(ctx, stage, config_hash)
+    ctx.run.clear_done(stage)
+    result = _stage_module(stage).run(ctx, **kwargs)
+    if stage != "eval":
+        ctx.run.mark_done(stage, config_hash, result=result)
+    return "ran"
+
+
+def cmd_run(args) -> int:
+    from .stages.common import StageContext
+    from .stages.export import ExportNotAvailable
+    run = RunDir(args.out)
+    ctx = StageContext(resolve_config(args, run), run)
+    stop = STAGES.index(args.until) if args.until else len(STAGES) - 1
+    forced = set(args.force or ())
+    statuses = {}
+    for i, stage in enumerate(STAGES[:stop + 1]):
+        if stage in (args.skip or ()):
+            statuses[stage] = "skipped by --skip"
+            continue
+        force = bool(forced) and any(STAGES.index(f) <= i for f in forced)
+        try:
+            statuses[stage] = execute(ctx, stage, force=force)
+        except ExportNotAvailable:
+            ctx.log(stage)("not available until P2; skipped")
+            statuses[stage] = "not available (P2)"
+    print(json.dumps({"run": str(run.root), "stages": statuses}, indent=1))
+    return 0
+
+
+def cmd_stage(args) -> int:
+    from .stages.common import StageContext
+    run = RunDir(args.run)
+    ctx = StageContext(resolve_config(args, run), run)
+    kwargs = {}
+    if args.stage == "eval":
+        kwargs = {"source": args.source, "suites": args.suite.split(",") if args.suite else None,
+                  "install_mode": args.install}
+    status = execute(ctx, args.stage, force=args.force, **kwargs)
+    print(json.dumps({"run": str(run.root), "stage": args.stage, "status": status}))
+    return 0
+
+
+def cmd_inspect(args) -> int:
+    from .formats.state import load_state
+    path = Path(args.path)
+    if path.is_dir():
+        run = RunDir(path)
+        info = {"run": str(path), "stages": {s: run.done_info(s) for s in STAGES if run.done_info(s)}}
+        print(json.dumps(info, indent=1, default=str))
+        return 0
+    state = load_state(path)
+    cols = {}
+    for t in state.tensors.values():
+        cols[t.shape[1]] = cols.get(t.shape[1], 0) + 1
+    weights = sum(t.codes.numel() for t in state.tensors.values())
+    print(json.dumps({"path": str(path), "tensors": len(state.tensors), "weights": weights,
+                      "block": state.block, "group": state.group, "sign_widths": sorted(state.signs),
+                      "tensors_by_input_width": cols,
+                      "ptq1_0_bytes": weights // 128 * 28, "meta": state.meta}, indent=1))
+    return 0
+
+
+def _common(p: argparse.ArgumentParser) -> None:
+    p.add_argument("--model", help="HF model id or local directory (sets model.path)")
+    p.add_argument("--config", help="YAML config (defaults to the run's saved run.yaml)")
+    p.add_argument("--set", action="append", metavar="SECTION.KEY=VALUE", help="override one config value")
+
+
+def build_parser() -> argparse.ArgumentParser:
+    ap = argparse.ArgumentParser(prog="openbonsai", description="Ternary (PTQ1_0) compression of dense LLMs.")
+    ap.add_argument("--version", action="version", version=f"openbonsai {__version__}")
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    r = sub.add_parser("run", help="run every stage into one run directory")
+    r.add_argument("--out", required=True, help="run directory")
+    _common(r)
+    r.add_argument("--until", choices=STAGES, help="stop after this stage")
+    r.add_argument("--force", action="append", choices=STAGES, help="rerun this stage and every later one")
+    r.add_argument("--skip", action="append", choices=STAGES, help="do not run this stage")
+    r.set_defaults(func=cmd_run)
+    for stage in STAGES:
+        s = sub.add_parser(stage, help=f"run the {stage} stage")
+        s.add_argument("--run", required=True, help="run directory")
+        _common(s)
+        s.add_argument("--force", action="store_true", help="rerun even if up to date")
+        if stage == "eval":
+            s.add_argument("--from", dest="source", default=None,
+                           help="bf16 | quantize | endpoints | distill | state.safetensors | legacy.pt[,more.pt]")
+            s.add_argument("--suite", default=None, help="comma-separated: dev, extended, compare")
+            s.add_argument("--install", choices=("auto", "dense", "ternary"), default="auto",
+                           help="dense weights or ternary modules (auto: ternary for distill)")
+        s.set_defaults(func=cmd_stage, stage=stage)
+    i = sub.add_parser("inspect", help="summarize a state file or run directory")
+    i.add_argument("path")
+    i.set_defaults(func=cmd_inspect)
+    return ap
+
+
+def main(argv=None) -> int:
+    args = build_parser().parse_args(argv)
+    try:
+        return args.func(args)
+    except (ConfigError, FileNotFoundError, NotImplementedError) as error:
+        print(f"openbonsai: error: {error}", file=sys.stderr)
+        return 2
+    except RuntimeError as error:
+        from .stages.export import ExportNotAvailable
+        if isinstance(error, ExportNotAvailable):
+            print(f"openbonsai: {error}", file=sys.stderr)
+            return 2
+        raise
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
