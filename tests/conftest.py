@@ -7,6 +7,14 @@ import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 os.environ.setdefault("HF_HUB_OFFLINE", "1")
 
+import sys  # noqa: E402
+
+# Keep transformers on its PyTorch Gated DeltaNet and causal-conv paths even where the optional
+# CUDA kernels are installed (scripts/setup_linux.sh installs flash-linear-attention): those
+# kernels cannot take CPU tensors, and the parity tests pin the reference arithmetic.
+for _kernels in ("fla", "causal_conv1d"):
+    sys.modules.setdefault(_kernels, None)
+
 from pathlib import Path  # noqa: E402
 
 import pytest  # noqa: E402

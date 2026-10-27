@@ -6,3 +6,4 @@ build/
 dist/
 /runs/
 .DS_Store
+/third_party/

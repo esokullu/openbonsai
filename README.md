@@ -26,6 +26,8 @@ The README and docs rewrite is phase P4.
 - Package: `openbonsai/` (`adapters/`, `core/`, `formats/`, `stages/`, `eval/`, `cli.py`)
 - Research history, experiment scripts and run reports: [research/README.md](research/README.md)
 - Optional Prism CPU evaluation runner: [tools/prism/](tools/prism/)
+- Evaluation suites and metrics (full-vocabulary EAR and KL against the BF16 model): [docs/evaluation.md](docs/evaluation.md)
+- Linux setup (CUDA PyTorch, flash-linear-attention, optional Prism llama.cpp build): [scripts/setup_linux.sh](scripts/setup_linux.sh)
 
 OpenBonsai is independent and not affiliated with the Bonsai model developers,
 the Qwen team or the authors of the papers it builds on.

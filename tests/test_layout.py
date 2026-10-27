@@ -21,3 +21,38 @@ def test_package_tests_and_tools_never_import_research():
     offenders = [str(f.relative_to(ROOT)) for f in files
                  if f.name != "test_layout.py" and IMPORT.search(f.read_text(encoding="utf-8"))]
     assert len(files) > 20 and offenders == []
+
+
+# A Windows drive path (D:/ or C:\) or an .exe name; in decoded Python strings also a
+# backslash-separated path (in raw text files a backslash is usually an escape, as in JSON).
+DRIVE_OR_EXE = re.compile(r"(?<![A-Za-z0-9])[A-Za-z]:[\\/]|\.exe\b", re.I)
+BACKSLASH_PATH = re.compile(r"[A-Za-z0-9_.-]\\[A-Za-z0-9_][A-Za-z0-9_.-]+\\")   # x\dir\ (not regex \.\.)
+
+
+def windows_path(text: str, decoded: bool) -> bool:
+    return bool(DRIVE_OR_EXE.search(text) or (decoded and BACKSLASH_PATH.search(text)))
+
+
+def test_the_windows_path_patterns():
+    for text in ("D:/openbonsai/runs", r"C:\Users\x", "Scripts\\python\\", "python.exe"):
+        assert windows_path(text, decoded=True), text
+    for text in ("https://github.com/x", "runs/x.gguf", "line\nnext\t", "a.execute", "${VENV:-/x}"):
+        assert not windows_path(text, decoded=True), text
+    assert not windows_path(r'"a\nb\nc"', decoded=False) and not windows_path(r"^(.*)\.\.\.<(\d+)", decoded=True)
+
+
+def test_package_examples_and_scripts_have_no_windows_paths():
+    """The package runs on Linux: no drive letters, backslash paths or .exe names in its
+    string literals (Python comments do not count), assets, examples or setup scripts."""
+    import ast
+    offenders = []
+    for f in sorted(ROOT.joinpath("openbonsai").rglob("*.py")):
+        for node in ast.walk(ast.parse(f.read_text(encoding="utf-8"))):
+            if isinstance(node, ast.Constant) and isinstance(node.value, str) and windows_path(node.value, True):
+                offenders.append(f"{f.relative_to(ROOT)}:{node.lineno}")
+    texts = [p for p in ROOT.joinpath("openbonsai").rglob("*") if p.suffix in (".json", ".jsonl", ".md", ".yaml")]
+    texts += [p for d in ("examples", "scripts") for p in ROOT.joinpath(d).rglob("*") if p.is_file()]
+    for f in texts:
+        if windows_path(f.read_text(encoding="utf-8"), decoded=False):
+            offenders.append(str(f.relative_to(ROOT)))
+    assert any(f.name == "setup_linux.sh" for f in texts) and offenders == []
