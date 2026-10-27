@@ -21,7 +21,7 @@ Measured so far, dev NLL (BF16 2.42; official Bonsai 3.19):
 
 | Setup | Dev NLL |
 |---|---|
-| Plain ternary rounding | 8.9 |
+| Rotated least-squares ternary rounding (RTN) | 8.94 |
 | GPTQ with scale refit | 5.15 |
 | GPTQ without refit | 3.30 (ARC 13/20) |
 
@@ -101,7 +101,7 @@ Each phase lands as separate commits on a new branch `framework/v1`, in a fresh 
 
 - **License.**
 - **The main checkout's uncommitted edits.**
-- **Official Bonsai weights:** offered as an optional starting point, or used as a baseline only.
+- **Official Bonsai weights:** offered as an optional starting point, or used as a baseline only. *Resolved: baseline only; no CLI option. The scale-distillation experiment from Prism's weights is reported separately (README, research/README.md).*
 - **Prism's llama.cpp fork:** clone and build it to validate runtime loading.
 - **Not changed without asking:**
   - remote `research/*` branches (kept);

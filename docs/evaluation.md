@@ -2,7 +2,7 @@
 
 `openbonsai eval --run DIR --from SOURCE --suite dev,extended,compare,teacher,gsm8k,humaneval` writes one JSON file per suite to `DIR/eval/<source>.<suite>.json` (the reasoning suites: one per thinking mode, `DIR/eval/<source>.<suite>.think-<off|on>.json`).
 
-`SOURCE` is a stage of the run (`bf16`, `quantize`, `endpoints`, `distill`) or a file: a run state, a legacy research `.pt`, a latent checkpoint's `ternary.safetensors`, or any PTQ1_0 GGUF, ours or the official Ternary Bonsai. For a GGUF, `--run` may be left out (it defaults to `<file>.eval`); the config or `--model` only supplies the model's configuration, its tokenizer and the BF16 reference:
+`SOURCE` is a stage of the run (`bf16`, `quantize`, `endpoints`, `distill`) or a file: a run state, a legacy research `.pt`, a latent checkpoint's `ternary.safetensors`, or a PTQ1_0 GGUF of an architecture the adapters cover (`qwen35`, `llama`, `qwen3`), ours or the official Ternary Bonsai, with that model's config. For a GGUF, `--run` may be left out (it defaults to `<file>.eval`); the config or `--model` only supplies the model's configuration, its tokenizer and the BF16 reference. The official file is `Ternary-Bonsai-2-9B-PTQ1_0.gguf` from [prism-ml/Ternary-Bonsai-2-9B-gguf](https://huggingface.co/prism-ml/Ternary-Bonsai-2-9B-gguf) (we used revision `5b2abb0`):
 
 ```
 openbonsai eval --config examples/qwen3_5-9b.yaml --from Ternary-Bonsai-2-9B-PTQ1_0.gguf --suite dev,extended,compare
@@ -118,12 +118,12 @@ Both are exact when the stored log-probabilities are exact. The `compare` refere
 
 `openbonsai eval --from model.gguf` builds the model from the file in PyTorch: the same codes, scales and F32 tensors, computed with PyTorch's arithmetic. To score the file in Prism's own llama.cpp runtime instead:
 
-- **The `dev` suite, on exactly the same inputs.** `tools/prism/evaluate_prism_manifest.py` drives a small C++ worker built against Prism at the pinned commit. Build it with `python tools/prism/build_prism_eval.py --source <Prism checkout> --build-dir <dir>`. The runner applies the same token-ID and raw-piece checks and the same FP64 normalization:
+- **The `dev` suite, on exactly the same inputs.** `tools/prism/evaluate_prism_manifest.py` drives a small C++ worker built against Prism at the pinned commit. Build it with `python tools/prism/build_prism_eval.py --source <Prism checkout> --build-dir <dir>`. The source must be a clean checkout (no modifications or untracked files) at the full pinned SHA `c9c34bc9c4042c13a31598ebf43461cd0ad8f00d`; the worker lands at `<dir>/cmake/bin/prism-eval-worker` (`prism-eval-worker.exe` on Windows). The runner applies the same token-ID and raw-piece checks and the same FP64 normalization:
   ```
-  python tools/prism/evaluate_prism_manifest.py --worker <prism-eval-worker> --model model.gguf --output out/dev
+  python tools/prism/evaluate_prism_manifest.py --worker <dir>/cmake/bin/prism-eval-worker --model model.gguf --output out/dev
   ```
   The official Ternary Bonsai 2 9B scored dev NLL 3.192 and ARC 16/20 this way, against 3.191 and 17/20 in PyTorch.
-- **Perplexity.** `llama-perplexity -m model.gguf -f wiki.test.raw -c 512 --chunks 8`, with the WikiText-2 test set as raw text. This uses llama.cpp's own tokenization and windows, so it is not comparable with the `dev` NLL. Compare files with each other under the same command.
+- **Perplexity.** `llama-perplexity -m model.gguf -f wiki.test.raw -c 512 --chunks 8`, where `wiki.test.raw` is the WikiText-2 raw test file (upstream llama.cpp's `scripts/get-wikitext-2.sh` downloads it). This uses llama.cpp's own tokenization and windows, so it is not comparable with the `dev` NLL. Compare files with each other under the same command.
 - **Full log-probabilities.** `python tools/prism/compare_logits.py --bin <Prism build>/bin --gguf model.gguf --text text.txt` reads back llama-perplexity's full-vocabulary log-probabilities (`--kl-divergence-base`). Use it to compare the runtime with the PyTorch model of the same state. `tests/test_dense.py` does this for tiny Llama and Qwen3 GGUFs when `OPENBONSAI_PRISM_BIN` points to a Prism build.
 
 Prism's CPU matrix products quantize the activations to 8 bits (Q8_0 operands), so its numbers differ slightly from PyTorch's.
@@ -132,7 +132,7 @@ Prism's CPU matrix products quantize the activations to 8 bits (Q8_0 operands), 
 
 Before you put another method's numbers next to ours, check what they measure.
 
-**EAR.** SLQ's reported EAR is not comparable with `ear_full`, or with either top-k bound:
+**EAR.** Some quantization papers report an EAR computed over the BF16 model's top-10 tokens on calibration data. That number is not comparable with `ear_full`, or with either top-k bound:
 - **Tokens.** It uses only BF16's top-10 tokens, renormalized over those 10. Any mass either model puts outside them is ignored. A model can score near 1 there while its full-vocabulary EAR is much lower, so it is neither a lower nor an upper bound on `ear_full`.
 - **Data.** It is measured on calibration data, the data the quantizer was fit on. Our `compare` blocks are held out.
 

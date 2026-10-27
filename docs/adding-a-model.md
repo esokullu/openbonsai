@@ -38,7 +38,7 @@ The adapter never declares rotation geometry. The core derives it from the plann
 - **Signs:** one sign vector per width.
 - **Refusal:** a width that is not a multiple of 128 is refused.
 
-Prism's runtime builds its rotation for any power-of-two block, but it has only been run with block 4096 (the official Ternary-Bonsai-2-9B and our 9B export). Quantize logs a note for any other block, and the export records it. Some examples:
+Prism's runtime builds its rotation for any power-of-two block. It has run real models only at block 4096 (the official Ternary-Bonsai-2-9B and our 9B export), and tiny random models at block 128 in our tests (below); other blocks, such as 2048 for Llama 3.1 8B, are untested on real weights. Quantize logs a note for any block other than 4096, and the export records it. Some examples:
 
 | Model shape | Rotated widths | Block |
 |---|---|---|
@@ -100,7 +100,7 @@ The current table, and what each family exports to:
 
 | `model_type` | Examples | GGUF arch | Prism loads `prism.hadamard` | Export | BOS | Thinking | Norm | Notes |
 |---|---|---|---|---|---|---|---|---|
-| `llama` | Llama 2/3.x; Llama-architecture checkpoints such as Nanbeige4-style models published as `LlamaForCausalLM` | `llama` | yes | PTQ1_0 GGUF | yes | no | `w` | q/k rows permuted; llama3 rope writes `rope_freqs.weight`; q/k/v/o and MLP biases have slots |
+| `llama` | Llama 2/3.x; Llama-architecture checkpoints such as Nanbeige4-style models published as `LlamaForCausalLM` | `llama` | yes | PTQ1_0 GGUF with a byte-level BPE tokenizer (Llama 3.x); latent with SentencePiece (Llama 2) | yes | no | `w` | q/k rows permuted; llama3 rope writes `rope_freqs.weight`; q/k/v/o and MLP biases have slots |
 | `mistral` | Mistral 7B, Mistral-Nemo | `llama` | yes | PTQ1_0 GGUF with a byte-level BPE tokenizer (Nemo); latent with a SentencePiece one (7B v0.x) | yes | no | `w` | the `llama` arch has no sliding window: the GGUF matches the model only within `sliding_window` tokens |
 | `qwen2` | Qwen2, Qwen2.5 | `qwen2` | **no** | latent checkpoint | no | no | `w` | q/k/v biases |
 | `qwen3` | Qwen3 (0.6B-4B tied) | `qwen3` | yes | PTQ1_0 GGUF | no | yes | `w` | per-head q/k norms; a tied table stays BF16 |
@@ -295,22 +295,41 @@ openbonsai run --model <dir or HF id> --config examples/qwen3_5-9b.yaml --out ru
     --set 'eval.suites=[compare]' --set export.format=auto --set model.revision=null
 ```
 
+In PowerShell, continue lines with a backtick instead of `\`:
+
+```
+openbonsai run --model <dir or HF id> --config examples/qwen3_5-9b.yaml --out runs/my-llama `
+    --set 'eval.suites=[compare]' --set export.format=auto --set model.revision=null
+```
+
 - `dev` and `extended` need the Qwen3.5 tokenizer, so use `compare`, which scores against the model's own BF16.
-- The 9B example pins Qwen's commit, so `model.revision=null` (or your own commit) is needed for a Hugging Face id. A local folder ignores it.
-- The 9B example asks for ternary endpoints and a GGUF explicitly. For a tied model, also pass `--set endpoints.head=auto --set endpoints.embedding=auto`.
+- The 9B example pins Qwen's commit, so `model.revision=null` (or your own commit) is needed for a Hugging Face id; without it the download fails with a 404. A local folder ignores it.
+- The 9B example asks for ternary endpoints and a GGUF explicitly. For a tied model, also pass `--set endpoints.head=auto --set endpoints.embedding=auto`; without them the run is refused before the first stage.
+
+**Base model without a chat template** (for example `meta-llama/Llama-3.1-8B`). The traces stage cannot run, because transformers has no template to render the prompts with ("tokenizer.chat_template is not set"), and the error surfaces as a raw traceback. Turn traces off and use UltraChat in place of the trace data; its conversations are then joined as plain text. The block counts keep the totals of the example (256 calibration blocks, 2,048 distillation sequences):
+
+```
+openbonsai run --model <dir or HF id> --config examples/qwen3_5-9b.yaml --out runs/my-base \
+    --set 'eval.suites=[compare]' --set export.format=auto --set model.revision=null \
+    --set traces.enabled=false \
+    --set 'calibrate.sources=[{kind: wikitext2, n: 128}, {kind: ultrachat, n: 128, min_row: 6000}]' \
+    --set 'distill.teacher.sources=[{kind: wikitext2, n: 512}, {kind: ultrachat, n: 1536, min_row: 6000}]'
+```
+
+**Licence.** The compressed model is a derivative of the base model and keeps its licence. Llama 3.x requires a model name that starts with "Llama": set it with, for example, `--set export.name=Llama-3.1-8B-OpenBonsai-PTQ1_0`, which names both the file and `general.name`.
 
 What happens:
 
 - **Plan:** `[q,k,v] -> [o] -> [gate,up] -> [down]` in every layer, nothing kept. Biases, if the config has `attention_bias` or `mlp_bias`, stay high precision.
-- **Geometry:** from the widths, e.g. block 2048 for Llama 3.1 8B (14336 = 2048 x 7). The export notes that Prism has been verified at block 4096 only.
+- **Geometry:** from the widths, e.g. block 2048 for Llama 3.1 8B (14336 = 2048 x 7). The export notes that Prism has run real models at block 4096 only; block 2048 is untested on real weights.
 - **BOS:** every calibration block starts with BOS (`add_bos`). The chat template renders traces and chat calibration data.
 - **Endpoints:** with an untied head (Llama 3.1 8B), head and embedding are ternary. The embedding's GPTQ weight is `w²` of layer 0's input norm. With a tied table (Llama 3.2 1B/3B) the table stays BF16.
 - **Export:** a `llama` PTQ1_0 GGUF.
   - q/k rows (and biases) are permuted per head as Prism's converter does. Llama 3.x's llama3 rope adds the converter's `rope_freqs.weight`.
   - Every decoder Linear and the ternary head are in `prism.hadamard.weight_names`, and a ternary embedding is the inverse-lookup table.
-  - The tokenizer must be byte-level BPE (Llama 3 is). Unknown pre-tokenizer hashes get the family default `llama-bpe`, with a note to check tokenization in Prism.
+  - The tokenizer must be byte-level BPE (Llama 3 is). Unknown pre-tokenizer hashes get the family default `llama-bpe`, with a note to check tokenization in Prism. Llama 2's SentencePiece tokenizer is not byte-level BPE, so a Llama 2 model gets a latent checkpoint with `export.format: auto`, and an explicit `ptq1_0-gguf` is refused.
 
-Checked on CPU with Prism's own runtime: tiny random Llama (untied, biases, llama3 rope) and Qwen3 (tied, BF16 table) GGUFs load in Prism's `llama-perplexity`. Its full-vocabulary log-probs match the FP32 torch model of the same state within 0.06 / 0.015 nats at most (Prism quantizes activations to 8 bits). An export without the q/k permutation is off by about 1 nat. Run it yourself with `OPENBONSAI_PRISM_BIN=<prism build>/bin pytest tests/test_dense.py -k prism`.
+Checked on CPU with Prism's own runtime: tiny random Llama (untied, biases, llama3 rope) and Qwen3 (tied, BF16 table) GGUFs, at Hadamard block 128, load in Prism's `llama-perplexity`. Its full-vocabulary log-probs match the FP32 torch model of the same state within 0.06 / 0.015 nats at most (Prism quantizes activations to 8 bits). An export without the q/k permutation is off by about 1 nat. Run it yourself with `OPENBONSAI_PRISM_BIN=<prism build>/bin pytest tests/test_dense.py -k prism`. No real dense model has been compressed or run in Prism yet.
 
 ## Checklist
 

@@ -6,7 +6,7 @@ section below says otherwise, the files in this repository are covered by
 that license.
 
 OpenBonsai is an independent project. It is not affiliated with or endorsed
-by PrismML (the Bonsai models and the Prism llama.cpp fork), the Qwen team,
+by Prism ML (the Bonsai models and the Prism llama.cpp fork), the Qwen team,
 Intel Labs China (ScaleQ-1.58, CAT-Q, BitTern), or the dataset authors named
 below.
 
@@ -100,8 +100,10 @@ LICENSE at the pinned commit is authoritative:
   FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
   IN THE SOFTWARE.
 
-The official Ternary Bonsai checkpoints (prism-ml on Hugging Face) are used
-only as an evaluation baseline. No Bonsai weights are included.
+The official Ternary Bonsai checkpoints (prism-ml on Hugging Face, for example
+prism-ml/Ternary-Bonsai-2-9B-gguf) are used as an evaluation baseline and, in
+one separately reported research experiment, as a starting point. No Bonsai
+weights are included.
 
 -------------------------------------------------------------------------------
 ScaleQ-1.58, CAT-Q and BitTern (references)

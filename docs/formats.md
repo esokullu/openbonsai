@@ -26,7 +26,7 @@ Since R Rᵀ = S H H S = I, y = W x exactly when Q = W R. In row-vector form, as
 
 **Signs.** There is one sign vector per input width, shared by every tensor of that width. For Qwen3.5-9B that means two vectors, for widths 4,096 and 12,288. Prism reads them from the file, so any ±1 vector works. OpenBonsai draws them with `seeded_signs(seed=width, width)`, which uses PyTorch's CPU generator (`rotation.signs: {mode: seeded, seed: width}`). It always stores them explicitly.
 
-**Block.** The block is one size per model: the largest power of two up to `rotation.max_block` (4,096) that divides every rotated input width. Every rotated width must be a multiple of 128. For Qwen3.5-9B the block is 4,096. Prism's runtime accepts any power of two, but it has only been run with 4,096; the export records a note for any other block.
+**Block.** The block is one size per model: the largest power of two up to `rotation.max_block` (4,096) that divides every rotated input width. Every rotated width must be a multiple of 128. For Qwen3.5-9B the block is 4,096. Prism's runtime accepts any power of two. It has run real models only at 4,096, and tiny random models at 128 in our tests; other blocks, such as 2,048 for Llama 3.1 8B, are untested on real weights. The export records a note for any block other than 4,096.
 
 **Embedding (inverse lookup).** The token embedding E [vocab, hidden] is stored in the rotated basis too: row t holds z_t ≈ e_t R. The runtime looks up the row and rotates it back: e_t = z_t Rᵀ = s ⊙ (H z_t). The file lists it under `prism.hadamard.inverse_weight_names`, not under `weight_names`.
 

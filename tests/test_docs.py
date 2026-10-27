@@ -218,3 +218,39 @@ def test_website_carries_the_same_lines_and_the_relabeled_video():
     assert PREVIEW in page
     assert NON_AFFILIATION in page
     assert "Background: how ScaleQ works" in page
+
+
+# Results of the experiment that started from Prism's released weights (dev NLL 2.706 with distilled
+# scales, 2.713 with LoRA). They are not from-scratch results, so they may appear only under a heading
+# or bold label that names that experiment, and never in docs/ or on the website.
+BONSAI_START = re.compile(r"(?<![\d.])2\.(?:706|713)(?!\d)")
+BONSAI_START_LABEL = "Prism's weights"
+
+
+def _label_above(lines: list[str], i: int) -> str | None:
+    """The nearest heading (``#``) or bold label line (``**...**``) at or above line ``i``."""
+    for line in reversed(lines[:i + 1]):
+        s = line.strip()
+        if s.startswith("#") or (s.startswith("**") and s.rstrip(":").endswith("**")):
+            return s
+    return None
+
+
+def test_bonsai_start_numbers_stay_in_their_own_attributed_section():
+    for path in MARKDOWN + [ROOT / "web" / "index.html", ROOT / "FRAMEWORK_PLAN.md"]:
+        text = path.read_text(encoding="utf-8")
+        lines = text.splitlines()
+        for i, line in enumerate(lines):
+            if not BONSAI_START.search(line):
+                continue
+            where = f"{_rel(path)}:{i + 1}"
+            assert path.name == "README.md", f"{where}: a Prism-start result outside the README files"
+            label = _label_above(lines, i)
+            assert label and BONSAI_START_LABEL in label, f"{where}: a Prism-start result under {label!r}"
+
+
+def test_the_label_check_finds_the_section():
+    lines = ["## Results", "dev 2.892", "### Starting from Prism's weights (separate experiment)", "2.706"]
+    assert _label_above(lines, 1) == "## Results"
+    assert BONSAI_START_LABEL in _label_above(lines, 3)
+    assert BONSAI_START.search("went to 2.706 and") and not BONSAI_START.search("12.7060")

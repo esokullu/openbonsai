@@ -4,10 +4,10 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#ffffff">
-    <meta name="description" content="OpenBonsai is an open framework that compresses a language model, or your own fine-tune, to ternary weights in the Bonsai PTQ1_0 format. Research preview, starting with Qwen3.5-9B.">
+    <meta name="description" content="OpenBonsai is an open framework that compresses a dense language model, or your own fine-tune of one, to ternary weights in Prism ML's PTQ1_0 (Bonsai) format. Research preview, measured so far on Qwen3.5-9B.">
     <meta property="og:type" content="website">
     <meta property="og:title" content="OpenBonsai — Open research in ternary compression">
-    <meta property="og:description" content="Compress your own model or fine-tune to a 2 GB ternary file that runs in Prism's llama.cpp. An independent research preview, starting with Qwen3.5-9B.">
+    <meta property="og:description" content="Compress Qwen3.5-9B, or your own fine-tune of it, to a 2 GB ternary file that runs in Prism's llama.cpp. An independent research preview.">
     <meta name="color-scheme" content="light">
     <title>OpenBonsai — Open research in ternary compression</title>
     <link rel="icon" href="assets/openbonsai-mark.svg" type="image/svg+xml">
@@ -28,9 +28,9 @@
         <p class="preview-label">Research preview</p>
         <p class="research-line">Open research in ternary compression.</p>
         <p class="description">
-          An open framework that compresses a language model, or your own
-          fine-tune, to ternary weights in the Bonsai format. Qwen3.5-9B
-          becomes a 2&nbsp;GB file that runs in Prism's llama.cpp.
+          An open framework that compresses a dense language model, or your
+          own fine-tune of one, to ternary weights in the Bonsai format.
+          Qwen3.5-9B becomes a 2&nbsp;GB file that runs in Prism's llama.cpp.
         </p>
         <a class="github-link" href="https://github.com/esokullu/openbonsai">
           <svg class="github-icon" viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" focusable="false">
@@ -53,9 +53,9 @@
           </li>
           <li>
             <strong>Round.</strong>
-            Sequential GPTQ rounds every layer, the embedding and head
-            included, to −1, 0 or +1 with one scale per 128 weights, on
-            calibration data that includes the model's own answers.
+            Sequential GPTQ rounds every large linear layer, the embedding
+            and head included, to −1, 0 or +1 with one scale per 128 weights,
+            on calibration data that includes the model's own answers.
           </li>
           <li>
             <strong>Refine.</strong>
@@ -65,13 +65,17 @@
           <li>
             <strong>Distill.</strong>
             The codes stay fixed while every scale is trained against the
-            original model's predictions. On Qwen3.5-9B this recovers more
-            than half of the remaining loss.
+            original model's predictions. On Qwen3.5-9B this closes more than
+            half of the gap to the original on our small dev suite (dev NLL
+            3.48 → 2.89; original 2.42).
           </li>
         </ol>
         <p class="method-status">
-          Measured end to end on Qwen3.5-9B. Reasoning benchmarks are pending,
-          and math and non-English output are still weak.
+          Measured end to end on Qwen3.5-9B with the research scripts the
+          package ports; the package's own GPU run is in progress. Other
+          dense models have an adapter, tested only on tiny random models so
+          far, with no real-model results yet. Reasoning benchmarks are
+          pending, and math and non-English output are still weak.
         </p>
         <p class="method-links">
           <a href="https://github.com/esokullu/openbonsai/blob/main/README.md#results">Results and caveats</a>
@@ -86,9 +90,10 @@
       <section class="explainer" aria-labelledby="explainer-title">
         <h2 id="explainer-title">Background: how ScaleQ works</h2>
         <p class="explainer-description">
-          An illustrated introduction to ScaleQ and CAT-Q, the paper that
-          started this project. OpenBonsai's current pipeline uses its
-          self-generated calibration data; CAT-Q itself is still in research.
+          An illustrated introduction to ScaleQ-1.58 and its CAT-Q quantizer
+          (Wang et al., Intel Labs China), the paper that started this
+          project. The current pipeline uses its self-generated calibration
+          data (AYOT); CAT-Q itself is still in research.
         </p>
         <video
           class="explainer-video"
@@ -114,7 +119,7 @@
     </main>
     <footer>
       <p>Independent project, not affiliated with or endorsed by Prism ML. Bonsai is Prism ML's product.</p>
-      <p>Inspired by <a href="https://arxiv.org/abs/2608.01078">ScaleQ</a> · Apache-2.0 · by <a href="https://webbrain.one">WebBrain</a></p>
+      <p>Inspired by <a href="https://arxiv.org/abs/2608.01078">ScaleQ-1.58</a> (Wang et al., Intel Labs China) · Apache-2.0 · by <a href="https://webbrain.one">WebBrain</a></p>
     </footer>
   </body>
 </html>

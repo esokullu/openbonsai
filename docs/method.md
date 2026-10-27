@@ -16,7 +16,7 @@ Each row adds one step to the row above it, unless it says otherwise.
 
 | Step | Dev NLL | ARC /20 | Wiki 16K | ARC /100 | Chat | Source |
 |---|---|---|---|---|---|---|
-| BF16 Qwen3.5-9B | 2.423 | 19 | 2.218 | 97 | 0.554 | `research/experiments/out/quick_eval.jsonl` |
+| BF16 Qwen3.5-9B | 2.423 | 19 | 2.218 | 97 | 0.554 | dev: `research/experiments/out/quick_eval.jsonl`; Wiki 16K and ARC /100: `research/runs/2026-10-26-5090-pilot/report.md` (2.2175, 97); all three extended numbers also in local run `2026-10-27-bf16-extended.jsonl` (not copied into `research/runs/`) |
 | Plain ternary rounding (TWN), no rotation | 10.20 | 9 | | | | same |
 | Same, rotated | 9.10 | 1 | | | | same |
 | Rotated, least-squares scales (RTN) | 8.94 | 4 | | | | same |
@@ -29,9 +29,9 @@ Each row adds one step to the row above it, unless it says otherwise.
 | + ternary head and embedding (all ternary, ~2 GB) | 3.480 | 13 | 3.281 | 62 | 2.225 | same, and step 0 of the next row |
 | + scale distillation, 4.2M tokens | **2.892** | **19** | **2.626** | **87** | **1.318** | local run `2026-10-27-e2e-kd-shared-v1` (not copied into `research/runs/`) |
 | + small high-precision tensors trained too | 2.884 | 19 | 2.616 | 87 | 1.308 | local run `2026-10-27-e2e-kd-shared-small-v1` (same) |
-| Official Ternary Bonsai 2 9B, for reference | 3.191 | 17 | | | | `research/runs/2026-10-27-bonsai-start-convert/eval_bf16.json` (PyTorch); 3.192 and ARC 16 in Prism's CPU runtime |
+| Official Ternary Bonsai 2 9B, for reference | 3.191 | 17 | | | | `research/runs/2026-10-27-bonsai-start-convert/eval_bf16.json` (PyTorch, unmodified official weights); 3.192 and ARC 16 in Prism's CPU runtime |
 
-All rows round in groups of 128 weights, and keep the embedding and head in BF16 until the endpoint rows. The three rounding rows use no calibration data: "TWN" is the Ternary Weight Networks rule (threshold 0.7 × mean |w|, scale = mean |w| above it), and "RTN" searches the threshold for the least squared error. They round every decoder linear layer, Gated DeltaNet's `in_proj_a`/`in_proj_b` included. The GPTQ rows keep those two in high precision (section 2). The ternary-endpoint rows were scored with dense dequantized weights; the "all ternary" row repeats the first evaluation of the distillation run, which uses the runtime arithmetic (the dense evaluation gave 3.479, ARC 13, Wiki 16K 3.280, ARC /100 63, chat 2.222).
+All rows round in groups of 128 weights, and keep the embedding and head in BF16 until the endpoint rows. The three rounding rows use no calibration data: "TWN" is the Ternary Weight Networks rule (threshold 0.7 × mean |w|, scale = mean |w| above it), and "RTN" searches the threshold for the least squared error. They round every decoder linear layer, `in_proj_a`/`in_proj_b` of the Gated DeltaNet layers (Qwen3.5's linear-attention layers, three of every four) included. The GPTQ rows keep those two in high precision (section 2). The ternary-endpoint rows were scored with dense dequantized weights; the "all ternary" row repeats the first evaluation of the distillation run, which uses the runtime arithmetic (the dense evaluation gave 3.479, ARC 13, Wiki 16K 3.280, ARC /100 63, chat 2.222).
 
 ## Data
 
@@ -51,7 +51,7 @@ The reasoning suites' test problems are refused everywhere (see [evaluation.md](
 
 **Evidence.** On its own, rotation helps plain rounding (TWN 10.20 → 9.10) but leaves the model unusable. In the earlier CAT-Q experiments, a matched pair of runs differing only in the rotation gave dev NLL 9.26 rotated and 14.44 unrotated. Rotation is necessary, but it is not enough. Its job is to make the next step work.
 
-**Prism's constraints.** Prism's file holds one block size and one sign vector per input width, shared by every tensor of that width. Our first GPTQ runs drew separate signs for every module. Moving to one shared vector per width cost nothing measurable: 3.295 → 3.318 dev NLL, while ARC went from 13 to 15. The block is derived from the model, as the largest power of two up to 4,096 that divides every rotated width. Prism's runtime has only been run with block 4,096.
+**Prism's constraints.** Prism's file holds one block size and one sign vector per input width, shared by every tensor of that width. Our first GPTQ runs drew separate signs for every module. Moving to one shared vector per width cost little: +0.023 dev NLL (3.295 → 3.318), while ARC went from 13 to 15. The block is derived from the model, as the largest power of two up to 4,096 that divides every rotated width. Prism's runtime has run real models only at block 4,096, and tiny random models at block 128 in our tests; other blocks (2,048 for Llama 3.1 8B, for example) are untested on real weights.
 
 ## 2. Sequential GPTQ ternary rounding
 
@@ -67,7 +67,7 @@ The reasoning suites' test problems are refused everywhere (see [evaluation.md](
 
 **What stays high precision.** In Qwen3.5, `in_proj_a` and `in_proj_b` (the per-head decay and update gates of Gated DeltaNet) stay in high precision. We did not keep them for sensitivity: rounding only those two, to nearest with a rotation, changes dev NLL by less than 0.02. We keep them because Prism's file stores them as F32 (`ssm_alpha`, `ssm_beta`), and they are about 0.1% of the decoder. Convolutions, `A_log`, `dt_bias` and the norms are not linear layers and are never rounded.
 
-**Sensitivity.** The fake-quant sweep (rounding to nearest with rotation, one part of the model at a time, everything else BF16; `research/experiments/out/`) found the sensitive parts:
+**Sensitivity.** The fake-quant sweep found the sensitive parts. Fake-quant means the rounded weights are dequantized back into an otherwise ordinary BF16 model and scored there. The sweep rounded to nearest with rotation, one part of the model at a time, everything else BF16 (`research/experiments/out/`):
 
 | Rounded alone | Dev NLL (BF16 2.423) |
 |---|---|
@@ -126,13 +126,13 @@ The run: a teacher pass stores the top-64 log-probabilities of 4.2M tokens (abou
 
 The final state goes into Prism's PTQ1_0 GGUF: 28 bytes per 128 weights, Prism's `prism.hadamard.*` metadata, F32 norms and Gated DeltaNet tensors, and the model's tokenizer and chat template. For the 9B config the tensor layout and metadata keys equal the official Ternary-Bonsai-2-9B file, and both files are 1,997,486,976 bytes. The export then re-reads the file and checks it: every block decoded against the state, every F32 tensor bit for bit, and a function check in FP64 through the runtime's own transform. Format details: [formats.md](formats.md).
 
-In Prism's llama.cpp (CPU, WikiText-2 test, 8 chunks of 512 tokens), the result has perplexity 11.93, against 16.51 for the official model; the same in-domain caveat applies. Prism's runtime matches our PyTorch reference of the same weights with a mean KL of 0.0028 nats and 95% top-1 agreement. It quantizes activations to 8 bits, so the two are not identical.
+In Prism's llama.cpp (CPU, WikiText-2 test, 8 chunks of 512 tokens), the result has perplexity 11.93, against 16.51 for the official model; the same in-domain caveat applies. Prism's runtime matches our PyTorch reference of the same weights with a mean KL of 0.0028 nats and 95% top-1 agreement. It quantizes activations to 8 bits, so the two are not identical. The perplexity logs are local (run `2026-10-27-gguf-shared-v1`) and not yet copied into `research/runs/`; the KL check's log is not in the repository either.
 
 ## What did not work
 
 **Refitting the scales after GPTQ.** After rounding, refitting each group's scale by least squares against the original rotated weights sounds like a free improvement. It made the model much worse: dev NLL 5.15 against 3.32 without it, at 128 blocks. GPTQ chooses codes that are deliberately wrong in weight space, so that they cancel errors from earlier columns under the input Hessian. A refit in weight space pulls the scales back toward the original weights and undoes that compensation. The option was removed.
 
-**CAT-Q alone at small budgets.** Dev NLL 8.3 to 13, with collapsed ARC answers and unusable generations (section 3). Better local reconstruction did not mean a better model.
+**CAT-Q alone at small budgets.** Dev NLL 8.3 to 13.3, with collapsed ARC answers and unusable generations (section 3). Better local reconstruction did not mean a better model.
 
 **Better packing.** Earlier we built BITCOS (a presence bit per weight, plus a sign bit per nonzero) and base-3 codecs. With 33% zeros, which is what Prism's own codes have (32.76% over all 202 matrices), BITCOS costs about 2 − 0.33 ≈ 1.67 bits per weight before scales, more than PTQ1_0's 1.625. On the official tensors, BITCOS would need 2,010,072,449 bytes for codes and scales against PTQ1_0's 1,957,036,032. Ideal base-3 packing would save 28 MB, 1.4%. Size was never the problem: quality was, and the target runtime fixes the format anyway. Details: `research/docs/bonsai-ternary-statistics.md`, `research/docs/base3-packing.md`.
 

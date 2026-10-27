@@ -28,3 +28,5 @@ The native video player supports inline playback on mobile and loads the MP4 onl
 The visible pot and compact canopy distinguish the tree as a miniature bonsai. The logo is self-contained vector artwork on a transparent background.
 
 Publish the contents of `web/` with any static host. The GitHub link respects the repository's existing access permissions; this page does not change its visibility.
+
+Before publishing: the docs links point to `blob/main/...`, so they resolve only once `framework/v1` is merged into `main`, and the GitHub button and those links work for the public only if the repository is public.

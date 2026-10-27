@@ -4,7 +4,7 @@
 # group 128, block 4096, no scale refit. That run used per-module signs; this
 # config uses one shared sign vector per width, which Prism's PTQ1_0 needs. The
 # shared-sign GPTQ run measured dev NLL 3.3183, ARC 15/20; its 32 trace blocks
-# came from the original ayot128.jsonl, so to reproduce it exactly point the
+# came from the original ayot128.jsonl (not in the repository), so to reproduce it exactly point the
 # traces source at that file: --set calibrate.sources.2.path=<dir>/ayot128.jsonl
 #
 #   openbonsai run --config examples/qwen3_5-9b.yaml --out runs/qwen3_5-9b
@@ -41,6 +41,8 @@ calibrate:
     - {kind: ultrachat, n: 96, min_row: 6000}  # HuggingFaceH4/ultrachat_200k @ 8049631, train_sft shard 0
     - {kind: traces, n: 32}                    # traces/traces.jsonl from the traces stage
     # - {kind: jsonl, path: my-data.jsonl, n: 32}   # your own chat/text data
+    # n counts blocks of seq_len tokens (n: 32 needs about 65K tokens), and the total n of
+    # these sources must be a multiple of quantize.batch (4); quantize refuses it otherwise.
 quantize:
   damp: 0.01
   batch: 4
