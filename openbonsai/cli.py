@@ -7,7 +7,8 @@
         stages: traces calibrate quantize endpoints distill export eval
 
     openbonsai export --run runs/my-model [--out X.gguf|DIR] [--name NAME] [--verify | --no-verify]
-        a PTQ1_0 GGUF, or a latent checkpoint folder when the model has no GGUF layout (export.format)
+        a PTQ1_0 GGUF, or a latent checkpoint folder when the model has no GGUF layout (export.format);
+        DIR is the checkpoint folder itself (an existing one is replaced only if it is a latent checkpoint)
     openbonsai eval --run runs/my-model --from bf16|quantize|endpoints|distill|PATH --suite dev,extended,compare,teacher
         PATH: state.safetensors, legacy .pt[,.pt], or a PTQ1_0 .gguf (ours or the official
         Ternary Bonsai; --run defaults to <gguf>.eval and --model gives the config and tokenizer)
@@ -175,13 +176,28 @@ def preflight(ctx, stages=STAGES) -> None:
     """Fail before any work on settings a later stage of ``stages`` (those this command runs) would refuse."""
     from .config import distill_uses_endpoints, upstream
     from .stages.endpoints import ternary_endpoints
-    from .stages.export import EXPORT_NEEDS_DISTILLED_ENDPOINTS, resolve_format
+    from .stages.export import EXPORT_NEEDS_DISTILLED_ENDPOINTS, check_latent_out, resolve_format
     adapter = ctx.adapter()
     endpoints_on = stage_enabled(ctx.cfg, "endpoints")
     if endpoints_on and "endpoints" in stages:
         ternary_endpoints(ctx.cfg, adapter)    # unknown modes; ternary for a tied table
+    if stage_enabled(ctx.cfg, "traces") and "traces" in stages:
+        from .stages.traces import checked_chat_kwargs
+        checked_chat_kwargs(adapter, bool(ctx.cfg["traces"].get("thinking")), "traces.thinking")
+    if stage_enabled(ctx.cfg, "eval") and "eval" in stages:
+        from .eval.reasoning import SUITES
+        from .stages.evaluate import check_thinking_modes
+        if set(ctx.cfg["eval"].get("suites") or ()) & set(SUITES):
+            check_thinking_modes(ctx.cfg, adapter)   # a mode the chat template cannot do fails now, not at eval
     if stage_enabled(ctx.cfg, "export") and "export" in stages:
-        fmt, _ = resolve_format(ctx.cfg, adapter)   # refuses an explicit ptq1_0-gguf the model cannot take
+        explicit_latent = (ctx.cfg["export"].get("format") or "auto") == "latent"
+        # refuses an explicit ptq1_0-gguf the model (with its tokenizer) cannot take
+        fmt, _ = resolve_format(ctx.cfg, adapter, None if explicit_latent else ctx.model_dir(weights=False))
+        out = ctx.cfg["export"].get("out")
+        if out and fmt == "latent":
+            check_latent_out(out)
+        elif out and Path(out).is_dir():
+            raise ConfigError(f"export.out {out} is a folder; the PTQ1_0 export writes a .gguf file")
         if fmt == "ptq1_0-gguf" and not adapter.gguf_endpoints_optional:
             head, emb = ternary_endpoints(ctx.cfg, adapter) if endpoints_on else (False, False)
             if not (head and emb):
@@ -296,8 +312,10 @@ def build_parser() -> argparse.ArgumentParser:
             s.add_argument("--gguf-small-fp32", action="store_true",
                            help="GGUF source: keep 1-D F32 tensors (norms, A_log, dt_bias) in FP32 as Prism does")
         if stage == "export":
-            s.add_argument("--out", default=None, help="output .gguf, or folder for a latent checkpoint "
-                                                       "(default: <run>/export/<name>.gguf or <run>/export/<name>/)")
+            s.add_argument("--out", default=None,
+                           help="output .gguf, or the latent checkpoint folder itself: new, empty or a previous "
+                                "latent checkpoint (replaced); any other folder is refused, never deleted "
+                                "(default: <run>/export/<name>.gguf or <run>/export/<name>/)")
             s.add_argument("--name", default=None, help="general.name (default: OpenBonsai-<model>-PTQ1_0)")
             s.add_argument("--verify", dest="verify", action="store_true", default=None,
                            help="verify the written file (the default)")
@@ -311,11 +329,13 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv=None) -> int:
     args = build_parser().parse_args(argv)
+    from .eval.heldout import ContaminationError
     from .formats.gguf import GGUFError
     from .stages.export import ExportError
     try:
         return args.func(args)
-    except (ConfigError, FileNotFoundError, NotImplementedError, StageNotReady, ExportError, GGUFError) as error:
+    except (ConfigError, FileNotFoundError, NotImplementedError, StageNotReady, ExportError, GGUFError,
+            ContaminationError) as error:
         print(f"openbonsai: error: {error}", file=sys.stderr)
         return 2
 

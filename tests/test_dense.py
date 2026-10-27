@@ -268,6 +268,88 @@ def test_latent_export_of_a_multimodal_checkpoint_keeps_its_vision_tower(tiny_mm
     assert any(".visual." in k for k in keys) and any("language_model.layers.0.linear_attn.A_log" in k for k in keys)
     manifest = json.loads((folder / "openbonsai.json").read_text())
     assert manifest["model_type"] == "qwen3_5" and manifest["ternary"]["tensors"] == 27
+    # The distilled high-precision tensors travel with the state: eval --from ternary.safetensors scores the
+    # distilled model, not the original checkpoint's norms and A_log.
+    from openbonsai.formats.state import read_small, read_small_masters
+    assert manifest["small"]["file"] == "small.safetensors" and manifest["small"]["tensors"] > 0
+    assert "small.safetensors" in manifest["files"]
+    assert any(c["check"].startswith("small.safetensors") and c["ok"] for c in manifest["verify"])
+    distill = out / "distill" / "scales.safetensors"
+    masters, dtypes = read_small_masters(folder / "small.safetensors")
+    want_masters, want_dtypes = read_small_masters(distill)
+    assert dtypes == want_dtypes and set(masters) == set(want_masters)
+    assert all(torch.equal(masters[k], want_masters[k]) for k in masters)
+    assert all(torch.equal(v, read_small(distill)[k]) for k, v in read_small(folder / "small.safetensors").items())
+    assert cli.main(["eval", "--run", str(out), "--from", "distill", "--suite", "compare"]) == 0
+    want = json.loads((out / "eval" / "distill.compare.json").read_text())
+    assert cli.main(["eval", "--run", str(out), "--from", str(folder / "ternary.safetensors"), "--install", "ternary",
+                     "--suite", "compare"]) == 0
+    got = json.loads((out / "eval" / "ternary.compare.json").read_text())
+    assert (got["nll"], got["kl_full"]) == (want["nll"], want["kl_full"])
+    # Without them it would score another model.
+    (folder / "openbonsai.json").write_text(json.dumps({**manifest, "small": None}), encoding="utf-8")
+    assert cli.main(["eval", "--run", str(out), "--from", str(folder / "ternary.safetensors"), "--install", "ternary",
+                     "--suite", "compare"]) == 0
+    without = json.loads((out / "eval" / "ternary.compare.json").read_text())
+    assert without["nll"] != want["nll"]
+
+
+def test_latent_export_never_deletes_a_folder_it_did_not_write(tiny_dir, tmp_path, monkeypatch):
+    """--out names the checkpoint folder itself; an existing folder is replaced only when it is empty or a
+    previous latent checkpoint (``export --out D:/models`` must not delete D:/models)."""
+    from openbonsai.stages.export import check_latent_out, latent_out_problem
+    monkeypatch.chdir(ROOT)
+    out = tmp_path / "run"
+    assert cli.main(["run", "--model", str(tiny_dir), "--config", "examples/tiny-dense.yaml", "--out", str(out),
+                     "--set", "export.format=latent", "--until", "distill"]) == 0
+    models = tmp_path / "models"
+    (models / "other-model").mkdir(parents=True)
+    (models / "other-model" / "weights.bin").write_bytes(b"precious")
+    (models / "notes.txt").write_text("keep me")
+    gguf = tmp_path / "old.gguf"
+    gguf.write_bytes(b"GGUF old")
+    for bad in (models, gguf):
+        assert latent_out_problem(bad) is not None
+        assert cli.main(["export", "--run", str(out), "--out", str(bad)]) == 2
+    assert (models / "other-model" / "weights.bin").read_bytes() == b"precious"
+    assert (models / "notes.txt").read_text() == "keep me" and gguf.read_bytes() == b"GGUF old"
+    assert not list(tmp_path.glob(".*.tmp")) and not list(tmp_path.glob("*.tmp"))
+    # A new folder inside it, then the same folder again (a previous latent checkpoint is replaced).
+    target = models / "tiny-latent"
+    assert cli.main(["export", "--run", str(out), "--out", str(target)]) == 0
+    first = json.loads((target / "openbonsai.json").read_text())
+    assert first["format"] == "openbonsai-latent"
+    check_latent_out(target)
+    assert cli.main(["export", "--run", str(out), "--out", str(target), "--force"]) == 0
+    assert json.loads((target / "openbonsai.json").read_text())["files"] == first["files"]
+    assert sorted(p.name for p in models.iterdir()) == ["notes.txt", "other-model", "tiny-latent"]
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    assert latent_out_problem(empty) is None
+    # The preflight of a run refuses it before any stage runs.
+    assert cli.main(["run", "--model", str(tiny_dir), "--config", "examples/tiny-dense.yaml",
+                     "--out", str(tmp_path / "run2"), "--set", "export.format=latent",
+                     "--set", f"export.out={models.as_posix()}"]) == 2
+    assert not (tmp_path / "run2" / "traces").exists()
+
+
+def test_preflight_checks_the_tokenizer_and_the_thinking_modes(tmp_path, monkeypatch):
+    """An explicit ptq1_0-gguf with a SentencePiece-style tokenizer, or thinking on for a family without a
+    thinking switch, fails before traces, not after quantize and distill."""
+    monkeypatch.chdir(ROOT)
+    model_dir = save_tiny_dense(tmp_path / "llama", "llama")
+    tj = json.loads((model_dir / "tokenizer.json").read_text(encoding="utf-8"))
+    tj["model"]["byte_fallback"] = True
+    (model_dir / "tokenizer.json").write_text(json.dumps(tj), encoding="utf-8")
+    out = tmp_path / "run"
+    assert cli.main(["run", "--model", str(model_dir), "--config", "examples/tiny-dense.yaml", "--out", str(out),
+                     "--set", "export.format=ptq1_0-gguf"]) == 2
+    assert not (out / "traces").exists()
+    good = save_tiny_dense(tmp_path / "llama-ok", "llama")
+    for sets in (["eval.suites=[compare,gsm8k]", "eval.reasoning.thinking=[off,on]"], ["traces.thinking=true"]):
+        args = ["run", "--model", str(good), "--config", "examples/tiny-dense.yaml", "--out", str(tmp_path / "r2")]
+        assert cli.main(args + [a for s in sets for a in ("--set", s)]) == 2
+        assert not (tmp_path / "r2" / "traces").exists()
 
 
 # -- Prism's runtime (optional) ---------------------------------------------------

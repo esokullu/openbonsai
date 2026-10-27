@@ -413,7 +413,7 @@ def test_reasoning_suites_end_to_end_on_the_tiny_model(calibrated):
     from openbonsai.cli import execute
     ctx = calibrated
     for key, value in (("thinking", [False, True]), ("max_new_tokens", 6), ("max_new_tokens_thinking", 5),
-                       ("batch", 2)):
+                       ("batch", 2), ("batch_check", 1)):
         ctx.cfg["eval"]["reasoning"][key] = value
     ctx.cfg["eval"]["reasoning"]["gsm8k"]["n"] = 3
     ctx.cfg["eval"]["reasoning"]["humaneval"]["n"] = 2
@@ -424,6 +424,7 @@ def test_reasoning_suites_end_to_end_on_the_tiny_model(calibrated):
     execute(ctx, "eval", source="quantize", suites=["humaneval", "gsm8k"], install_mode="ternary")
     assert any("ternary modules replaced" in m for m in msgs)
     assert any("tok/s" in m and "ETA" in m for m in msgs)
+    assert any("batch check:" in m for m in msgs)
     out = ctx.run.stage_dir("eval")
     first = {}
     for suite, n in (("gsm8k", 3), ("humaneval", 2)):
@@ -435,7 +436,12 @@ def test_reasoning_suites_end_to_end_on_the_tiny_model(calibrated):
             assert r["batches"] == (n + 1) // 2 and r["cached_batches"] == 0
             assert 0 <= r["hit_cap"] <= n and r["generated_tokens"] <= n * cap
             assert r["manifest"]["frozen"] and r["manifest"]["n"] == n
-            assert r["chat_kwargs"] == {"enable_thinking": mode == "on"}
+            assert r["chat_kwargs"] == {"enable_thinking": mode == "on"} and r["chat_date"] == "2024-07-26"
+            assert r["decoding"]["strategy"] == "greedy" and r["runtime"]["kernels"] == []
+            assert r["runtime"]["torch"] == torch.__version__ and "transformers" in r["runtime"]
+            check = r["batch_check"]
+            assert check["batch"] == 0 and check["rows"] == 1 and check["rows_checked"][0]["row"] in (0, 1)
+            assert check["identical"] == (check["rows_checked"][0]["first_difference"] is None)
             for p in r["problems"]:
                 assert 1 <= p["generated_tokens"] <= cap and (not p["hit_cap"] or p["generated_tokens"] == cap)
                 assert ("finished_thinking" in p) == (mode == "on")
@@ -456,3 +462,97 @@ def test_reasoning_suites_end_to_end_on_the_tiny_model(calibrated):
         strip = ("seconds", "returncode")
         assert [{k: v for k, v in p.items() if k not in strip} for p in again["problems"]] == \
             [{k: v for k, v in p.items() if k not in strip} for p in r["problems"]]
+
+
+def test_runtime_info_names_the_kernels_a_module_bound():
+    """The generation cache key records whether transformers bound FLA / causal-conv1d or the torch paths."""
+    import types
+    fake = types.ModuleType("openbonsai_fake_modeling")
+
+    def kernel(x):
+        return x
+    kernel.__module__ = "fla.ops.gated_delta_rule"
+
+    def torch_path(x):
+        return x
+
+    def bind(impl):
+        def wrapped(*args):
+            return impl(*args)
+        return wrapped
+    fake.chunk_gated_delta_rule = bind(kernel)
+    fake.causal_conv1d_fn = bind(torch_path)
+    sys.modules[fake.__name__] = fake
+    try:
+        assert R.runtime_info(torch.nn.Linear(2, 2))["kernels"] == []
+        Model = type("Model", (torch.nn.Linear,), {"__module__": fake.__name__})
+        assert R.runtime_info(Model(2, 2))["kernels"] == ["fla"]
+    finally:
+        del sys.modules[fake.__name__]
+
+
+def test_guard_covers_every_test_problem_when_the_splits_are_cached(monkeypatch):
+    H.needles.cache_clear()
+    try:
+        full = H.needles()
+        frozen = 100 + 50
+        if H._full_split("gsm8k") is None:
+            pytest.skip("the GSM8K/HumanEval test splits are not in the Hugging Face cache")
+        assert len(full) == 1319 + 164
+        # A problem outside the frozen subsets is found too.
+        outside = next(p for p in H._full_split("gsm8k") if p["row"] not in R.load_frozen("gsm8k")["row_ids"])
+        assert H.contained(["notes " + outside["question"]]) == [(0, outside["id"])]
+        H.needles.cache_clear()
+        monkeypatch.setattr(H, "_full_split", lambda name: None)
+        assert len(H.needles()) == frozen
+    finally:
+        H.needles.cache_clear()
+
+
+def test_stored_blocks_are_checked_in_their_build_order(tiny_dir):
+    """calibrate saves its blocks permuted; a problem cut across two consecutive blocks is only whole
+    again in build order."""
+    from openbonsai.adapters import load_adapter
+    tok = load_adapter(tiny_dir).load_tokenizer(tiny_dir)
+    gsm = R.load_frozen("gsm8k")["problems"][7]
+    ids = tok("Some notes. " * 30 + gsm["question"] + " More notes." * 60, add_special_tokens=False)["input_ids"]
+    seq = 48
+    blocks = torch.tensor([ids[k:k + seq] for k in range(0, len(ids) - seq + 1, seq)])
+    seed = 3
+    perm = torch.randperm(len(blocks), generator=torch.Generator().manual_seed(seed))
+    stored = blocks[perm]
+    assert torch.equal(H.build_order(stored, seed), blocks)
+    probes = H.problem_needles("gsm8k", [gsm])
+    with pytest.raises(H.ContaminationError, match="gsm8k/test"):
+        H.check_stored_blocks(tok, stored, seed, "calib/tokens.npy", probes)
+    clean = torch.tensor([ids[k:k + seq] for k in range(0, 30 * 3, seq)])
+    H.check_stored_blocks(tok, clean, seed, "calib/tokens.npy", probes)
+
+
+def test_eval_refuses_a_stage_whose_stored_data_holds_a_scored_problem(calibrated):
+    import numpy as np
+    from openbonsai.stages.calibrate import save_tokens
+    from openbonsai.stages.evaluate import check_test_problems_absent
+    ctx = calibrated
+    ctx.cfg["eval"]["reasoning"]["gsm8k"]["n"] = 3
+    check_test_problems_absent(ctx, "quantize", ["gsm8k"])          # clean: remembered
+    memo = json.loads((ctx.run.stage_dir("eval") / "heldout-checked.json").read_text(encoding="utf-8"))
+    assert set(memo) == {"calib/tokens.npy"}
+    check_test_problems_absent(ctx, "bf16", ["gsm8k"])              # the BF16 model is not fitted on it
+    # Calibration data made before the guard knew this problem (e.g. a problem beyond the frozen subset).
+    path = ctx.run.stage_dir("calibrate") / "tokens.npy"
+    tokens = torch.from_numpy(np.load(path).astype(np.int64))
+    tok = ctx.load_tokenizer()
+    problem = R.load_problems("gsm8k", 3)[1][2]
+    ids = tok(problem["question"], add_special_tokens=False)["input_ids"]
+    order = H.build_order(tokens, int(ctx.cfg["calibrate"]["seed"]))
+    width = tokens.shape[1]
+    flat = order.reshape(-1).clone()
+    flat[5:5 + len(ids)] = torch.tensor(ids)
+    seed = int(ctx.cfg["calibrate"]["seed"])
+    perm = torch.randperm(len(order), generator=torch.Generator().manual_seed(seed))
+    save_tokens(path, flat.reshape(-1, width)[perm])
+    with pytest.raises(H.ContaminationError, match=problem["id"]):
+        check_test_problems_absent(ctx, "quantize", ["gsm8k"])
+    ctx.cfg["eval"]["reasoning"]["gsm8k"]["n"] = 2                 # not scored: no refusal
+    check_test_problems_absent(ctx, "quantize", ["gsm8k"])

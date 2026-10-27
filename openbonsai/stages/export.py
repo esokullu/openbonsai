@@ -43,9 +43,15 @@ every ternary tensor holding its dequantized weight (C * s) R^T in the model
 dtype (the weights ``eval --from quantize`` installs); ``ternary.safetensors``
 with the exact codes, fp16 scales, per-width signs and block (a TernaryState:
 ``eval --from <dir>/ternary.safetensors`` installs the ternary modules, and a
-later Prism layout can be written from it); ``openbonsai.json`` says what the
-directory is, why it is not a GGUF, and the SHA256 of every file. Verification
-re-reads every saved tensor and the state bit for bit.
+later Prism layout can be written from it); with ``distill.train.small``,
+``small.safetensors`` with the distilled high-precision tensors (FP32 masters
+and the dtype each was computed in; ``eval --from <dir>/ternary.safetensors``
+applies them, so it scores the distilled model); ``openbonsai.json`` says what
+the directory is, why it is not a GGUF, and the SHA256 of every file.
+Verification re-reads every saved tensor and the state bit for bit. The folder
+is built next to ``out`` and moved into place; an existing ``out`` is replaced
+only when it is empty or a previous latent checkpoint (its ``openbonsai.json``
+says so): any other folder or file there is refused, never deleted.
 """
 from __future__ import annotations
 
@@ -68,6 +74,7 @@ from ..formats.state import LegacyTensor, TernaryState, legacy_to_state, load_st
 
 FORMATS = ("auto", "ptq1_0-gguf", "latent")
 LATENT_FORMAT = "openbonsai-latent"
+LATENT_SMALL = "small.safetensors"
 
 ENDPOINTS = ("lm_head", "embed_tokens")
 FUNC_TOL = 1e-6
@@ -610,10 +617,58 @@ def _tensor_bits_equal(a: torch.Tensor, b: torch.Tensor) -> bool:
     return torch.equal(a, b)
 
 
-def verify_latent(folder, model, state: TernaryState, adapter, log=print) -> list[dict]:
+def read_latent_manifest(folder) -> dict | None:
+    """``folder/openbonsai.json`` when it describes a latent checkpoint, else None."""
+    import json
+    try:
+        manifest = json.loads((Path(folder) / "openbonsai.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return manifest if isinstance(manifest, dict) and manifest.get("format") == LATENT_FORMAT else None
+
+
+def latent_small_file(state_path) -> Path | None:
+    """The distilled high-precision tensors that belong with ``state_path`` when it is a latent
+    checkpoint's ternary state (its folder's ``openbonsai.json`` lists them), else None."""
+    state_path = Path(state_path)
+    manifest = read_latent_manifest(state_path.parent)
+    if manifest is None or (manifest.get("ternary") or {}).get("file") != state_path.name \
+            or not manifest.get("small"):
+        return None
+    small = state_path.parent / manifest["small"]["file"]
+    if not small.is_file():
+        raise FileNotFoundError(f"{state_path.parent / 'openbonsai.json'} lists {manifest['small']['file']} "
+                                "(the distilled high-precision tensors), which is missing")
+    return small
+
+
+def latent_out_problem(out) -> str | None:
+    """Why the latent export must not write ``out`` (None: it may). ``out`` is the checkpoint folder
+    itself; it may exist only as an empty folder or a previous latent checkpoint, which is replaced."""
+    out = Path(out)
+    if os.path.islink(out) or (hasattr(os.path, "isjunction") and os.path.isjunction(out)):
+        return f"{out} is a link"
+    if not out.exists():
+        return None
+    if not out.is_dir():
+        return f"{out} is an existing file"
+    if not any(out.iterdir()) or read_latent_manifest(out) is not None:
+        return None
+    return f"{out} is a folder that is not an openbonsai latent checkpoint (no openbonsai.json saying so)"
+
+
+def check_latent_out(out, name: str | None = None) -> None:
+    problem = latent_out_problem(out)
+    if problem:
+        hint = f" such as {Path(out) / name}" if name and Path(out).is_dir() else ""
+        raise ExportError(f"export --out: {problem}. The latent export writes the checkpoint folder itself and "
+                          f"replaces only an empty folder or a previous latent checkpoint; pass a new folder{hint}")
+
+
+def verify_latent(folder, model, state: TernaryState, adapter, log=print, small: dict | None = None) -> list[dict]:
     """Every saved tensor equals the model's in memory bit for bit, every model tensor is saved (a tied
-    head may be left out), the saved state is the state, and each ternary tensor's saved weight is its
-    dequantized (C * s) R^T."""
+    head may be left out), the saved state is the state, each ternary tensor's saved weight is its
+    dequantized (C * s) R^T, and the saved distilled high-precision tensors are ``small``."""
     from ..core.ternary import dense_weight
     from .common import resolve_module
     results = []
@@ -650,29 +705,45 @@ def verify_latent(folder, model, state: TernaryState, adapter, log=print) -> lis
                 wrong.append(name)
         check(not wrong, "each ternary tensor is saved as its dequantized weight (C * s) R^T",
               f"{len(state.tensors)} tensors" + (f"; DIFFERENT {wrong[:4]}" if wrong else ""))
+    if small:
+        from ..formats.state import read_small
+        path = Path(folder) / LATENT_SMALL
+        back = read_small(path) if path.is_file() else {}
+        differ = sorted(k for k in small if k not in back or not _tensor_bits_equal(back[k], small[k]))
+        check(set(back) == set(small) and not differ,
+              f"{LATENT_SMALL} gives the distilled high-precision tensors the model computed with",
+              f"{len(back)} tensors" + (f"; DIFFERENT {differ[:4]}" if differ else ""))
     return results
 
 
 def export_latent(adapter, source, model, tokenizer, out, *, name: str, small: dict | None = None,
-                  reason: str | None = None, base_model: str | None = None, stage: str | None = None,
-                  verify: bool = True, log=print) -> dict:
+                  small_masters: tuple[dict, dict] | None = None, reason: str | None = None,
+                  base_model: str | None = None, stage: str | None = None, verify: bool = True, log=print) -> dict:
     """Write the latent checkpoint folder ``out`` from ``model`` (the unmodified model, loaded by the
     adapter) and a ternary state; returns the report (also ``out/openbonsai.json``).
 
     The model gets the dequantized weights (``apply_dense``) and the distilled high-precision tensors
-    (``small``), is saved with ``save_pretrained`` next to the tokenizer and the state, verified, and
-    the folder is put in place (a previous one is replaced)."""
+    (``small``: the values the distilled model computed with), is saved with ``save_pretrained`` next
+    to the tokenizer, the state and ``small.safetensors`` (``small_masters``: the FP32 masters and
+    their compute dtypes as distill saved them; default ``small`` itself), verified, and the folder is
+    put in place. ``out`` must be missing, an empty folder or a previous latent checkpoint (replaced);
+    anything else is refused (``check_latent_out``)."""
+    import secrets
     import shutil
+    import tempfile
     from ..digest import file_sha256
+    from ..formats.state import save_scales
     from .common import apply_dense, apply_small
     t0 = time.time()
     out = Path(out)
+    check_latent_out(out, name)
     state = as_state(source)
-    tmp = out.with_name(out.name + ".tmp")
-    shutil.rmtree(tmp, ignore_errors=True)
+    small = dict(small or {})
     n_dense = apply_dense(adapter, model, state.records())
-    n_small = apply_small(adapter, model, dict(small or {}))
+    n_small = apply_small(adapter, model, small)
     log(f"latent: {n_dense} ternary tensors dequantized into the model, {n_small} distilled high-precision tensors")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    tmp = Path(tempfile.mkdtemp(prefix=f".{out.name}.", suffix=".tmp", dir=out.parent))   # never an existing folder
     text_config = adapter.text_model(model).config
     use_cache = text_config.use_cache
     text_config.use_cache = True     # the loader turned it off for the pipeline; keep the model's default
@@ -680,6 +751,12 @@ def export_latent(adapter, source, model, tokenizer, out, *, name: str, small: d
         model.save_pretrained(tmp, safe_serialization=True)
         tokenizer.save_pretrained(tmp)
         save_state(tmp / "ternary.safetensors", state)
+        if small:
+            masters, dtypes = small_masters if small_masters is not None else (small, {k: "float32" for k in small})
+            if set(masters) != set(small):
+                raise ExportError(f"small_masters name {sorted(masters)[:4]}, not the distilled tensors {sorted(small)[:4]}")
+            save_scales(tmp / LATENT_SMALL, {}, {"stage": stage, "what": "distilled high-precision tensors"},
+                        small=masters, small_dtypes=dtypes)
     except BaseException:
         shutil.rmtree(tmp, ignore_errors=True)
         raise
@@ -700,21 +777,34 @@ def export_latent(adapter, source, model, tokenizer, out, *, name: str, small: d
                     "keys": sorted(state.tensors),
                     "use": "openbonsai eval --from <this folder>/ternary.safetensors installs the exact ternary "
                            "modules (codes in {-1, 0, 1}, fp16 scale per 128 weights, rotation R per width)"},
+        "small": ({"file": LATENT_SMALL, "tensors": len(small), "keys": sorted(small),
+                   "use": "the distilled high-precision tensors (FP32 masters and the dtype each was computed in; "
+                          "model*.safetensors holds them in the model dtype). openbonsai eval --from "
+                          "<this folder>/ternary.safetensors applies them"} if small else None),
         "tied_embedding_head": bool(adapter.tied),
         "notes": notes,
     }
     if verify:
         log("verify: latent checkpoint")
-        report["verify"] = verify_latent(tmp, model, state, adapter, log=log)
+        report["verify"] = verify_latent(tmp, model, state, adapter, log=log, small=small)
         failed = [x["check"] for x in report["verify"] if not x["ok"]]
         if failed:
             raise ExportError(f"latent verification failed ({failed[:3]}); the unverified folder is {tmp}")
     report["files"] = {f.name: file_sha256(f) for f in sorted(tmp.iterdir()) if f.is_file()}
     report["seconds"] = time.time() - t0
     atomic_write_json(tmp / "openbonsai.json", report)
-    if out.exists():
-        shutil.rmtree(out)
-    os.replace(tmp, out)
+    try:
+        check_latent_out(out, name)     # again: something may have appeared there while this ran
+    except ExportError:
+        shutil.rmtree(tmp, ignore_errors=True)
+        raise
+    if out.exists():     # an empty folder or a previous latent checkpoint: move it aside, then drop it
+        old = out.with_name(f".{out.name}.{secrets.token_hex(4)}.old")
+        os.replace(out, old)
+        os.replace(tmp, out)
+        shutil.rmtree(old, ignore_errors=True)
+    else:
+        os.replace(tmp, out)
     return report
 
 
@@ -735,6 +825,11 @@ def run(ctx) -> dict:
     verify = bool(e.get("verify", True))
     if fmt == "latent":
         out = Path(e["out"]) if e.get("out") else ctx.run.stage_dir("export") / name
+        check_latent_out(out, name)      # before loading the model
+        masters = None
+        if small:
+            from ..formats.state import read_small_masters
+            masters = read_small_masters(ctx.run.stage_dir("distill", create=False) / "scales.safetensors")
         log(f"exporting the {source} state as a latent checkpoint to {out}"
             + (f" (no PTQ1_0 GGUF: {reason})" if reason else ""))
         m = ctx.cfg["model"]
@@ -742,14 +837,17 @@ def run(ctx) -> dict:
         model, tok = adapter.load(ctx.model_path(), revision=m.get("revision"), device=ctx.device, dtype=ctx.dtype,
                                   attn=m.get("attn") or "sdpa", local_files_only=bool(m.get("local_files_only")),
                                   keep_vision=True)
-        report = export_latent(adapter, state, model, tok, out, name=name, small=small, reason=reason,
-                               base_model=ctx.model_path(), stage=source, verify=verify, log=log)
+        report = export_latent(adapter, state, model, tok, out, name=name, small=small, small_masters=masters,
+                               reason=reason, base_model=ctx.model_path(), stage=source, verify=verify, log=log)
         del model
         free(ctx.device)
         checks = report.get("verify") or []
         return {"output": str(out / "openbonsai.json"), "folder": str(out), "format": "latent", "source": source,
                 "why_not_gguf": reason, "verified": bool(checks), "checks_passed": sum(x["ok"] for x in checks)}
     out = Path(e["out"]) if e.get("out") else ctx.run.stage_dir("export") / f"{name}.gguf"
+    if out.is_dir():
+        raise ExportError(f"export --out: {out} is a folder; the PTQ1_0 export writes a .gguf file "
+                          f"(e.g. {out / (name + '.gguf')})")
     log(f"exporting the {source} state to {out}")
     report = export_gguf(adapter, state, ctx.model_dir(), out, name=name, small=small,
                          size_label=e.get("size_label"), verify=verify,

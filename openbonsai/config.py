@@ -100,10 +100,12 @@ DEFAULTS: dict = {
             "max_new_tokens": 512,         # cap with thinking off
             "max_new_tokens_thinking": 4096,  # cap with thinking on; rows reaching a cap are counted
             "batch": 16,                   # prompts per left-padded generate call (KV cache)
+            "batch_check": 0,              # regenerate this many (most padded) rows of the first new batch alone; compare
             "dense": True,                 # ternary sources generate with dense dequantized weights (faster)
             "cache": True,                 # keep generations per batch in eval/generations/ (resume, rescore)
             "gsm8k": {"n": 100, "path": None},   # first n of the frozen 100; path: local test parquet
-            "humaneval": {"n": 50, "path": None, "timeout": 10.0, "workers": 4},
+            # timeout: seconds per program; memory_mb: memory of each program and what it starts
+            "humaneval": {"n": 50, "path": None, "timeout": 10.0, "workers": 4, "memory_mb": 2048},
         },
     },
 }

@@ -17,6 +17,26 @@ import torch
 from torch import nn
 
 
+# The date every chat template sees. Templates that print today's date (Llama 3.2's
+# ``strftime_now("%d %b %Y")`` system header, Mistral Small's) would otherwise change their
+# prompts, traces, calibration text and generation-cache keys every day.
+CHAT_DATE = (2024, 7, 26)     # "26 Jul 2024", Llama 3.1's own default date_string
+
+
+def _fixed_strftime_now(fmt: str) -> str:
+    import datetime
+    return datetime.datetime(*CHAT_DATE).strftime(fmt)
+
+
+def template_vars(chat_kwargs: dict) -> dict:
+    """Variables for one chat-template render: the adapter's ``chat_kwargs`` plus a fixed clock
+    (``strftime_now``, which transformers binds to the real time, and ``date_string``, which Llama
+    3.x templates read first). Templates that use neither ignore them."""
+    import datetime
+    return {"strftime_now": _fixed_strftime_now,
+            "date_string": datetime.datetime(*CHAT_DATE).strftime("%d %b %Y"), **chat_kwargs}
+
+
 @dataclass(frozen=True)
 class LayerPlan:
     kind: str                                  # e.g. "linear_attention", "full_attention", "dense"

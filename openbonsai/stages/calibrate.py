@@ -72,7 +72,8 @@ def pack(stream, seq_len, n_blocks, bos=None):
 
 def chat_text(tok, messages, chat_kwargs) -> str:
     if getattr(tok, "chat_template", None):
-        return tok.apply_chat_template(messages, tokenize=False, **chat_kwargs)
+        from ..adapters.base import template_vars
+        return tok.apply_chat_template(messages, tokenize=False, **template_vars(chat_kwargs))
     return "\n\n".join(str(m.get("content", "")) for m in messages)   # base model: plain text
 
 

@@ -235,6 +235,16 @@ def read_small(path, *, cast: bool = True) -> dict[str, Tensor]:
         return out
 
 
+def read_small_masters(path) -> tuple[dict[str, Tensor], dict[str, str]]:
+    """(FP32 masters, the dtype each was computed in) of the trained high-precision tensors, as
+    ``save_scales`` takes them (``small``, ``small_dtypes``)."""
+    from safetensors import safe_open
+    with safe_open(str(path), framework="pt", device="cpu") as f:
+        md = _read_metadata(f, SCALES_FORMAT, path)
+        masters = {n.split("::", 1)[1]: f.get_tensor(n) for n in f.keys() if n.startswith("small::")}
+        return masters, {k: (md.get("small_dtypes") or {})[k] for k in masters}
+
+
 def load_scales(path) -> dict[str, Tensor]:
     return read_scales(path)[0]
 

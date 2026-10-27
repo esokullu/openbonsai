@@ -451,7 +451,7 @@ class _Tree:
     an address-space limit through ``prlimit`` on Linux).
 
     On Windows the program must be started with ``CREATE_SUSPENDED``: it joins the job before it
-    runs, then is resumed here. (A venv's ``python.exe`` is a launcher that starts the real
+    runs, then is resumed here. (A Windows venv's interpreter is a launcher that starts the real
     interpreter at once, in a job of its own that lets children break away; assigned after it
     started, that interpreter and everything it starts would be outside the job.)"""
 

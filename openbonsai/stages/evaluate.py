@@ -10,7 +10,10 @@ Sources (``--from``):
   high-precision tensors when ``distill.train.small``;
 - a path: a state ``.safetensors`` or a legacy research ``.pt`` (decoder
   ``ternary_state.pt`` and/or ``endpoint_state.pt``; comma-separated). Legacy
-  per-module signs are applied exactly as ``apply_state`` did;
+  per-module signs are applied exactly as ``apply_state`` did. A latent
+  checkpoint's ``ternary.safetensors`` also applies the distilled
+  high-precision tensors its folder lists (``small.safetensors``), so it scores
+  the distilled model;
 - a Prism PTQ1_0 ``.gguf`` (ours or the official Ternary Bonsai): the whole
   model is built from the file (``adapter.from_gguf``: ternary modules plus its
   F32 tensors); only the config and tokenizer come from ``model.path``. The
@@ -26,7 +29,10 @@ evaluations of other sources reuse both without loading the BF16 model.
 distillation teacher shards (top-k metrics only; no BF16 model).
 
 ``gsm8k`` and ``humaneval`` (``eval.reasoning``) generate greedily with the
-model's chat template, once per ``thinking`` mode, after the other suites. With
+model's chat template, once per ``thinking`` mode, after the other suites. A
+thinking mode the chat template has no switch for, and (for a stage source)
+stored calibration or teacher tokens that contain a scored test problem, fail
+before the model is loaded. With
 ``eval.reasoning.dense`` (the default) a ternary model (distill, a GGUF,
 ``--install ternary``) generates with dense dequantized weights (``densify``;
 the same weights ``--install dense`` writes): much faster, with the same
@@ -91,6 +97,8 @@ def install(ctx, model, source: str, mode: str = "auto") -> str:
         if source == "distill":
             apply_small(adapter, model, ctx.distill_small())
         return source
+    from ..formats.state import read_small
+    from .export import latent_small_file
     for part in source.split(","):
         path = Path(part)
         if path.suffix == ".safetensors":
@@ -101,7 +109,24 @@ def install(ctx, model, source: str, mode: str = "auto") -> str:
             install_ternary(adapter, model, records, ctx.device)
         else:
             apply_dense(adapter, model, records)
+        small = latent_small_file(path)
+        if small is not None:     # a latent checkpoint's state: its distilled high-precision tensors too
+            n = apply_small(adapter, model, read_small(small))
+            ctx.log("eval")(f"{path.name}: applied the latent checkpoint's {n} distilled high-precision tensors "
+                            f"({small.name})")
     return "+".join(Path(p).stem for p in source.split(","))
+
+
+def source_files(source: str) -> list[str]:
+    """The files a path source reads: its states and a latent checkpoint's distilled tensors."""
+    from .export import latent_small_file
+    files = []
+    for part in source.split(","):
+        files.append(part)
+        small = latent_small_file(Path(part)) if part.endswith(".safetensors") else None
+        if small is not None:
+            files.append(str(small))
+    return files
 
 
 def compare_blocks(ctx, tok) -> torch.Tensor:
@@ -185,8 +210,65 @@ def weights_identity(ctx, source: str, weights: str, gguf_small_fp32: bool = Fal
     else:
         ident["model_sha256"] = ctx.model_digest()
         if source != "bf16":
-            ident["files"] = ctx.file_digests(source.split(","))
+            ident["files"] = ctx.file_digests(source_files(source))
     return canonical_hash(ident)
+
+
+def check_test_problems_absent(ctx, source: str, suites) -> None:
+    """Refuse to score a stage whose stored calibration (and, for distill, distillation-teacher)
+    tokens contain a problem about to be scored. The build-time guard checked them against the test
+    problems known then (``heldout``); this covers data built before it, or without the full splits
+    (the problems above the frozen subsets). A clean result is remembered per file and problem set."""
+    from ..eval import heldout
+    from ..formats.atomic import atomic_write_json
+    if source not in STAGE_SOURCES[1:]:
+        return
+    r = ctx.cfg["eval"]["reasoning"]
+    stored = [(ctx.run.stage_dir("calibrate", create=False) / "tokens.npy", int(ctx.cfg["calibrate"]["seed"]),
+               "calib/tokens.npy")]
+    if source == "distill":
+        stored.append((ctx.run.stage_dir("distill", create=False) / "teacher" / "input_ids.npy",
+                       int(ctx.cfg["distill"]["teacher"]["seed"]), "distill/teacher/input_ids.npy"))
+    stored = [s for s in stored if s[0].is_file()]
+    if not stored:
+        return
+    probes = []
+    for suite in suites:
+        sc = r.get(suite) or {}
+        _, problems = R.load_problems(suite, sc.get("n"), path=sc.get("path"),
+                                      local_files_only=bool(ctx.cfg["model"].get("local_files_only")))
+        probes += heldout.problem_needles(suite, problems)
+    memo_path = ctx.run.stage_dir("eval") / "heldout-checked.json"
+    try:
+        memo = json.loads(memo_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        memo = {}
+    tok = None
+    for path, seed, name in stored:
+        key = canonical_hash({"file": ctx.digests().file(path), "seed": seed, "probes": sorted(probes)})
+        if memo.get(name) == key:
+            continue
+        if tok is None:
+            tok = ctx.load_tokenizer()
+        import numpy as np
+        heldout.check_stored_blocks(tok, torch.from_numpy(np.load(path).astype(np.int64)), seed,
+                                    f"{name} (scored by {', '.join(suites)})", probes,
+                                    bos=ctx.adapter().bos_id(tok))
+        memo[name] = key
+        atomic_write_json(memo_path, memo)
+
+
+def check_thinking_modes(cfg, adapter) -> list[str]:
+    """``eval.reasoning.thinking`` as modes; a mode the model's chat template has no switch for is a
+    ConfigError (raised before any model is loaded or any result is written)."""
+    from .traces import checked_chat_kwargs
+    try:
+        modes = R.thinking_modes(cfg["eval"]["reasoning"].get("thinking", "off"))
+    except ValueError as error:
+        raise ConfigError(str(error)) from None
+    for mode in modes:
+        checked_chat_kwargs(adapter, mode == "on", f"eval.reasoning.thinking {mode}")
+    return modes
 
 
 def run_reasoning(ctx, model, tok, source: str, label: str, suites, *, identity: str, weights: str) -> dict:
@@ -202,13 +284,16 @@ def run_reasoning(ctx, model, tok, source: str, label: str, suites, *, identity:
         for mode in modes:
             cap = int(r["max_new_tokens_thinking"] if mode == "on" else r["max_new_tokens"])
             cache = out / "generations" / f"{label}.{suite}.think-{mode}" if r.get("cache", True) else None
+            memory_mb = sc.get("memory_mb", 2048)
             try:
                 res = R.run_suite(
                     suite, model, tok, ctx.adapter(), thinking=mode, n=sc.get("n"), max_new_tokens=cap,
                     batch=int(r.get("batch") or 16), device=ctx.device, log=log, cache_dir=cache,
                     cache_key=identity, timeout=float(sc.get("timeout") or 10.0),
                     workers=int(sc.get("workers") or 4), path=sc.get("path"),
-                    local_files_only=bool(ctx.cfg["model"].get("local_files_only")))
+                    memory_limit=int(memory_mb) * 2**20 if memory_mb else None,
+                    local_files_only=bool(ctx.cfg["model"].get("local_files_only")),
+                    batch_check=int(r.get("batch_check") or 0))
             except S.SuiteNotApplicable as error:
                 log(f"{suite}: skipped ({error})")
                 results[suite] = {"suite": suite, "skipped": str(error)}
@@ -237,7 +322,8 @@ def run(ctx, source: str | None = None, suites=None, install_mode: str = "auto",
     suites = [s for s in suites if s not in R.SUITES]       # scored first, on the installed weights
     dense_gen = bool(e["reasoning"].get("dense", True))
     if generating:
-        R.thinking_modes(e["reasoning"].get("thinking", "off"))   # a bad value fails before loading
+        check_thinking_modes(ctx.cfg, ctx.adapter())     # bad values fail before loading
+        check_test_problems_absent(ctx, source, generating)
         if not suites and dense_gen and install_mode == "auto" and not is_gguf(source):
             install_mode = "dense"    # generation only: write the dequantized weights directly
     out = ctx.run.stage_dir("eval")

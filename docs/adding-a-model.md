@@ -121,9 +121,12 @@ When no PTQ1_0 GGUF can be written, `export` writes `<run>/export/OpenBonsai-<mo
 
 - `model.safetensors`, `config.json`, the generation config and the tokenizer. Plain transformers loads the folder. Every ternary tensor holds its dequantized weight `(C * s) R^T` in the model dtype; the other tensors are the checkpoint's (or the distilled ones).
 - `ternary.safetensors`: the exact codes, fp16 scales, per-width signs and block. `openbonsai eval --from <folder>/ternary.safetensors --install ternary` installs exactly what distillation evaluated, and a GGUF can be written from it once Prism loads the architecture.
-- `openbonsai.json`: what the folder is, why it is not a GGUF, the Hadamard block note and the SHA256 of every file.
+- `small.safetensors` (with `distill.train.small: true`): the distilled high-precision tensors (norms, `A_log`, ...) as FP32 masters with the dtype each was computed in. `eval --from <folder>/ternary.safetensors` applies them, so it scores the distilled model rather than the original checkpoint's tensors.
+- `openbonsai.json`: what the folder is, why it is not a GGUF, the Hadamard block note, the distilled tensors and the SHA256 of every file.
 
-Verification re-reads every saved tensor and the state bit for bit.
+Verification re-reads every saved tensor, the state and the distilled tensors bit for bit.
+
+`export --out DIR` names the checkpoint folder itself, not a parent folder. The folder is built next to `DIR` and moved into place. An existing `DIR` is replaced only when it is empty or a previous latent checkpoint (its `openbonsai.json` says so); any other folder, or a file, is refused and left untouched. `openbonsai run` checks `export.out` before the first stage.
 
 ## A new architecture
 

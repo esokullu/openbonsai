@@ -17,6 +17,6 @@ To rebuild the files from the pinned datasets and compare them byte for byte (of
 HF_HUB_OFFLINE=1 python -m openbonsai.eval.reasoning check [--gsm8k PATH] [--humaneval PATH]
 ```
 
-**These are test data.** The calibrate and traces stages refuse sources that name these test splits, local copies of the test files, and any calibration stream or trace prompt that contains one of these problems (`openbonsai/eval/heldout.py`). Future math or code calibration data must come from training splits, for example `openai/gsm8k` `main/train-00000-of-00001.parquet`. HumanEval has no training split, so code calibration data must come from another dataset's training split.
+**These are test data.** The calibrate and traces stages refuse sources that name these test splits, local copies of the test files, and any calibration stream or trace prompt that contains a test problem: every problem of both splits when they are in the Hugging Face cache, else these frozen ones (`openbonsai/eval/heldout.py`). Before scoring a stage, eval also checks the run's stored calibration and distillation-teacher tokens for the problems it is about to score. Future math or code calibration data must come from training splits, for example `openai/gsm8k` `main/train-00000-of-00001.parquet`. HumanEval has no training split, so code calibration data must come from another dataset's training split.
 
 The problem texts are from the GSM8K (MIT license) and HumanEval (MIT license) datasets.

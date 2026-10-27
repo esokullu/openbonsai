@@ -117,11 +117,11 @@ def dev(model, tokenizer, manifest: dict | None = None, *, generations: bool = T
         correct += pred == q.get("answer_id")
     gens = []
     if generations:
+        from ..stages.traces import generate_encoded     # plain greedy: no generation_config.json options
         for g in manifest["generations"]:
-            ids = torch.tensor([g["input_ids"]], device=dev_)
-            out = model.generate(input_ids=ids, max_new_tokens=g["max_new_tokens"], do_sample=False,
-                                 eos_token_id=g["eos_ids"], pad_token_id=g["eos_ids"][0], use_cache=True)
-            gens.append(tokenizer.decode(out[0, ids.shape[1]:], skip_special_tokens=False))
+            (gen, _), = generate_encoded(model, [list(g["input_ids"])], eos_ids=list(g["eos_ids"]),
+                                         max_new_tokens=int(g["max_new_tokens"]), device=dev_, pad_id=g["eos_ids"][0])
+            gens.append(tokenizer.decode(gen, skip_special_tokens=False))
     nll = nll_sum / nll_n
     return {"suite": "dev", "nll": nll, "ppl": math.exp(nll), "scored_tokens": nll_n,
             "arc_correct": correct, "arc_total": len(manifest["choices"]), "arc_preds": "".join(preds),

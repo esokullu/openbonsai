@@ -72,9 +72,11 @@ def ultrachat_prompts(path, *, rows=(0, 6000), n=128, seed=5090) -> list[list[di
 
 
 def encode_chat(tokenizer, msgs: list[dict], chat_kwargs: dict) -> list[int]:
-    """Token ids of ``msgs`` rendered by the model's own chat template with the generation prompt."""
+    """Token ids of ``msgs`` rendered by the model's own chat template with the generation prompt
+    (and the fixed date of ``adapters.base.template_vars``)."""
+    from ..adapters.base import template_vars
     ids = tokenizer.apply_chat_template(msgs, tokenize=True, add_generation_prompt=True, return_dict=False,
-                                        **chat_kwargs)
+                                        **template_vars(chat_kwargs))
     if hasattr(ids, "tolist"):
         ids = ids.tolist()
     ids = [int(t) for t in (ids[0] if ids and isinstance(ids[0], list) else ids)]
@@ -83,20 +85,44 @@ def encode_chat(tokenizer, msgs: list[dict], chat_kwargs: dict) -> list[int]:
     return ids
 
 
+# What generate_encoded does, for result files and cache keys (bump when the decoding changes).
+DECODING = {"strategy": "greedy", "num_beams": 1, "kv_cache": True,
+            "model_generation_config": "ignored: transformers' library defaults (no repetition penalty, "
+                                       "n-gram blocking, suppressed or bad tokens, minimum length)"}
+
+
+def greedy_config(*, max_new_tokens: int, eos_ids, pad_id: int):
+    """The complete GenerationConfig of a greedy generation."""
+    from transformers import GenerationConfig
+    return GenerationConfig(do_sample=False, num_beams=1, max_new_tokens=int(max_new_tokens),
+                            eos_token_id=[int(e) for e in eos_ids], pad_token_id=int(pad_id), use_cache=True)
+
+
 @torch.no_grad()
 def generate_encoded(model, encoded: list[list[int]], *, eos_ids: list[int], max_new_tokens: int, device,
                      pad_id: int) -> list[tuple[list[int], bool]]:
-    """Greedy, left-padded batch generation with the KV cache.
+    """Greedy, left-padded batch generation with the KV cache: plain argmax decoding.
+
+    ``generate`` fills every option a call leaves unset from ``model.generation_config``, i.e. a
+    checkpoint's ``generation_config.json`` (``repetition_penalty``, ``no_repeat_ngram_size``,
+    ``bad_words_ids``, ``suppress_tokens``, ``min_length`` ...), which a model built from a GGUF
+    does not have. So the call runs with the library defaults in its place: the same decoding for
+    every model, however it was built.
 
     Returns per prompt (generated ids through the first EOS, hit ``max_new_tokens``)."""
+    from transformers import GenerationConfig
     if max_new_tokens < 1:
         raise ValueError("max_new_tokens must be positive")
     width = max(len(ids) for ids in encoded)
     input_ids = torch.tensor([[pad_id] * (width - len(ids)) + ids for ids in encoded], device=device)
     mask = torch.tensor([[0] * (width - len(ids)) + [1] * len(ids) for ids in encoded], device=device)
-    out = model.generate(input_ids=input_ids, attention_mask=mask, max_new_tokens=max_new_tokens,
-                         do_sample=False, num_beams=1, eos_token_id=list(eos_ids), pad_token_id=pad_id,
-                         use_cache=True)
+    config = greedy_config(max_new_tokens=max_new_tokens, eos_ids=eos_ids, pad_id=pad_id)
+    saved = model.generation_config
+    model.generation_config = GenerationConfig()
+    try:
+        out = model.generate(input_ids=input_ids, attention_mask=mask, generation_config=config)
+    finally:
+        model.generation_config = saved
     eos = set(eos_ids)
     results = []
     for row in range(len(encoded)):
@@ -107,6 +133,15 @@ def generate_encoded(model, encoded: list[list[int]], *, eos_ids: list[int], max
             raise ValueError("model generated no tokens")
         results.append((gen, stop is None))
     return results
+
+
+def checked_chat_kwargs(adapter, thinking: bool, where: str) -> dict:
+    """``adapter.chat_kwargs``; a thinking mode the chat template has no switch for is a ConfigError."""
+    from ..config import ConfigError
+    try:
+        return adapter.chat_kwargs(thinking=bool(thinking))
+    except ValueError as error:
+        raise ConfigError(f"{where}: {error}") from None
 
 
 def pad_token(tokenizer, eos_ids) -> int:
@@ -165,6 +200,7 @@ def run(ctx) -> dict:
     prompts = load_prompts(ctx)
     batch = int(c.get("batch") or 8)
     adapter = ctx.adapter()
+    chat_kwargs = checked_chat_kwargs(adapter, bool(c.get("thinking")), "traces.thinking")   # before loading
     model = tokenizer = None
     for k, b0 in enumerate(range(0, len(prompts), batch)):
         part = parts / f"{k:05d}.jsonl"
@@ -173,8 +209,7 @@ def run(ctx) -> dict:
         if model is None:
             model, tokenizer = ctx.load_model()
             torch.manual_seed(0)
-        recs = generate_batch(model, tokenizer, prompts[b0:b0 + batch],
-                              chat_kwargs=adapter.chat_kwargs(thinking=bool(c.get("thinking"))),
+        recs = generate_batch(model, tokenizer, prompts[b0:b0 + batch], chat_kwargs=chat_kwargs,
                               eos_ids=adapter.eos_ids(tokenizer, model), device=ctx.device,
                               max_new_tokens=int(c["max_new_tokens"]))
         atomic_write_bytes(part, "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in recs).encode("utf-8"))
