@@ -10,6 +10,11 @@ Files come from a local ``path`` or from the Hugging Face hub at a pinned
 revision (no machine-specific paths). For adapters that add BOS, every block
 starts with BOS and carries seq_len - 1 data tokens.
 
+The reasoning suites' TEST problems (GSM8K, HumanEval) never enter the blocks:
+a source naming a test split is refused, and so are blocks whose text contains
+a frozen test problem (openbonsai.eval.heldout). Math or code calibration data
+must come from training splits.
+
 Output: ``calib/tokens.npy`` (int32 [N, seq_len]) and ``calib/sources.json``.
 """
 from __future__ import annotations
@@ -134,21 +139,25 @@ def jsonl_blocks(tok, path, seq_len, n, seed, *, chat_kwargs=None, bos=None, shu
 
 
 def build(tok, sources, *, seq_len=2048, seed=0, chat_kwargs=None, bos=None, traces_path=None,
-          local_files_only=False):
+          local_files_only=False, where="calibration"):
     """Blocks from every source in order, then one seeded permutation.
 
+    Refuses evaluation test data (``heldout``; ``where`` names the data in the error).
     Returns (LongTensor [N, seq_len], per-source report).
     """
+    from ..eval import heldout
     blocks, report = [], []
-    for src in sources:
+    for k, src in enumerate(sources):
         kind, n = src.get("kind"), int(src.get("n") or 0)
         if kind not in KINDS:
             raise ValueError(f"unknown calibration source kind {kind!r}; known: {KINDS}")
         if n <= 0:
             continue
         s_seed = int(src.get("seed", seed))
+        heldout.check_source(src, f"{where} source {k} ({kind})")
         path = resolve_file(src, local_files_only=local_files_only,
                             default_path=traces_path if kind == "traces" and not src.get("path") else None)
+        heldout.check_source(src, f"{where} source {k} ({kind})", path=path if src.get("path") else None)
         if kind == "wikitext2":
             got = wiki_blocks(tok, path, seq_len, n, s_seed, bos)
         elif kind == "ultrachat":
@@ -163,6 +172,7 @@ def build(tok, sources, *, seq_len=2048, seed=0, chat_kwargs=None, bos=None, tra
                                shuffle=bool(src.get("shuffle", False)))
         if len(got) != n:
             raise ValueError(f"{kind}: only {len(got)} blocks of {seq_len} tokens available, {n} requested")
+        heldout.check_blocks(tok, got, f"{where} source {k} ({kind})", bos=bos)
         blocks += got
         report.append({"kind": kind, "blocks": n, "path": str(path), "sha256": file_sha256(path),
                        **{k: src[k] for k in ("repo", "revision", "file", "min_row", "seed") if k in src}})

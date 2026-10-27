@@ -10,6 +10,8 @@
     openbonsai eval --run runs/my-model --from bf16|quantize|endpoints|distill|PATH --suite dev,extended,compare,teacher
         PATH: state.safetensors, legacy .pt[,.pt], or a PTQ1_0 .gguf (ours or the official
         Ternary Bonsai; --run defaults to <gguf>.eval and --model gives the config and tokenizer)
+    openbonsai eval --run runs/my-model --from distill --suite gsm8k,humaneval --set 'eval.reasoning.thinking=[off,on]'
+        greedy chat generation on frozen GSM8K/HumanEval TEST subsets (docs/evaluation.md)
     openbonsai inspect PATH            summary of a state file, GGUF or run directory
 
 A stage whose output exists with the same config hash is skipped; ``--force``
@@ -283,7 +285,8 @@ def build_parser() -> argparse.ArgumentParser:
             s.add_argument("--from", dest="source", default=None,
                            help="bf16 | quantize | endpoints | distill | state.safetensors | legacy.pt[,more.pt] "
                                 "| model.gguf")
-            s.add_argument("--suite", default=None, help="comma-separated: dev, extended, compare, teacher")
+            s.add_argument("--suite", default=None, help="comma-separated: dev, extended, compare, teacher, gsm8k, humaneval "
+                                "(the last two: eval.reasoning.*)")
             s.add_argument("--install", choices=("auto", "dense", "ternary"), default="auto",
                            help="dense weights or ternary modules (auto: ternary for distill and GGUF)")
             s.add_argument("--gguf-small-fp32", action="store_true",

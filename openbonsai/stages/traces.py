@@ -71,24 +71,26 @@ def ultrachat_prompts(path, *, rows=(0, 6000), n=128, seed=5090) -> list[list[di
     return pool[:n]
 
 
+def encode_chat(tokenizer, msgs: list[dict], chat_kwargs: dict) -> list[int]:
+    """Token ids of ``msgs`` rendered by the model's own chat template with the generation prompt."""
+    ids = tokenizer.apply_chat_template(msgs, tokenize=True, add_generation_prompt=True, return_dict=False,
+                                        **chat_kwargs)
+    if hasattr(ids, "tolist"):
+        ids = ids.tolist()
+    ids = [int(t) for t in (ids[0] if ids and isinstance(ids[0], list) else ids)]
+    if not ids:
+        raise ValueError("chat template produced no tokens")
+    return ids
+
+
 @torch.no_grad()
-def generate_batch(model, tokenizer, prompts: list[list[dict]], *, chat_kwargs: dict, eos_ids: list[int],
-                   max_new_tokens: int, device, pad_id: int | None = None) -> list[dict[str, Any]]:
-    """Greedy, left-padded batch generation; returns one record per prompt."""
+def generate_encoded(model, encoded: list[list[int]], *, eos_ids: list[int], max_new_tokens: int, device,
+                     pad_id: int) -> list[tuple[list[int], bool]]:
+    """Greedy, left-padded batch generation with the KV cache.
+
+    Returns per prompt (generated ids through the first EOS, hit ``max_new_tokens``)."""
     if max_new_tokens < 1:
         raise ValueError("max_new_tokens must be positive")
-    encoded = []
-    for msgs in prompts:
-        ids = tokenizer.apply_chat_template(msgs, tokenize=True, add_generation_prompt=True, return_dict=False,
-                                            **chat_kwargs)
-        if hasattr(ids, "tolist"):
-            ids = ids.tolist()
-        ids = [int(t) for t in (ids[0] if ids and isinstance(ids[0], list) else ids)]
-        if not ids:
-            raise ValueError("chat template produced no tokens")
-        encoded.append(ids)
-    if pad_id is None:
-        pad_id = tokenizer.pad_token_id if tokenizer.pad_token_id is not None else eos_ids[0]
     width = max(len(ids) for ids in encoded)
     input_ids = torch.tensor([[pad_id] * (width - len(ids)) + ids for ids in encoded], device=device)
     mask = torch.tensor([[0] * (width - len(ids)) + [1] * len(ids) for ids in encoded], device=device)
@@ -96,35 +98,62 @@ def generate_batch(model, tokenizer, prompts: list[list[dict]], *, chat_kwargs: 
                          do_sample=False, num_beams=1, eos_token_id=list(eos_ids), pad_token_id=pad_id,
                          use_cache=True)
     eos = set(eos_ids)
-    records = []
-    for row, (msgs, ids) in enumerate(zip(prompts, encoded)):
+    results = []
+    for row in range(len(encoded)):
         gen = out[row, width:].tolist()
         stop = next((k for k, t in enumerate(gen) if t in eos), None)
         gen = gen[:stop + 1] if stop is not None else gen
         if not gen:
             raise ValueError("model generated no tokens")
+        results.append((gen, stop is None))
+    return results
+
+
+def pad_token(tokenizer, eos_ids) -> int:
+    return tokenizer.pad_token_id if tokenizer.pad_token_id is not None else int(eos_ids[0])
+
+
+def generate_batch(model, tokenizer, prompts: list[list[dict]], *, chat_kwargs: dict, eos_ids: list[int],
+                   max_new_tokens: int, device, pad_id: int | None = None) -> list[dict[str, Any]]:
+    """Greedy, left-padded batch generation; returns one record per prompt."""
+    if max_new_tokens < 1:
+        raise ValueError("max_new_tokens must be positive")
+    encoded = [encode_chat(tokenizer, msgs, chat_kwargs) for msgs in prompts]
+    if pad_id is None:
+        pad_id = pad_token(tokenizer, eos_ids)
+    generated = generate_encoded(model, encoded, eos_ids=eos_ids, max_new_tokens=max_new_tokens, device=device,
+                                 pad_id=pad_id)
+    records = []
+    for msgs, ids, (gen, hit) in zip(prompts, encoded, generated):
         records.append({"input_ids": ids + gen, "attention_mask": [1] * (len(ids) + len(gen)),
                         "prompt_token_count": len(ids), "generated_token_count": len(gen),
-                        "hit_generation_limit": stop is None,
+                        "hit_generation_limit": hit,
                         "prompt": next((m.get("content") for m in msgs if m.get("role") == "user"), None)})
     return records
 
 
 def load_prompts(ctx) -> list[list[dict]]:
+    """The trace prompts; refuses any that contain a reasoning suite's test problem (eval.heldout)."""
+    from ..eval import heldout
     spec = ctx.cfg["traces"]["prompts"] or {}
     kind = spec.get("kind", "jsonl")
     n = spec.get("n")
     if kind == "jsonl":
         if not spec.get("path"):
             raise ValueError("traces.prompts.path is required for kind jsonl")
-        return read_prompts(spec["path"], n)
-    if kind == "ultrachat":
+        heldout.check_source(spec, "traces.prompts", path=spec["path"])
+        prompts = read_prompts(spec["path"], n)
+    elif kind == "ultrachat":
         from .calibrate import resolve_file
+        heldout.check_source({"kind": "ultrachat", **spec}, "traces.prompts")
         path = resolve_file({"kind": "ultrachat", **spec},
                             local_files_only=bool(ctx.cfg["model"].get("local_files_only")))
-        return ultrachat_prompts(path, rows=tuple(spec.get("rows", (0, 6000))), n=int(n or 128),
-                                 seed=int(spec.get("seed", 5090)))
-    raise ValueError(f"unknown traces.prompts.kind {kind!r}")
+        prompts = ultrachat_prompts(path, rows=tuple(spec.get("rows", (0, 6000))), n=int(n or 128),
+                                    seed=int(spec.get("seed", 5090)))
+    else:
+        raise ValueError(f"unknown traces.prompts.kind {kind!r}")
+    heldout.check_texts(["\n".join(str(m.get("content", "")) for m in msgs) for msgs in prompts], "traces.prompts")
+    return prompts
 
 
 def run(ctx) -> dict:

@@ -247,6 +247,37 @@ def apply_dense(adapter: ModelAdapter, model, records) -> int:
     return n
 
 
+def has_ternary(model) -> bool:
+    return any(isinstance(m, (TernaryLinear, TernaryEmbedding)) for m in model.modules())
+
+
+@torch.no_grad()
+def densify(model, dtype) -> int:
+    """Replace every TernaryLinear/TernaryEmbedding in ``model`` by an ordinary Linear/Embedding
+    holding its dequantized weight (C * s) R^T in ``dtype``: ``dense_weight``, the weights
+    ``apply_dense`` writes (any trained scale multiplier included). Generation then runs plain
+    GEMMs. One module at a time, so the ternary buffers are freed as the dense weights appear.
+    Returns the number of modules replaced."""
+    names = [n for n, m in model.named_modules() if isinstance(m, (TernaryLinear, TernaryEmbedding))]
+    for name in names:
+        parent_name, _, attr = name.rpartition(".")
+        parent = model.get_submodule(parent_name) if parent_name else model
+        module = getattr(parent, attr)
+        w = dense_weight(module.codes, module.scales(), module.signs, module.block, device=module.codes.device,
+                         dtype=dtype)
+        if isinstance(module, TernaryLinear):
+            new = torch.nn.Linear(module.in_features, module.out_features, bias=module.bias is not None,
+                                  device="meta", dtype=dtype)
+            if module.bias is not None:
+                new.bias = torch.nn.Parameter(module.bias.to(dtype), requires_grad=False)
+        else:
+            new = torch.nn.Embedding(module.num, module.dim, device="meta", dtype=dtype)
+        new.weight = torch.nn.Parameter(w, requires_grad=False)
+        setattr(parent, attr, new)
+        del module, w
+    return len(names)
+
+
 def install_ternary(adapter: ModelAdapter, model, records, device) -> list:
     """Replace modules with TernaryLinear/TernaryEmbedding (``install_ternary``/``install_endpoints``)."""
     hs, installed = {}, []

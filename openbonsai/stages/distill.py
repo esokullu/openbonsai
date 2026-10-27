@@ -162,7 +162,8 @@ def run_teacher(ctx) -> dict:
         data, report = calibrate.build(tok, teacher_sources(ctx.cfg), seq_len=int(t["seq_len"]), seed=int(t["seed"]),
                                        chat_kwargs=adapter.chat_kwargs(thinking=False), bos=adapter.bos_id(tok),
                                        traces_path=ctx.run.stage_dir("traces", create=False) / "traces.jsonl",
-                                       local_files_only=bool(ctx.cfg["model"].get("local_files_only")))
+                                       local_files_only=bool(ctx.cfg["model"].get("local_files_only")),
+                                       where="distill.teacher")
         atomic_write_bytes(out / "sources.json", json.dumps(report, indent=1).encode("utf-8"))
         atomic_write_bytes(ids_path, _npy_bytes(data.numpy().astype(np.int32)))
     teacher_topk(model, data, out, topk=int(t["topk"]), shard=int(t["shard"]), device=ctx.device, log=log)

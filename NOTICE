@@ -40,6 +40,22 @@ examples/tiny-data/ is original text written for the tests.
   High-quality Instructional Conversations", 2023). Used as calibration text.
   License: MIT.
 
+The reasoning test subsets in openbonsai/eval/assets/reasoning/
+(gsm8k-test-100.json, humaneval-test-50.json) hold problems copied unchanged
+from the datasets below (selected rows; GSM8K reference solutions reduced to
+their final number). They keep their original licenses (the copyright and
+permission notices in the datasets' repositories apply).
+
+  GSM8K, openai/gsm8k (main, test split), revision
+  740312add88f781978c0658806c59bc2815b9866.
+  Karl Cobbe et al. "Training Verifiers to Solve Math Word Problems", 2021.
+  License: MIT.
+
+  HumanEval, openai/openai_humaneval (test split), revision
+  7dce6050a7d6d172f3cc5c32aa97f52fa1a2e544.
+  Mark Chen et al. "Evaluating Large Language Models Trained on Code", 2021.
+  License: MIT.
+
 -------------------------------------------------------------------------------
 Qwen3.5
 -------------------------------------------------------------------------------

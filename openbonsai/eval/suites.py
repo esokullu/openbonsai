@@ -15,6 +15,9 @@
 - ``teacher``: the model against stored teacher top-k outputs (distillation's
   teacher shards): top-k metrics only, no BF16 model needed. The shards are
   distillation's training data, so this is in-sample for a distilled model.
+- ``gsm8k``, ``humaneval``: greedy chat generation on frozen TEST subsets
+  (100 GSM8K, 50 HumanEval), thinking off and/or on; exact match on the final
+  number and pass@1 (eval.reasoning, eval.scoring).
 
 ``dev`` and ``extended`` are tokenized for Qwen/Qwen3.5-9B and refuse other
 tokenizers. Their arithmetic is research/experiments/quick_eval.py's
@@ -40,7 +43,7 @@ LEGACY_INPUTS = ASSETS / "legacy-eval-inputs.json"
 LEGACY_SHA256 = "2952cf072dff2e9b00b09a59a5f2345a02b3e509725854af07ea8478f8a7a64c"
 CHAT_TRACES = ASSETS / "chat-traces16.jsonl"
 CHAT_SHA256 = "443aaba5e5b41c641c27cdcd45f34fd5a2e770fa466321c9bbab84436ff40aaf"
-SUITES = ("dev", "extended", "compare", "teacher")
+SUITES = ("dev", "extended", "compare", "teacher", "gsm8k", "humaneval")   # the last two: eval.reasoning
 
 
 class SuiteNotApplicable(ValueError):

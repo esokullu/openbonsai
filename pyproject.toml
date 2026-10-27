@@ -25,7 +25,8 @@ Repository = "https://github.com/esokullu/openbonsai"
 include = ["openbonsai*"]
 
 [tool.setuptools.package-data]
-"openbonsai.eval" = ["assets/bonsai-dev/*.json", "assets/bonsai-dev/*.jsonl", "assets/bonsai-dev/*.md"]
+"openbonsai.eval" = ["assets/bonsai-dev/*.json", "assets/bonsai-dev/*.jsonl", "assets/bonsai-dev/*.md",
+                     "assets/reasoning/*.json", "assets/reasoning/*.md"]
 "openbonsai.formats" = ["assets/*.json"]
 
 [tool.pytest.ini_options]

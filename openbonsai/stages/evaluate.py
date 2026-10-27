@@ -25,11 +25,23 @@ evaluations of other sources reuse both without loading the BF16 model.
 ``teacher`` scores against the first ``eval.teacher.rows`` rows of this run's
 distillation teacher shards (top-k metrics only; no BF16 model).
 
+``gsm8k`` and ``humaneval`` (``eval.reasoning``) generate greedily with the
+model's chat template, once per ``thinking`` mode, after the other suites. With
+``eval.reasoning.dense`` (the default) a ternary model (distill, a GGUF,
+``--install ternary``) generates with dense dequantized weights (``densify``;
+the same weights ``--install dense`` writes): much faster, with the same
+function up to BF16 rounding order. Generations are cached per batch in
+``eval/generations/`` under a hash of the weights' identity (stage output
+digests or file SHA256s), so an interrupted run resumes and rescoring reuses
+them.
+
 A stage source must be enabled, complete and current (same config, inputs and
 upstream outputs as when it ran); ``auto`` picks the last such stage. So a
 rerun quantize never meets distilled scales trained on the old codes.
 
-Results go to ``eval/<source>.<suite>.json``.
+Results go to ``eval/<source>.<suite>.json``, and for the reasoning suites to
+``eval/<source>.<suite>.think-<off|on>.json`` (counts, hit-cap counts and
+per-problem records).
 """
 from __future__ import annotations
 
@@ -38,12 +50,13 @@ from pathlib import Path
 
 import torch
 
-from ..config import ConfigError
+from ..config import ConfigError, canonical_hash
+from ..eval import reasoning as R
 from ..eval import suites as S
 from ..formats.atomic import atomic_write_json
 from ..formats.state import load_legacy_pt, load_state
 from . import calibrate
-from .common import apply_dense, apply_small, free, install_ternary, legacy_records
+from .common import apply_dense, apply_small, densify, free, has_ternary, install_ternary, legacy_records
 
 STAGE_SOURCES = ("bf16", "quantize", "endpoints", "distill")
 
@@ -99,7 +112,7 @@ def compare_blocks(ctx, tok) -> torch.Tensor:
     blocks, _ = calibrate.build(tok, sources, seq_len=int(c["seq_len"]), seed=int(c["seed"]),
                                 chat_kwargs=adapter.chat_kwargs(thinking=False), bos=adapter.bos_id(tok),
                                 traces_path=ctx.run.stage_dir("traces", create=False) / "traces.jsonl",
-                                local_files_only=bool(ctx.cfg["model"].get("local_files_only")))
+                                local_files_only=bool(ctx.cfg["model"].get("local_files_only")), where="eval.compare")
     return blocks
 
 
@@ -158,6 +171,59 @@ def load_gguf(ctx, path, *, small_fp32: bool = False):
                                    attn=m.get("attn") or "sdpa", small_fp32=small_fp32, log=ctx.log("eval"))
 
 
+def weights_identity(ctx, source: str, weights: str, gguf_small_fp32: bool = False) -> str:
+    """Hash of what the generating weights are made of: the model, and the stage's recorded config
+    hash and output digest, or the source files' SHA256 (the key of the generation cache)."""
+    m = ctx.cfg["model"]
+    ident = {"model": {k: m.get(k) for k in ("path", "revision", "adapter", "dtype", "attn")},
+             "device": ctx.device.type, "weights": weights, "source": source}
+    if source in STAGE_SOURCES[1:]:
+        ident["stage"] = ctx.run.done_key(source)        # its hash covers the model and upstream outputs
+    elif is_gguf(source):
+        ident["files"] = ctx.file_digests([source])      # the whole model comes from the file
+        ident["small_fp32"] = bool(gguf_small_fp32)
+    else:
+        ident["model_sha256"] = ctx.model_digest()
+        if source != "bf16":
+            ident["files"] = ctx.file_digests(source.split(","))
+    return canonical_hash(ident)
+
+
+def run_reasoning(ctx, model, tok, source: str, label: str, suites, *, identity: str, weights: str) -> dict:
+    """The gsm8k/humaneval suites in every ``eval.reasoning.thinking`` mode; one result file each."""
+    r = ctx.cfg["eval"]["reasoning"]
+    log = ctx.log("eval")
+    out = ctx.run.stage_dir("eval")
+    modes = R.thinking_modes(r.get("thinking", "off"))
+    results = {}
+    for suite in suites:
+        sc = r.get(suite) or {}
+        results[suite] = {}
+        for mode in modes:
+            cap = int(r["max_new_tokens_thinking"] if mode == "on" else r["max_new_tokens"])
+            cache = out / "generations" / f"{label}.{suite}.think-{mode}" if r.get("cache", True) else None
+            try:
+                res = R.run_suite(
+                    suite, model, tok, ctx.adapter(), thinking=mode, n=sc.get("n"), max_new_tokens=cap,
+                    batch=int(r.get("batch") or 16), device=ctx.device, log=log, cache_dir=cache,
+                    cache_key=identity, timeout=float(sc.get("timeout") or 10.0),
+                    workers=int(sc.get("workers") or 4), path=sc.get("path"),
+                    local_files_only=bool(ctx.cfg["model"].get("local_files_only")))
+            except S.SuiteNotApplicable as error:
+                log(f"{suite}: skipped ({error})")
+                results[suite] = {"suite": suite, "skipped": str(error)}
+                break
+            res = {"source": source, "weights": weights, **res}
+            atomic_write_json(out / f"{label}.{suite}.think-{mode}.json", res)
+            rate = res["tokens_per_second"]
+            unfinished = f", unfinished thinking {res['unfinished_thinking']}" if mode == "on" else ""
+            log(f"{suite} think={mode}: {res['score']}, hit cap {res['hit_cap']}/{res['total']} at {cap} tokens"
+                f"{unfinished}{f', {rate:.1f} tok/s' if rate else ''} "
+                f"({res['cached_batches']}/{res['batches']} batches from the cache)")
+            results[suite][mode] = {k: v for k, v in res.items() if k != "problems"}
+    return results
+
+
 def run(ctx, source: str | None = None, suites=None, install_mode: str = "auto",
         gguf_small_fp32: bool = False) -> dict:
     e = ctx.cfg["eval"]
@@ -167,6 +233,13 @@ def run(ctx, source: str | None = None, suites=None, install_mode: str = "auto",
     unknown = set(suites) - set(S.SUITES)
     if unknown:
         raise ValueError(f"unknown suites {sorted(unknown)}; known: {S.SUITES}")
+    generating = [s for s in suites if s in R.SUITES]
+    suites = [s for s in suites if s not in R.SUITES]       # scored first, on the installed weights
+    dense_gen = bool(e["reasoning"].get("dense", True))
+    if generating:
+        R.thinking_modes(e["reasoning"].get("thinking", "off"))   # a bad value fails before loading
+        if not suites and dense_gen and install_mode == "auto" and not is_gguf(source):
+            install_mode = "dense"    # generation only: write the dequantized weights directly
     out = ctx.run.stage_dir("eval")
     results = {}
     reference = blocks = ref_logits = None
@@ -206,4 +279,13 @@ def run(ctx, source: str | None = None, suites=None, install_mode: str = "auto",
         atomic_write_json(out / f"{label}.{suite}.json", r)
         log(json.dumps({k: v for k, v in r.items() if k != "generations"}))
         results[suite] = r
+    if generating:
+        weights = "ternary" if has_ternary(model) else "dense"
+        if weights == "ternary" and dense_gen:
+            replaced = densify(model, ctx.dtype)
+            free(ctx.device)
+            weights = "dense"
+            log(f"reasoning: generating with dense dequantized weights ({replaced} ternary modules replaced)")
+        results.update(run_reasoning(ctx, model, tok, source, label, generating, weights=weights,
+                                     identity=weights_identity(ctx, source, weights, gguf_small_fp32)))
     return results

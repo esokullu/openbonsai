@@ -87,6 +87,7 @@ class ModelAdapter:
     add_bos: ClassVar[bool] = False            # start every packed block / eval sequence with BOS
     zero_centered_norm: ClassVar[bool] = False  # norm is (1 + w) * x_hat instead of w * x_hat
     modeling_module: ClassVar[str | None] = None  # transformers module of the model (see import_for_device)
+    think_end: ClassVar[str | None] = None     # text that closes the thinking part of a generation
 
     def __init__(self, config):
         self.config = config

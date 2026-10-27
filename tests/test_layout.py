@@ -1,4 +1,5 @@
 """The package and its tests stand alone: nothing imports research/."""
+import json
 import re
 from pathlib import Path
 
@@ -53,6 +54,30 @@ def test_package_examples_and_scripts_have_no_windows_paths():
     texts = [p for p in ROOT.joinpath("openbonsai").rglob("*") if p.suffix in (".json", ".jsonl", ".md", ".yaml")]
     texts += [p for d in ("examples", "scripts") for p in ROOT.joinpath(d).rglob("*") if p.is_file()]
     for f in texts:
-        if windows_path(f.read_text(encoding="utf-8"), decoded=False):
+        text = f.read_text(encoding="utf-8")
+        if f.suffix == ".json":
+            # Scan the decoded strings: in raw JSON, Python code such as "if c in d:\n" (the
+            # HumanEval manifest) reads as the drive path d:\ because of the \n escape.
+            text = "\n".join(_json_strings(json.loads(text)))
+        if windows_path(text, decoded=False):
             offenders.append(str(f.relative_to(ROOT)))
     assert any(f.name == "setup_linux.sh" for f in texts) and offenders == []
+
+
+def _json_strings(value):
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, dict):
+        for k, v in value.items():
+            yield k
+            yield from _json_strings(v)
+    elif isinstance(value, list):
+        for v in value:
+            yield from _json_strings(v)
+
+
+def test_json_assets_are_scanned_as_decoded_strings():
+    code = json.dumps({"canonical_solution": "    for c in s:\n        if c in d:\n            pass\n"})
+    assert windows_path(code, decoded=False)                    # the raw-text false positive
+    assert not windows_path("\n".join(_json_strings(json.loads(code))), decoded=False)
+    assert windows_path("\n".join(_json_strings(json.loads(json.dumps({"p": "D:\\runs\\x"})))), decoded=False)

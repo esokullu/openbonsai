@@ -89,6 +89,17 @@ DEFAULTS: dict = {
         # off: top-k metrics only (ear_top{k}_lb/_ub, kl_top{k}). See docs/evaluation.md.
         "compare": {"seq_len": 512, "n": 8, "seed": 7, "topk": 64, "full": True, "sources": None},
         "teacher": {"rows": 8},    # suite "teacher": rows of the distillation teacher shards scored
+        # suites gsm8k, humaneval: greedy chat generation on frozen TEST subsets (eval/reasoning.py)
+        "reasoning": {
+            "thinking": ["off"],           # off, on or [off, on] (the chat template's thinking switch)
+            "max_new_tokens": 512,         # cap with thinking off
+            "max_new_tokens_thinking": 4096,  # cap with thinking on; rows reaching a cap are counted
+            "batch": 16,                   # prompts per left-padded generate call (KV cache)
+            "dense": True,                 # ternary sources generate with dense dequantized weights (faster)
+            "cache": True,                 # keep generations per batch in eval/generations/ (resume, rescore)
+            "gsm8k": {"n": 100, "path": None},   # first n of the frozen 100; path: local test parquet
+            "humaneval": {"n": 50, "path": None, "timeout": 10.0, "workers": 4},
+        },
     },
 }
 

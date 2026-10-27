@@ -68,4 +68,7 @@ export:
 eval:
   from: auto
   suites: [dev, extended, compare]   # compare also scores fine-tunes with another tokenizer
+  # Reasoning: --suite gsm8k,humaneval (100 GSM8K, 50 HumanEval TEST problems; greedy chat generation).
+  # Thinking off takes minutes on one GPU; on (4096-token cap) roughly 30-60 min. See docs/evaluation.md.
+  reasoning: {thinking: ["off"], max_new_tokens: 512, max_new_tokens_thinking: 4096, batch: 16}
   generations: true

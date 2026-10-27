@@ -35,6 +35,7 @@ class Qwen35Adapter(Qwen35GGUF, ModelAdapter):
     add_bos = False
     zero_centered_norm = True
     modeling_module = "transformers.models.qwen3_5.modeling_qwen3_5"
+    think_end = "</think>"
 
     def __init__(self, config):
         super().__init__(config)
