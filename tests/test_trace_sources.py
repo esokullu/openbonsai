@@ -191,6 +191,34 @@ def test_the_original_ultrachat_form_picks_the_prompts_it_always_picked(tmp_path
 def test_batches_hold_the_longest_prompts_first():
     assert T.plan_batches([3, 9, 5, 9, 1], 2, sort=True) == [[1, 3], [2, 0], [4]]
     assert T.plan_batches([3, 9, 5, 9, 1], 2, sort=False) == [[0, 1], [2, 3], [4]]
+    # traces.batch_tokens: rows x (longest prompt + cap) stays within the budget; a row over it alone is
+    # a batch of one; without a budget nothing changes.
+    lengths = [30, 90, 50, 10, 10, 10, 10, 200]
+    assert T.plan_batches(lengths, 4, sort=True, cap=10, budget=240) == [[7], [1, 2], [0, 3, 4, 5], [6]]
+    assert T.plan_batches(lengths, 4, sort=False, cap=10, budget=240) == [[0, 1], [2, 3, 4, 5], [6], [7]]
+    for sort in (True, False):
+        assert T.plan_batches(lengths, 4, sort=sort, cap=10) == T.plan_batches(lengths, 4, sort=sort)
+        assert T.plan_batches(lengths, 4, sort=sort, cap=10, budget=10**6) == T.plan_batches(lengths, 4, sort=sort)
+    for batch in T.plan_batches(lengths, 4, sort=True, cap=10, budget=240)[1:]:
+        assert len(batch) * (max(lengths[i] for i in batch) + 10) <= 240
+
+
+def test_a_token_budget_shrinks_the_batches_of_long_prompts(make_ctx, tmp_path, data):
+    """traces.batch_tokens splits the batches that would hold the most tokens; the traces are the same rows."""
+    sources = [{"kind": "ultrachat", "path": Path(data["chat"]).as_posix(), "rows": [0, 8], "n": 6,
+                "max_new_tokens": 4, "batch": 6}]
+    whole = make_ctx(tmp_path / "whole", *sources_sets(sources))
+    T.run(whole)
+    widest = max(r["prompt_token_count"] for r in _rows(whole))
+    budget = 3 * (widest + 4)
+    split = make_ctx(tmp_path / "split", *sources_sets(sources, f"traces.batch_tokens={budget}"))
+    summary = T.run(split)
+    assert summary["sources"][0]["batches"] == 2 and summary["sources"][0]["batch_tokens"] == budget
+    assert [r["row"] for r in _rows(split)] == [r["row"] for r in _rows(whole)]
+    assert stage_inputs(split.cfg, "traces")["traces"]["batch_tokens"] == budget
+    assert "batch_tokens" not in stage_inputs(whole.cfg, "traces")["traces"]      # unset: the hash is unchanged
+    with pytest.raises(ConfigError, match="traces.batch_tokens must be a positive integer"):
+        T.trace_sources(load_config(None, sources_sets(sources, "traces.batch_tokens=0")))
 
 
 def test_an_interrupted_multi_source_run_resumes_after_its_last_batch(make_ctx, tmp_path, data, monkeypatch):

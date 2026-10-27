@@ -55,7 +55,13 @@ chat template and thinking switch; the stored ids are exactly the rendered
 prompt plus what the model generated (its thinking block too, with thinking
 on), through the first EOS or the cap. With ``sources``, each source's prompts
 are sorted by length (longest first, so a batch that does not fit in memory
-fails first) and run in batches of its ``batch``. Each batch is cached in
+fails first) and run in batches of its ``batch``. ``traces.batch_tokens`` (both
+forms; null: no limit) also caps a batch's tokens in flight, rows x (its longest
+prompt + the cap): what the left-padded KV cache holds at the last step, so a
+few long prompts (UltraChat has some of 2,000 tokens) get smaller batches
+instead of a batch that does not fit. Set it: on Windows the driver can page
+GPU memory to system memory instead of raising out-of-memory (the CUDA sysmem
+fallback), and generation then crawls instead of failing and splitting. Each batch is cached in
 ``traces/cache/`` under a hash of its prompt ids, cap, decoding, the model's
 identity and the runtime (torch and transformers versions, device), so an
 interrupted run resumes after the last finished batch, and a config edit
@@ -432,6 +438,7 @@ def trace_sources(cfg: dict) -> list[dict]:
     t = cfg["traces"]
     common = {"thinking": t.get("thinking", False), "max_new_tokens": t.get("max_new_tokens"),
               "batch": t.get("batch") or 8}
+    budget = None if t.get("batch_tokens") is None else _positive(t["batch_tokens"], "traces.batch_tokens")
     if t.get("sources") is None:
         spec = dict(t.get("prompts") or {})
         kind = spec.get("kind", "jsonl")
@@ -446,7 +453,7 @@ def trace_sources(cfg: dict) -> list[dict]:
                "n": spec.get("n") if kind == "jsonl" else int(spec.get("n") or 128),
                "thinking": _thinking(common["thinking"], "traces.thinking"),
                "max_new_tokens": _positive(common["max_new_tokens"], "traces.max_new_tokens"),
-               "batch": _positive(common["batch"], "traces.batch")}
+               "batch": _positive(common["batch"], "traces.batch"), "batch_tokens": budget}
         return [src]
     if (t.get("prompts") or DEFAULTS["traces"]["prompts"]) != DEFAULTS["traces"]["prompts"]:
         raise ConfigError("set traces.sources or traces.prompts, not both: traces.sources replaces prompts "
@@ -464,6 +471,7 @@ def trace_sources(cfg: dict) -> list[dict]:
         src["n"] = _positive(s.get("n"), f"{where}.n")
         src["max_new_tokens"] = _positive(src["max_new_tokens"], f"{where}.max_new_tokens")
         src["batch"] = _positive(src["batch"], f"{where}.batch")
+        src["batch_tokens"] = budget
         src["seed"] = int(s["seed"]) if s.get("seed") is not None else DEFAULT_SEED.get(kind, 0)
         src["shuffle"] = s.get("shuffle", True) is not False
         if "instruction" not in s:
@@ -634,10 +642,23 @@ def _record(ids: list[int], gen: list[int], hit: bool, msgs: list[dict], **meta)
             "input_ids": ids + gen, "attention_mask": [1] * (len(ids) + len(gen))}
 
 
-def plan_batches(lengths: list[int], batch: int, *, sort: bool) -> list[list[int]]:
-    """Row indices per batch: longest prompts first (ties in row order) when ``sort``, else in order."""
+def plan_batches(lengths: list[int], batch: int, *, sort: bool, cap: int = 0,
+                 budget: int | None = None) -> list[list[int]]:
+    """Row indices per batch: longest prompts first (ties in row order) when ``sort``, else in order.
+
+    A batch holds at most ``batch`` rows and, with a ``budget``, at most ``budget`` tokens in flight:
+    rows x (its longest prompt + ``cap``), what the left-padded KV cache holds at the last step (a row
+    over the budget on its own is a batch of one)."""
     order = sorted(range(len(lengths)), key=lambda i: (-lengths[i], i)) if sort else list(range(len(lengths)))
-    return [order[k:k + batch] for k in range(0, len(order), batch)]
+    out: list[list[int]] = []
+    for i in order:
+        cur = out[-1] if out else None
+        if cur is not None and len(cur) < batch and (
+                budget is None or (len(cur) + 1) * (max(max(lengths[k] for k in cur), lengths[i]) + cap) <= budget):
+            cur.append(i)
+        else:
+            out.append([i])
+    return out
 
 
 _OOM = getattr(torch, "OutOfMemoryError", torch.cuda.OutOfMemoryError)
@@ -793,9 +814,15 @@ def run(ctx) -> dict:
                for src, picked, _ in loaded}
     upper = sum(len(ids) + src["max_new_tokens"] for src, _, _ in loaded for ids in encoded[src["index"]])
     check_trace_supply(ctx.cfg, upper, bos, what=f"the traces (at most {upper} tokens, every one at its cap)")
+    plans = {src["index"]: plan_batches([len(i) for i in encoded[src["index"]]], src["batch"], sort=not src["legacy"],
+                                        cap=src["max_new_tokens"], budget=src["batch_tokens"])
+             for src, _, _ in loaded}
     for src, picked, data in loaded:
+        sizes = [len(b) for b in plans[src["index"]]]
         log(f"{src['name']}: {len(picked)} prompts, thinking {'on' if src['thinking'] else 'off'}, cap "
             f"{src['max_new_tokens']}, batch {src['batch']}"
+            + (f" and at most {src['batch_tokens']} tokens in flight" if src["batch_tokens"] else "")
+            + f": {len(sizes)} batches of {min(sizes)} to {max(sizes)} prompts"
             + (f"; {len(data['screened'])} near duplicates of test problems skipped" if data["screened"] else ""))
     cache = BatchCache(out / "cache", runtime_identity(ctx))
     state: dict = {}
@@ -808,8 +835,6 @@ def run(ctx) -> dict:
         return generate_encoded(state["model"], rows, eos_ids=state["eos"], max_new_tokens=cap, device=ctx.device,
                                 pad_id=pad_token(state["tok"], state["eos"]))
 
-    plans = {src["index"]: plan_batches([len(i) for i in encoded[src["index"]]], src["batch"], sort=not src["legacy"])
-             for src, _, _ in loaded}
     remaining = sum(len(encoded[s["index"]]) * s["max_new_tokens"] for s in sources)
     stats = {"batches": sum(len(p) for p in plans.values()), "cached_batches": 0, "seconds": 0.0, "fresh_tokens": 0}
     done_units = 0
@@ -850,6 +875,7 @@ def run(ctx) -> dict:
         per_source.append({
             "name": src["name"], "kind": src["kind"], "where": src["where"], "n": len(recs), "seed": src["seed"],
             "thinking": src["thinking"], "max_new_tokens": cap, "batch": src["batch"],
+            "batches": len(plans[i]), "batch_tokens": src["batch_tokens"],
             "instruction": src.get("instruction"), "max_chars": src.get("max_chars"),
             **({"levels": src.get("levels"), "subjects": data["parts"]} if src["kind"] == "math_train" else {}),
             **({"rows": list(src.get("rows") or (5000, 6000))} if src["kind"] == "ultrachat" else {}),

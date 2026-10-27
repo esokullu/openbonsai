@@ -44,6 +44,8 @@ DEFAULTS: dict = {
         "max_new_tokens": 512,
         "thinking": False,
         "batch": 8,
+        # tokens in flight per batch, rows x (longest prompt + cap); null: no limit (stages/traces.py)
+        "batch_tokens": None,
         "seed": 0,                 # sources only: seeds the interleaving of the sources in traces.jsonl
     },
     "calibrate": {
@@ -320,6 +322,8 @@ def stage_inputs(cfg: dict, stage: str) -> dict:
             # Only the form in use: a single-source config hashes as it did before sources existed.
             for key in (("sources", "seed") if value.get("sources") is None else ("prompts",)):
                 value.pop(key, None)
+            if value.get("batch_tokens") is None:
+                value.pop("batch_tokens", None)
         out[s] = value
     return out
 
