@@ -67,6 +67,7 @@ CACHES = ("auto", "cuda", "cpu", "disk")
 CHECKPOINT = ("auto", True, False)
 BETAS = (0.9, 0.95)
 GPU_STREAM_BUDGET = 8 * 2**30      # cache auto: streams stay on the GPU up to this many bytes
+VRAM_MARGIN = 3 * 2**29            # left free under the allocator cap (CUDA context growth, other processes)
 REL_FLOOR = 1e-6                   # relative floor of a token's target energy (no absolute epsilon)
 
 
@@ -247,6 +248,14 @@ class Stream:
 
     def __len__(self) -> int:
         return len(self.items)
+
+    def relocate(self, where: str, device) -> None:
+        """Move every element to ``where`` (``cuda`` or ``cpu``) on ``device``: the streams are captured in
+        CPU memory while the whole model is on the GPU, and move there only once it has left."""
+        if self.where == "disk" or where == "disk":
+            raise ValueError("a disk stream stays on disk")
+        self.where, self.device = where, torch.device(device)
+        self.items = [self._store(x) for x in self.items]
 
     def close(self) -> None:
         self.items = []
@@ -523,10 +532,12 @@ def _layer_file(layers_dir: Path, li: int) -> Path:
     return layers_dir / f"{li:04d}.safetensors"
 
 
-def _peak_gb(device):
+def _peak_gb(device, reserved: bool = False):
+    """Peak CUDA memory since the last reset, GiB: allocated tensors, or with ``reserved`` what the caching
+    allocator holds from the driver (the figure that spills to system RAM on Windows)."""
     if torch.device(device).type != "cuda":
         return None
-    return torch.cuda.max_memory_allocated(device) / 2**30
+    return (torch.cuda.max_memory_reserved if reserved else torch.cuda.max_memory_allocated)(device) / 2**30
 
 
 def _fmt(x, spec=".4g"):
@@ -569,8 +580,14 @@ def refine_model(model, adapter, train_ids, val_ids, base: TernaryState, *, sett
         return sdir / name if sdir is not None else None
 
     t_setup = time.time()
-    xq, xfp = Stream(where, device, sub("xq")), Stream(where, device, sub("xfp")) if keep_fp_train else None
-    vq, vfp = Stream(where, device, sub("vq")), Stream(where, device, sub("vfp"))
+    if device.type == "cuda":
+        torch.cuda.reset_peak_memory_stats(device)
+    # GPU streams are captured in (unpinned) CPU memory and moved to the GPU after the model has left it:
+    # the BF16 model (about 17 GiB at 9B) and up to GPU_STREAM_BUDGET of streams would not both fit.
+    cap_where, cap_device = ("cpu", "cpu") if where == "cuda" else (where, device)
+    xq = Stream(cap_where, cap_device, sub("xq"))
+    xfp = Stream(cap_where, cap_device, sub("xfp")) if keep_fp_train else None
+    vq, vfp = Stream(cap_where, cap_device, sub("vq")), Stream(cap_where, cap_device, sub("vfp"))
     if keep_fp_train:
         capture_inputs(model, adapter, train_ids, batch, device, xfp.append)
     capture_inputs(model, adapter, val_ids, batch, device, vfp.append)
@@ -580,11 +597,18 @@ def refine_model(model, adapter, train_ids, val_ids, base: TernaryState, *, sett
     capture_inputs(model, adapter, train_ids, batch, device, xq.append)
     capture_inputs(model, adapter, val_ids, batch, device, vq.append)
     layers = adapter.layers(model)
+    setup_peak = (_peak_gb(device), _peak_gb(device, reserved=True))
     model.to("cpu")
     free(device)
+    if where == "cuda":
+        for s in (xq, xfp, vq, vfp):
+            if s is not None:
+                s.relocate("cuda", device)
     log(f"captured {n_train} training and {n_val} held-out elements of {(batch, seq, hidden)} "
         f"(streams: {where}, {resident * element_bytes / 2**30:.2f} GiB); layers [{start}, {stop}), window {window}, "
-        f"target {target}, {time.time() - t_setup:.0f}s")
+        f"target {target}, {time.time() - t_setup:.0f}s"
+        + (f"; setup peak VRAM {setup_peak[0]:.2f} GiB (reserved {setup_peak[1]:.2f})" if setup_peak[0] is not None
+           else ""))
 
     refined, report, rolled_back = {}, [], []
     li = 0
@@ -676,7 +700,8 @@ def refine_model(model, adapter, train_ids, val_ids, base: TernaryState, *, sett
                      "objective_before": _finite(b_obj), "objective_after": _finite(a_obj),
                      "rollback": rollback, "changed": changed, **summarize(list(counts.values())),
                      "modules": {k: summarize([c]) for k, c in counts.items()}}
-            timing = {"seconds": time.time() - t0, "peak_vram_gb": _peak_gb(device)}
+            timing = {"seconds": time.time() - t0, "peak_vram_gb": _peak_gb(device),
+                      "peak_reserved_gb": _peak_gb(device, reserved=True)}
             refined.update(new)
             report.append({**entry, **timing})
             for k, f in zip(span, files):
@@ -691,7 +716,8 @@ def refine_model(model, adapter, train_ids, val_ids, base: TernaryState, *, sett
                 f"{entry['zero_flips']:.3%}); zeros {entry['zeros_before']:.2%} -> {entry['zeros_after']:.2%}; "
                 f"scale drift mean |log| {entry['scale_drift_mean']:.4f}, max {entry['scale_drift_max']:.4f}; "
                 f"eps-damped {_fmt(entry['eps_damped'], '.2%') if entry['eps_damped'] is not None else 'n/a'}"
-                + (f"; peak VRAM {timing['peak_vram_gb']:.2f} GB" if timing["peak_vram_gb"] is not None else ""))
+                + (f"; peak VRAM {timing['peak_vram_gb']:.2f} GiB (reserved {timing['peak_reserved_gb']:.2f})"
+                   if timing["peak_vram_gb"] is not None else ""))
         for k in span:
             layers[k].to("cpu")
         free(device)
@@ -706,6 +732,25 @@ def refine_model(model, adapter, train_ids, val_ids, base: TernaryState, *, sett
             "settings": refine_hashed(r), "rolled_back": sorted(set(rolled_back))}
     state = TernaryState(tensors, dict(signs), block, group, meta).validate()
     return state, {"layers": [start, stop], "streams": where, "windows": report, "rolled_back": meta["rolled_back"]}
+
+
+def cap_vram(device, log) -> float | None:
+    """Cap this process's CUDA caching allocator at the memory free now (plus what it already holds) less
+    ``VRAM_MARGIN``; returns the cap in GiB (None off CUDA). On Windows the driver pages an allocation that
+    does not fit to system RAM instead of failing, and the stage then runs many times slower while it holds
+    the GPU; with the cap it stops with out-of-memory instead. ``set_per_process_memory_fraction(1.0)``
+    lifts it."""
+    device = torch.device(device)
+    if device.type != "cuda":
+        return None
+    free_b, total_b = torch.cuda.mem_get_info(device)
+    held = torch.cuda.memory_reserved(device)      # this process's own cache counts against the cap too
+    fraction = min(1.0, max(0.05, (free_b + held - VRAM_MARGIN) / total_b))
+    torch.cuda.set_per_process_memory_fraction(fraction, device)
+    cap = fraction * total_b / 2**30
+    log(f"VRAM: {free_b / 2**30:.1f} of {total_b / 2**30:.1f} GiB free; this process is capped at {cap:.1f} GiB "
+        "(an overflow stops the stage instead of spilling to system RAM)")
+    return cap
 
 
 def run(ctx) -> dict:
@@ -732,12 +777,21 @@ def run(ctx) -> dict:
         shares[labels[i]] = shares.get(labels[i], 0) + 1
     log(f"{len(train_idx)} training and {len(val_idx)} held-out calibration blocks (training blocks per source "
         f"{dict(sorted(shares.items()))}); embedding {'ternary' if emb is not None else 'high precision'}")
-    model, _ = ctx.load_model()
-    t0 = time.time()
-    state, report = refine_model(model, adapter, calib[train_idx], calib[val_idx], base, settings=r, emb=emb,
-                                 layers_dir=layers_dir, streams_dir=streams_dir, device=ctx.device, log=log)
-    del model
     free(ctx.device)
+    cap = cap_vram(ctx.device, log)
+    try:
+        model, _ = ctx.load_model()
+        t0 = time.time()
+        state, report = refine_model(model, adapter, calib[train_idx], calib[val_idx], base, settings=r, emb=emb,
+                                     layers_dir=layers_dir, streams_dir=streams_dir, device=ctx.device, log=log)
+    except torch.cuda.OutOfMemoryError as e:
+        raise RuntimeError(f"refine needs more than the {cap:.1f} GiB of VRAM that were free; lower refine.blocks, "
+                           "set refine.cache=cpu, or use refine.window=1 (finished layers are kept)") from e
+    finally:
+        model = None
+        free(ctx.device)
+        if cap is not None:
+            torch.cuda.set_per_process_memory_fraction(1.0, ctx.device)
     shutil.rmtree(streams_dir, ignore_errors=True)
     save_state(out / "state.safetensors", state)
     atomic_write_json(out / "report.json", {"seconds": time.time() - t0, "train_blocks": train_idx,

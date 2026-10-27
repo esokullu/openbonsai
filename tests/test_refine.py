@@ -297,6 +297,56 @@ def test_window_two_with_disk_streams_resumes_and_matches_memory_streams(endpoin
     assert _state_bytes(ctx) == reference
 
 
+def test_gpu_streams_are_captured_in_cpu_memory_and_moved_once_the_model_has_left(endpointed, make_ctx, tmp_path,
+                                                                                 monkeypatch):
+    """Setup holds the whole BF16 model on the device; GPU streams wait in CPU memory until it has gone, so
+    the model and up to GPU_STREAM_BUDGET of streams are never on the GPU together. Same bytes as cpu."""
+    sets = [*BASE, *FLIPS, "refine.epochs=1", "refine.rollback=false"]
+    cpu = _sets(endpointed, *sets, "refine.cache=cpu")
+    assert execute(cpu, "refine") == "ran"
+    reference = _state_bytes(cpu)
+    ctx = make_ctx(tmp_path / "gpu", *sets)
+    for stage in ("traces", "calibrate", "quantize", "endpoints"):
+        execute(ctx, stage)
+    events = []
+    real_append, real_relocate, real_to = R.Stream.append, R.Stream.relocate, torch.nn.Module.to
+
+    def append(self, x):
+        events.append(("append", self.where))
+        real_append(self, x)
+
+    def relocate(self, where, device):
+        events.append(("relocate", where))
+        real_relocate(self, where, device)
+
+    def to(self, *args, **kwargs):
+        if args and args[0] == "cpu" and hasattr(self, "lm_head"):
+            events.append(("model to cpu", None))
+        return real_to(self, *args, **kwargs)
+
+    monkeypatch.setattr(R, "stream_placement", lambda *a, **k: "cuda")     # 'cuda' streams, CPU device
+    monkeypatch.setattr(R.Stream, "append", append)
+    monkeypatch.setattr(R.Stream, "relocate", relocate)
+    monkeypatch.setattr(torch.nn.Module, "to", to)
+    assert execute(ctx, "refine") == "ran"
+    first = events.index(("model to cpu", None))
+    assert events[:first] and set(events[:first]) == {("append", "cpu")}
+    assert events[first + 1:first + 5] == [("relocate", "cuda")] * 4          # xq, xfp, vq, vfp
+    assert _report(ctx)["streams"] == "cuda" and _state_bytes(ctx) == reference
+
+
+def test_vram_cap_turns_a_spill_into_out_of_memory(monkeypatch):
+    fractions = []
+    monkeypatch.setattr(torch.cuda, "mem_get_info", lambda device=None: (20 * 2**30, 32 * 2**30))
+    monkeypatch.setattr(torch.cuda, "memory_reserved", lambda device=None: 2**30)
+    monkeypatch.setattr(torch.cuda, "set_per_process_memory_fraction", lambda f, device=None: fractions.append(f))
+    logs = []
+    cap = R.cap_vram("cuda:0", logs.append)
+    assert fractions == [pytest.approx((21 * 2**30 - R.VRAM_MARGIN) / (32 * 2**30))]
+    assert cap == pytest.approx(21 - R.VRAM_MARGIN / 2**30) and "capped" in logs[0]
+    assert R.cap_vram("cpu", logs.append) is None and len(fractions) == 1
+
+
 def test_layers_outside_the_range_keep_their_codes_and_quantized_targets_run(endpointed):
     ctx = _sets(endpointed, *BASE, *FLIPS, "refine.layers=[1, 3]", "refine.target=quantized", "refine.init=original",
                 "refine.rollback=false")
