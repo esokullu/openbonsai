@@ -184,6 +184,7 @@ class ModelAdapter:
         seed distillation (start from a published file) or be installed into
         a model (``from_gguf``)."""
         from ..formats.gguf import GGUFError, GGUFReader, f32_inverse, prism_signs
+        from ..formats.ptq1_0 import QK
         from ..formats.state import TernaryState, TernaryTensor
         plan = self.gguf_tensors()
         with GGUFReader(path) as r:
@@ -218,7 +219,7 @@ class ModelAdapter:
         missing = sorted(used - set(signs))
         if missing:
             raise GGUFError(f"{path}: no prism.hadamard sign vector for widths {missing}")
-        state = TernaryState(tensors, {w: s for w, s in signs.items() if w in used}, block, 128,
+        state = TernaryState(tensors, {w: s for w, s in signs.items() if w in used}, block, QK,
                              {"source": "gguf", "path": str(path), "general.name": kv.get("general.name")})
         if log is not None:
             log(f"read {path}: {len(tensors)} PTQ1_0 tensors, {len(floats)} F32 tensors, block {block}")

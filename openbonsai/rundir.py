@@ -5,10 +5,11 @@
       signs.safetensors   per-width sign vectors (rewritten only when rotation.signs changes)
       digests.json        cached SHA-256 of input files (by size and mtime)
       traces/ calib/ quantize/ endpoints/ distill/ export/ eval/
+      export/<name>.gguf  the PTQ1_0 GGUF (or export.out) and its .export.json report
       logs/<stage>.log
 
 A stage is complete when ``<stage>/DONE.json`` exists; it records the stage's
-config hash and the SHA-256 of its output file (``OUTPUTS``). Downstream
+config hash and the SHA-256 of its output file (``OUTPUTS``, or the export's GGUF). Downstream
 hashes include both, so a stage that reran with a different result makes
 every later stage stale. Rerunning skips a stage whose hash is unchanged.
 Within a stage, units of work (a decoder layer, a teacher shard, a

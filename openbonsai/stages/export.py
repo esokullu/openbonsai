@@ -22,7 +22,6 @@ loads; for the 9B config the bytes are identical (tests/test_export_parity.py).
 """
 from __future__ import annotations
 
-import json
 import os
 from pathlib import Path
 import struct
@@ -228,7 +227,7 @@ class Verifier:
         self.check(r.value("general.file_type") == ptq1_0.LLAMA_FTYPE_MOSTLY_PTQ1_0,
                    "general.file_type = 143 (LLAMA_FTYPE_MOSTLY_PTQ1_0)")
 
-    def against_reference(self, name_key="general.name"):
+    def against_reference(self):
         ref, r = self.reference, self.r
         keys, rkeys = [(k, t) for k, t, _ in r.kv], [(h["key"], h["type"]) for h in ref["kv"]]
         self.check(keys == rkeys, "KV keys, order and types identical to the reference file")
