@@ -89,21 +89,75 @@ def deep_merge(base: dict, override: dict) -> dict:
     return out
 
 
+# Keys a data source entry (calibrate.sources, distill.teacher.sources,
+# eval.compare.sources) or a trace prompt spec may carry; which ones apply
+# depends on its ``kind``.
+SOURCE_KEYS = frozenset({"kind", "n", "path", "seed", "min_row", "repo", "revision", "file", "shuffle"})
+PROMPT_KEYS = frozenset({"kind", "path", "n", "rows", "seed", "repo", "revision", "file"})
+_SOURCE_LISTS = {("calibrate", "sources"), ("distill", "teacher", "sources"), ("eval", "compare", "sources")}
+_PROMPTS = ("traces", "prompts")
+
+
+def _check_sources(value, path: tuple) -> None:
+    where = ".".join(path)
+    if value is None and path != ("calibrate", "sources"):
+        return
+    if not isinstance(value, list) or not all(isinstance(s, dict) for s in value):
+        raise ConfigError(f"{where} must be a list of mappings")
+    for i, src in enumerate(value):
+        unknown = sorted(set(src) - SOURCE_KEYS)
+        if unknown:
+            raise ConfigError(f"unknown keys in {where}[{i}]: {unknown}; known: {sorted(SOURCE_KEYS)}")
+        if "kind" not in src:
+            raise ConfigError(f"{where}[{i}] needs a kind")
+
+
+def _check_mapping(value, schema: dict, path: tuple) -> None:
+    where = ".".join(path)
+    if not isinstance(value, dict):
+        raise ConfigError(f"{where} must be a mapping")
+    allowed = PROMPT_KEYS if path == _PROMPTS else frozenset(schema)
+    unknown = sorted(set(value) - allowed)
+    if unknown:
+        raise ConfigError(f"unknown keys in {where!r}: {unknown}; known: {sorted(allowed)}")
+    if path == _PROMPTS:
+        return
+    for key, item in value.items():
+        sub = path + (key,)
+        if sub in _SOURCE_LISTS:
+            _check_sources(item, sub)
+        elif sub == _PROMPTS:
+            if item is not None:
+                _check_mapping(item, {}, sub)
+        elif isinstance(schema[key], dict):
+            if item is not None:
+                _check_mapping(item, schema[key], sub)
+        elif isinstance(item, dict):
+            raise ConfigError(f"{'.'.join(sub)} must be a value, not a mapping")
+
+
 def check_keys(cfg: dict) -> dict:
-    """Reject unknown sections and unknown keys one level below them (typos)."""
+    """Reject unknown sections and keys at every level (typos), and values whose
+    shape (mapping, list of sources, scalar) does not match the defaults."""
     for section, value in cfg.items():
         if section not in DEFAULTS:
             raise ConfigError(f"unknown config section {section!r}; known: {sorted(DEFAULTS)}")
-        if isinstance(value, dict):
-            unknown = sorted(set(value) - set(DEFAULTS[section]))
-            if unknown:
-                raise ConfigError(f"unknown keys in {section!r}: {unknown}")
-        elif value is not None:
+        if value is None:
+            continue
+        if not isinstance(value, dict):
             raise ConfigError(f"config section {section!r} must be a mapping")
+        _check_mapping(value, DEFAULTS[section], (section,))
     return cfg
 
 
+def _index(items: list, part: str, where: str) -> int:
+    if not part.isdigit() or int(part) >= len(items):
+        raise ConfigError(f"--set {where}: expected a list index below {len(items)}")
+    return int(part)
+
+
 def apply_set(cfg: dict, assignment: str) -> dict:
+    """``a.b.c=value`` (YAML value). A numeric part indexes a list: ``calibrate.sources.2.path=x``."""
     if "=" not in assignment:
         raise ConfigError(f"--set expects key=value, got {assignment!r}")
     key, raw = assignment.split("=", 1)
@@ -112,11 +166,20 @@ def apply_set(cfg: dict, assignment: str) -> dict:
         raise ConfigError(f"--set needs section.key=value, got {assignment!r}")
     value = yaml.safe_load(raw) if raw.strip() else None
     node = cfg
-    for part in parts[:-1]:
-        if not isinstance(node.get(part), dict):
-            node[part] = {}
+    for depth, part in enumerate(parts[:-1]):
+        where = ".".join(parts[:depth + 1])
+        if isinstance(node, list):
+            node = node[_index(node, part, where)]
+            continue
+        if part not in node:
+            node[part] = {}            # a new key: check_keys below rejects it unless the schema has it
+        elif not isinstance(node[part], (dict, list)):
+            raise ConfigError(f"--set {key}: {where} is {node[part]!r}, not a mapping or list")
         node = node[part]
-    node[parts[-1]] = value
+    if isinstance(node, list):
+        node[_index(node, parts[-1], key)] = value
+    else:
+        node[parts[-1]] = value
     return check_keys(cfg)
 
 

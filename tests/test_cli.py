@@ -29,6 +29,23 @@ def test_config_layers_defaults_file_and_overrides(tmp_path):
         load_config(path)
 
 
+def test_set_indexes_lists_and_rejects_nested_typos_and_scalar_parents():
+    cfg = load_config(None, ["calibrate.sources.2.path=old/ayot128.jsonl", "traces.prompts.rows=[0, 6000]",
+                             "distill.teacher.sources=[{kind: jsonl, path: x.jsonl, n: 3}]",
+                             "distill.teacher.sources.0.n=5"])
+    assert isinstance(cfg["calibrate"]["sources"], list) and len(cfg["calibrate"]["sources"]) == 3
+    assert cfg["calibrate"]["sources"][2] == {"kind": "traces", "n": 32, "path": "old/ayot128.jsonl"}
+    assert cfg["traces"]["prompts"]["rows"] == [0, 6000] and cfg["distill"]["teacher"]["sources"][0]["n"] == 5
+    bad = {"calibrate.sources.7.path=x": "list index", "calibrate.sources.x.path=x": "list index",
+           "quantize.damp.x=1": "not a mapping", "distill.teacher.nseq=4": "nseq",
+           "rotation.signs.sed=3": "sed", "eval.compare.sources=[{kind: jsonl, pth: x}]": "pth",
+           "calibrate.sources=[{n: 3}]": "kind", "rotation.signs=3": "mapping", "quantize.damp={a: 1}": "value",
+           "traces.prompts.kinds=x": "kinds"}
+    for assignment, match in bad.items():
+        with pytest.raises(ConfigError, match=match):
+            apply_set(load_config(), assignment)
+
+
 def test_stage_hash_ignores_device_but_not_numerics():
     a, b = load_config(), load_config(None, ["model.device=cuda"])
     assert stage_inputs(a, "quantize") == stage_inputs(b, "quantize")
