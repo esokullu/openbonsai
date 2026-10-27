@@ -1,0 +1,16 @@
+{"variant": "only=layers.0.mlp.gate_proj", "nll": 2.427633961394932, "ppl": 11.332038295727639, "arc_correct": 20, "arc_preds": "ABABAAAAACADBCCBCBBB", "generations": [], "seconds": 8.54498553276062}
+{"variant": "only=layers.0.mlp.up_proj", "nll": 2.4227269306637638, "ppl": 11.276567844474027, "arc_correct": 20, "arc_preds": "ABABAAAAACADBCCBCBBB", "generations": [], "seconds": 6.347170829772949}
+{"variant": "only=layers.0.mlp.down_proj", "nll": 2.411399344626945, "ppl": 11.149552299925485, "arc_correct": 20, "arc_preds": "ABABAAAAACADBCCBCBBB", "generations": [], "seconds": 6.564132213592529}
+{"variant": "only=layers.0.linear_attn.out_proj", "nll": 4.0127838902637665, "ppl": 55.300607293306456, "arc_correct": 15, "arc_preds": "ABABDDCACCADBCCBBBBB", "generations": [], "seconds": 7.085139036178589}
+{"variant": "only=layers.0.linear_attn.in_proj_qkv", "nll": 2.4323110513594957, "ppl": 11.3851633969141, "arc_correct": 19, "arc_preds": "ABABDAAAACADBCCBCBBB", "generations": [], "seconds": 6.2136712074279785}
+{"variant": "only=layers.0.linear_attn.in_proj_z", "nll": 2.4291401617900292, "ppl": 11.349119476897583, "arc_correct": 19, "arc_preds": "ABABDAAAACADBCCBCBBB", "generations": [], "seconds": 6.073765516281128}
+{"variant": "only=layers.1.linear_attn.out_proj", "nll": 2.4299150805371967, "ppl": 11.357917530792257, "arc_correct": 19, "arc_preds": "ABABDAAAACADBCCBCBBB", "generations": [], "seconds": 5.996928453445435}
+{"variant": "only=layers.2.linear_attn.out_proj", "nll": 2.445280400691793, "ppl": 11.533783226257615, "arc_correct": 20, "arc_preds": "ABABAAAAACADBCCBCBBB", "generations": [], "seconds": 6.093372106552124}
+{"variant": "only=layers.4.linear_attn.out_proj", "nll": 2.4169405433441704, "ppl": 11.21150567428422, "arc_correct": 20, "arc_preds": "ABABAAAAACADBCCBCBBB", "generations": [], "seconds": 6.030935287475586}
+{"variant": "only=layers.8.linear_attn.out_proj", "nll": 2.422556900198536, "ppl": 11.274650647392832, "arc_correct": 20, "arc_preds": "ABABAAAAACADBCCBCBBB", "generations": [], "seconds": 6.102345943450928}
+{"variant": "only=layers.16.linear_attn.out_proj", "nll": 2.4206151432920673, "ppl": 11.252779257963002, "arc_correct": 19, "arc_preds": "ABABDAAAACADBCCBCBBB", "generations": [], "seconds": 6.136234521865845}
+{"variant": "only=layers.24.linear_attn.out_proj", "nll": 2.425646940384304, "ppl": 11.309543653605264, "arc_correct": 19, "arc_preds": "ABABDAAAACADBCCBCBBB", "generations": [], "seconds": 6.033651828765869}
+{"variant": "only=layers.30.linear_attn.out_proj", "nll": 2.420153215383177, "ppl": 11.247582485530685, "arc_correct": 19, "arc_preds": "ABABDAAAACADBCCBCBBB", "generations": [], "seconds": 5.981780052185059}
+{"variant": "excl=linear_attn.out_proj+in_proj_a+in_proj_b", "nll": 6.647324388314311, "ppl": 770.7194184398788, "arc_correct": 6, "arc_preds": "ADAAAADADAAAAAAAADCA", "generations": [], "seconds": 11.784700155258179}
+{"variant": "excl=layers.0.+in_proj_a+in_proj_b", "nll": 6.120212960684333, "ppl": 454.9615731114463, "arc_correct": 9, "arc_preds": "ABABABBABAABABCBAAAA", "generations": [], "seconds": 11.892242431640625}
+{"variant": "excl=layers.0.+linear_attn.out_proj+in_proj_a+in_proj_b", "nll": 5.729716707144602, "ppl": 307.8820352408431, "arc_correct": 6, "arc_preds": "ADAAABDAAAAAAAAAADAA", "generations": [], "seconds": 13.283824682235718}

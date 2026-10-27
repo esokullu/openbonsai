@@ -1,0 +1,11 @@
+{"variant": "had_lsq_noab", "nll": 9.011221478321456, "ppl": 8194.524598431031, "arc_correct": 4, "arc_preds": "CCCCBCCCCCCCCCCCCCCC", "generations": [], "seconds": 14.084308862686157}
+{"variant": "lsq_noab", "nll": 9.201553967152616, "ppl": 9912.520828261178, "arc_correct": 8, "arc_preds": "ADABCAADCDAAAAACAABB", "generations": [], "seconds": 10.881351947784424}
+{"variant": "had_lsq_ab", "nll": 2.4117681822980273, "ppl": 11.153665433322042, "arc_correct": 19, "arc_preds": "ABABDAAAACADBCCBCBBB", "generations": [], "seconds": 6.703111171722412}
+{"variant": "had_lsq_qkv", "nll": 2.51068456136513, "ppl": 12.31335642408287, "arc_correct": 17, "arc_preds": "DBABDAAAACADBCCBCCBB", "generations": [], "seconds": 7.928756237030029}
+{"variant": "had_lsq_z", "nll": 2.486901890182436, "ppl": 12.023966786532585, "arc_correct": 20, "arc_preds": "ABABAAAAACADBCCBCBBB", "generations": [], "seconds": 6.935766696929932}
+{"variant": "had_lsq_out", "nll": 4.253429608323293, "ppl": 70.34625922152891, "arc_correct": 13, "arc_preds": "ABAAADBABCBDBCCBDBAB", "generations": [], "seconds": 7.1137566566467285}
+{"variant": "had_lsq_down", "nll": 2.6377751709698396, "ppl": 13.9820612815631, "arc_correct": 19, "arc_preds": "ABABDAAAACADBCCBCBBB", "generations": [], "seconds": 8.139372825622559}
+{"variant": "had_lsq_gateup", "nll": 3.0817698924062835, "ppl": 21.796946526791306, "arc_correct": 18, "arc_preds": "ABABDCAAACADBCCBCBBB", "generations": [], "seconds": 9.245853185653687}
+{"variant": "had_lsq_noab_g64", "nll": 8.684509618039323, "ppl": 5910.641314940705, "arc_correct": 6, "arc_preds": "CCCCCCCCCCCCBCCBCCCC", "generations": [], "seconds": 12.502304077148438}
+{"variant": "had_lsq_noab_l0", "nll": 5.57051172758441, "ppl": 262.5684283749805, "arc_correct": 8, "arc_preds": "AAAAAAAAAAAAAAAAAAAA", "generations": [], "seconds": 6.464949607849121}
+{"variant": "had_lsq_noab_l1_31", "nll": 6.120212960684333, "ppl": 454.9615731114463, "arc_correct": 9, "arc_preds": "ABABABBABAABABCBAAAA", "generations": [], "seconds": 12.689619302749634}

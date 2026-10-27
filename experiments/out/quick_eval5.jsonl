@@ -1,0 +1,3 @@
+{"variant": "l0keep=4", "nll": 3.90101208939551, "ppl": 49.45247411100071, "arc_correct": 16, "arc_preds": "ABABDDCACCADBCCBCBBB", "generations": [], "seconds": 12.25351357460022, "kept_rows": 1}
+{"variant": "l0keep=2", "nll": 3.7383935180101426, "ppl": 42.030414795827525, "arc_correct": 15, "arc_preds": "ABABDCCACCADBCABCBBB", "generations": [], "seconds": 7.9604551792144775, "kept_rows": 16}
+{"variant": "l0row=3994", "nll": 2.483039068769013, "ppl": 11.977609941903689, "arc_correct": 19, "arc_preds": "ABABDAAAACADBCCBCBBB", "generations": [], "seconds": 8.63218903541565, "kept_rows": null}
