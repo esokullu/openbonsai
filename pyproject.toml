@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,6 +7,8 @@ name = "openbonsai"
 version = "0.1.0"
 description = "OpenBonsai: experimental rotated ternary calibration and packing for native Qwen3.5"
 requires-python = ">=3.12"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
 dependencies = ["torch>=2.6,<3", "transformers>=5.20.2,<5.21", "accelerate>=1.15,<2", "safetensors>=0.8,<1"]
 
 [project.optional-dependencies]
