@@ -19,14 +19,14 @@ import sys
 import time
 import traceback
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 RUNTIME_SHA = 'c9c34bc9c4042c13a31598ebf43461cd0ad8f00d'
 PROFILE_FORMAT = 'openbonsai.prism-cpu-profile.v1'
 MAX_SECONDS = 10800.0
 FACTOR = 1.25
 RESERVE = 300.0
 SOURCE_FILES = ('openbonsai/evaluation.py', 'openbonsai/eval_backends.py',
-                'tools/prism_eval_worker.cpp')
+                'tools/prism/prism_eval_worker.cpp')
 
 
 def require(condition, message):

@@ -18,7 +18,7 @@ import subprocess
 import sys
 
 PIN = "c9c34bc9c4042c13a31598ebf43461cd0ad8f00d"
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def run(argv: list[str], *, capture: bool = False) -> str:
@@ -69,8 +69,8 @@ def main() -> int:
     build.mkdir(parents=True, exist_ok=True)
     project = build / "worker-project"
     project.mkdir(exist_ok=True)
-    worker = ROOT / "tools/prism_eval_worker.cpp"
-    unit = ROOT / "tests/prism_worker_unit.cpp"
+    worker = ROOT / "tools/prism/prism_eval_worker.cpp"
+    unit = ROOT / "tests/prism/prism_worker_unit.cpp"
     text = f'''cmake_minimum_required(VERSION 3.20)
 project(openbonsai_prism_eval LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)

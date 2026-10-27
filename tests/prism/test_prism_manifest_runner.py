@@ -13,8 +13,8 @@ import pytest
 
 from openbonsai import evaluation
 
-ROOT = Path(__file__).resolve().parents[1]
-SPEC = importlib.util.spec_from_file_location('prism_manifest_runner', ROOT / 'tools/evaluate_prism_manifest.py')
+ROOT = Path(__file__).resolve().parents[2]
+SPEC = importlib.util.spec_from_file_location('prism_manifest_runner', ROOT / 'tools/prism/evaluate_prism_manifest.py')
 runner = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(runner)
 
@@ -312,7 +312,7 @@ def test_normal_exit_cleans_orphaned_harmless_descendant(tmp_path):
 def test_supervisor_sigterm_also_cleans_harmless_child(tmp_path):
     pytest.importorskip('psutil')
     code = ("import importlib.util,pathlib,sys,time;"
-            f"s=importlib.util.spec_from_file_location('r',{str(ROOT/'tools/evaluate_prism_manifest.py')!r});"
+            f"s=importlib.util.spec_from_file_location('r',{str(ROOT/'tools/prism/evaluate_prism_manifest.py')!r});"
             "r=importlib.util.module_from_spec(s);s.loader.exec_module(r);"
             f"r.supervise_command([sys.executable,'-c','import time;time.sleep(30)'],pathlib.Path({str(tmp_path)!r}),time.monotonic()+20,sample_interval=.05)")
     process = subprocess.Popen([sys.executable, '-c', code], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -343,13 +343,13 @@ def test_supervisor_sigterm_also_cleans_harmless_child(tmp_path):
 
 
 def test_no_implicit_cli_launch():
-    result = subprocess.run([sys.executable, str(ROOT/'tools/evaluate_prism_manifest.py')],
+    result = subprocess.run([sys.executable, str(ROOT/'tools/prism/evaluate_prism_manifest.py')],
                             capture_output=True, text=True)
     assert result.returncode != 0 and '--run and all explicit' in result.stderr
 
 
 def test_published_profile_has_no_tokens_prompts_or_answers():
-    profile = json.loads((ROOT/'configs/evaluation/bonsai-development-cpu.json').read_text())
+    profile = json.loads((ROOT/'tools/prism/configs/bonsai-development-cpu.json').read_text())
     assert profile['format'] == runner.PROFILE_FORMAT
     encoded = json.dumps(profile)
     assert all(key not in encoded for key in ('input_ids', 'raw_text', 'answer_id', 'question_id', 'prompt'))

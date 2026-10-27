@@ -1,6 +1,6 @@
 // Compiles the same parser/reduction/index validation code without loading weights.
 #define OPENBONSAI_WORKER_UNIT_TEST
-#include "../tools/prism_eval_worker.cpp"
+#include "../../tools/prism/prism_eval_worker.cpp"
 #include <sstream>
 
 using namespace prism_eval;
