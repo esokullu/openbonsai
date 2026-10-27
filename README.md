@@ -16,16 +16,26 @@ openbonsai run --model <your fine-tune> --config examples/qwen3_5-9b.yaml --out 
 openbonsai eval --run runs/mine --from distill --suite compare
 openbonsai export --run runs/mine --out mine.gguf          # verified on write
 openbonsai eval --from mine.gguf --model <your fine-tune> --suite compare   # or any PTQ1_0 GGUF
-python -m pytest            # CPU only; a tiny random Qwen3.5 runs the whole pipeline
+python -m pytest            # CPU only; tiny random Qwen3.5, Llama, Qwen3 and Qwen2 run the whole pipeline
 ```
 
-This branch holds phases P1 and P2 of [FRAMEWORK_PLAN.md](FRAMEWORK_PLAN.md)
-(P2: the PTQ1_0 GGUF export and the GGUF loader, research/validation/p2-export-parity.md).
+Dense Llama, Mistral, Qwen2/2.5 and Qwen3 models (including Llama-architecture
+checkpoints such as Nanbeige4-style ones) use the dense adapter: the same
+command, with `examples/tiny-dense.yaml` as the small template. Llama, Mistral
+and Qwen3 export a PTQ1_0 GGUF. Qwen2 cannot, because Prism refuses
+`prism.hadamard` for that architecture, so it exports a latent Hugging Face
+checkpoint (dequantized weights plus the exact codes and scales). A tied
+embedding/head stays in high precision.
+
+This branch holds phases P1 to P3 of [FRAMEWORK_PLAN.md](FRAMEWORK_PLAN.md)
+(P2: the PTQ1_0 GGUF export and the GGUF loader, research/validation/p2-export-parity.md;
+P3: the dense adapter, [docs/adding-a-model.md](docs/adding-a-model.md)).
 The README and docs rewrite is phase P4.
 
 - Package: `openbonsai/` (`adapters/`, `core/`, `formats/`, `stages/`, `eval/`, `cli.py`)
 - Research history, experiment scripts and run reports: [research/README.md](research/README.md)
 - Optional Prism CPU evaluation runner: [tools/prism/](tools/prism/)
+- Adding a model (adapters, the dense family table, choosing high-precision tensors): [docs/adding-a-model.md](docs/adding-a-model.md)
 - Evaluation suites and metrics (full-vocabulary EAR and KL against the BF16 model): [docs/evaluation.md](docs/evaluation.md)
 - Linux setup (CUDA PyTorch, flash-linear-attention, optional Prism llama.cpp build): [scripts/setup_linux.sh](scripts/setup_linux.sh)
 
