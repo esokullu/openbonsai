@@ -64,9 +64,10 @@ prompt + the cap): what the left-padded KV cache holds at the last step, so a
 few long prompts (UltraChat has some of 2,000 tokens) get smaller batches
 instead of a batch that does not fit. Set it: on Windows the driver can page
 GPU memory to system memory instead of raising out-of-memory (the CUDA sysmem
-fallback), and generation then crawls instead of failing and splitting. Each batch is cached in
-``traces/cache/`` under a hash of its prompt ids, cap, decoding, the model's
-identity and the runtime (torch and transformers versions, device), so an
+fallback), and generation then crawls instead of failing and splitting.
+Each batch is cached in ``traces/cache/`` under a hash of its prompt ids, cap,
+decoding, the model's identity and the runtime (torch and transformers
+versions, device), so an
 interrupted run resumes after the last finished batch, and a config edit
 regenerates only batches whose prompts or cap changed (``--force`` clears the
 cache). A batch that runs out of GPU memory is split in two and retried.
@@ -81,6 +82,13 @@ tokens kept). With ``sources`` the records are interleaved in an order seeded
 by ``traces.seed``, so any prefix of the file (what calibrate and the
 distillation teacher read) holds every source in proportion; with ``prompts``
 they stay in prompt order. ``traces/summary.json`` has counts per source.
+
+Calibrate and the teacher concatenate whole records (template tokens, the
+thinking block and the closing EOS included) and cut blocks of ``seq_len``
+from that stream, as for UltraChat: a record that crosses a block boundary
+continues at the start of the next block without its prompt (with thinking
+traces of ~1,500 tokens and 2,048-token blocks, about half of the records,
+a third of the tokens).
 
 Trace-backed blocks are never capped (``trace_demands``): calibrate and the
 distillation teacher read ``n`` blocks from the start of traces.jsonl and fail
