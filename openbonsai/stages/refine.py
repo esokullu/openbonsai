@@ -738,13 +738,21 @@ def refine_model(model, adapter, train_ids, val_ids, base: TernaryState, *, sett
     return state, {"layers": [start, stop], "streams": where, "windows": report, "rolled_back": meta["rolled_back"]}
 
 
+def cuda_index(device) -> torch.device:
+    """``device`` with an explicit index: ``set_per_process_memory_fraction`` refuses a bare ``cuda``."""
+    device = torch.device(device)
+    if device.type == "cuda" and device.index is None:
+        device = torch.device("cuda", torch.cuda.current_device())
+    return device
+
+
 def cap_vram(device, log) -> float | None:
     """Cap this process's CUDA caching allocator at the memory free now (plus what it already holds) less
     ``VRAM_MARGIN``; returns the cap in GiB (None off CUDA). On Windows the driver pages an allocation that
     does not fit to system RAM instead of failing, and the stage then runs many times slower while it holds
     the GPU; with the cap it stops with out-of-memory instead. ``set_per_process_memory_fraction(1.0)``
     lifts it."""
-    device = torch.device(device)
+    device = cuda_index(device)
     if device.type != "cuda":
         return None
     free_b, total_b = torch.cuda.mem_get_info(device)
@@ -795,7 +803,7 @@ def run(ctx) -> dict:
         model = None
         free(ctx.device)
         if cap is not None:
-            torch.cuda.set_per_process_memory_fraction(1.0, ctx.device)
+            torch.cuda.set_per_process_memory_fraction(1.0, cuda_index(ctx.device))
     shutil.rmtree(streams_dir, ignore_errors=True)
     save_state(out / "state.safetensors", state)
     atomic_write_json(out / "report.json", {"seconds": time.time() - t0, "train_blocks": train_idx,
