@@ -1,4 +1,4 @@
-"""Independent numerical/window oracles and frozen backend protocol checks."""
+"""Independent numerical/window oracles and frozen-manifest protocol checks."""
 import copy
 import hashlib
 import math
@@ -6,7 +6,7 @@ import math
 import pytest
 import torch
 
-from openbonsai.evaluation import (
+from openbonsai.eval.manifest import (
     EVALUATION_PROTOCOL, REDUCTION, assert_disjoint_manifests, canonical_sha256,
     evaluate_manifest, freeze_manifest, freeze_text, reduce_target_logprobs,
     sliding_windows, validate_generation_result, validate_manifest,
@@ -289,18 +289,16 @@ def test_resealed_but_invalid_frozen_contract_rejected(change):
         validate_manifest(reseal(frozen))
 
 
-@pytest.mark.parametrize("change", ["tokens", "pieces", "old_reduction", "reset", "context", "generation_context", "vocab", "identity"])
+@pytest.mark.parametrize("change", ["tokens", "pieces", "old_reduction", "context", "generation_context", "vocab"])
 def test_backend_mismatch_rejected_before_scoring(monkeypatch, change):
     backend = Backend()
     frozen = manifest(backend)
     if change == "tokens": monkeypatch.setattr(backend, "tokenize", lambda *a, **k: [1])
     elif change == "pieces": monkeypatch.setattr(backend, "token_pieces", lambda ids: [b"wrong"] * len(ids))
     elif change == "old_reduction": backend.identity["reduction"] = "fp32-ce-then-fp64-sum"
-    elif change == "reset": backend.identity["reset_policy"] = "shared-prompt-cache"
     elif change == "context": backend.identity["context_length"] = 4
     elif change == "generation_context": frozen["generations"][0]["max_new_tokens"] = 63; reseal(frozen)
     elif change == "vocab": backend.identity["vocab_size"] = 7
-    elif change == "identity": backend.identity["source_identity"] = {"source": "unknown"}
     with pytest.raises(ValueError):
         evaluate_manifest(backend, frozen)
     assert not backend.calls
@@ -348,53 +346,6 @@ def test_both_eos_ids_retained_and_length_cap_exact(eos):
         max_new_tokens=2, eos_ids=[9, 10])["stop_reason"] == "length"
 
 
-@pytest.mark.parametrize("change", ["source", "precision", "stderr_path", "stderr_limit", "unknown_metadata"])
-def test_backend_identity_change_mid_evaluation_rejected(monkeypatch, change):
-    backend = Backend()
-    backend.identity["runtime"]["precision"] = "float32"
-    backend.identity["stderr"] = {"path": "worker.log", "max_bytes": 128, "truncated": False}
-    frozen = manifest(backend)
-    generate = backend.generate
-    def changing(*args):
-        result = generate(*args)
-        if change == "source": backend.identity["source_identity"]["sha256"] = "c" * 64
-        elif change == "precision": backend.identity["runtime"]["precision"] = "float16"
-        elif change == "stderr_path": backend.identity["stderr"]["path"] = "another.log"
-        elif change == "stderr_limit": backend.identity["stderr"]["max_bytes"] = 256
-        elif change == "unknown_metadata": backend.identity["new_setting"] = True
-        return result
-    monkeypatch.setattr(backend, "generate", changing)
-    with pytest.raises(RuntimeError, match="changed"):
-        evaluate_manifest(backend, frozen)
-
-
-def test_stderr_truncation_diagnostic_may_change_and_final_state_is_retained(monkeypatch):
-    backend = Backend()
-    backend.identity["stderr"] = {"path": "worker.log", "max_bytes": 128, "truncated": False}
-    frozen = manifest(backend)
-    generate = backend.generate
-    def changing(*args):
-        result = generate(*args)
-        backend.identity["stderr"]["truncated"] = True
-        return result
-    monkeypatch.setattr(backend, "generate", changing)
-    report = evaluate_manifest(backend, frozen)
-    assert report["backend"]["stderr"]["truncated"] is False
-    assert report["backend_final_diagnostics"] == {
-        "stderr": {"path": "worker.log", "max_bytes": 128, "truncated": True}}
-    backend.identity["stderr"]["path"] = "later.log"
-    assert report["backend_final_diagnostics"]["stderr"]["path"] == "worker.log"
-
-
-@pytest.mark.parametrize("value", [1, "true", None])
-def test_stderr_truncation_diagnostic_rejects_nonboolean_values(value):
-    backend = Backend()
-    backend.identity["stderr"] = {"path": "worker.log", "max_bytes": 128, "truncated": value}
-    with pytest.raises(ValueError, match="stderr.truncated"):
-        evaluate_manifest(backend, manifest(backend))
-    assert not backend.calls
-
-
 def test_exact_split_overlap_rejected_and_disjoint_sets_preserve_roles():
     calibration = manifest(role="calibration")
     evaluation = manifest(role="evaluation")
@@ -425,12 +376,11 @@ def test_raw_text_overlap_survives_different_templates_but_unscored_probes_do_no
     assert not assert_disjoint_manifests(calibration, disjoint)["exact_overlap"]
 
 
-@pytest.mark.parametrize("value", [{"source": "dataset"}, {"source": "dataset", "revision": "main"},
-    {"source": "dataset", "revision": "arbitrary-branch-name"},
-    {"source": "dataset", "sha256": "not-a-hash"},
-    {"source": "dataset", "revision": "commit-a", "resolved_revision": "commit-b"}])
-def test_unpinned_or_contradictory_provenance_rejected(value):
-    frozen = manifest()
-    frozen["source_provenance"] = value
-    with pytest.raises(ValueError):
-        validate_manifest(reseal(frozen))
+def test_dev_asset_manifest_is_pinned_and_valid():
+    from openbonsai.eval.manifest import load_manifest
+    from openbonsai.eval.suites import DEV_MANIFEST, DEV_SHA256
+    frozen = load_manifest(DEV_MANIFEST, expected_file_sha256=DEV_SHA256)
+    assert frozen["frozen_sha256"] == "8021d9cc8f54943a3b816af74cbc41d588173d385f51b73a681e979393ef5fdf"
+    assert (len(frozen["texts"]), len(frozen["nll"]), len(frozen["choices"]), len(frozen["generations"])) == (88, 4, 20, 4)
+    assert sum(len(r["score_positions"]) for r in frozen["nll"]) == 2048
+

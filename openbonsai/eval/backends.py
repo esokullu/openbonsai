@@ -1,4 +1,4 @@
-"""Independent-record native Transformers and pinned Prism reference backends.
+"""Independent-record Transformers and pinned Prism backends for eval/manifest.py.
 
 No downloads, templates, BOS insertion, sampling, logits processors or implicit
 retries. These adapters establish an evaluation contract, not model equivalence.
@@ -112,45 +112,18 @@ def _byte_decoder():
     return {chr(code): byte for byte, code in zip(original, codes)}
 
 
-# Interim Qwen3.5-only helpers, copied from the legacy adapter (now
-# research/catq/adapter.py) so this module has no research imports. The
-# ModelAdapter registry replaces them in the package step.
-def _text_module(model):
-    from transformers import Qwen3_5ForCausalLM, Qwen3_5ForConditionalGeneration
-    if isinstance(model, Qwen3_5ForCausalLM) and model.config.model_type == 'qwen3_5_text':
-        return 'model', model.model
-    if isinstance(model, Qwen3_5ForConditionalGeneration) and model.config.model_type == 'qwen3_5':
-        return 'model.language_model', model.model.language_model
-    raise ValueError('Only native dense Qwen3.5 text or conditional-generation models are supported')
-
-
-def _load_native(model_id, device='cpu', dtype='auto', *, revision='main', local_files_only=False):
-    """Load a native Qwen3.5 text or conditional-generation model; no remote code."""
-    from transformers import AutoConfig, Qwen3_5ForCausalLM, Qwen3_5ForConditionalGeneration
-    config = AutoConfig.from_pretrained(
-        model_id, revision=revision, local_files_only=local_files_only, trust_remote_code=False)
-    if getattr(config, 'quantization_config', None) is not None:
-        raise ValueError('Reconstruction requires original unquantized target weights')
-    if config.model_type == 'qwen3_5_text':
-        constructor = Qwen3_5ForCausalLM
-    elif config.model_type == 'qwen3_5':
-        if config.text_config.model_type != 'qwen3_5_text' or config.vision_config.model_type != 'qwen3_5_vision':
-            raise ValueError('Unsupported Qwen3.5 subconfiguration')
-        constructor = Qwen3_5ForConditionalGeneration
-    else:
-        raise ValueError(f'Unsupported model_type: {config.model_type!r}; expected dense Qwen3.5')
-    if isinstance(dtype, str) and dtype != 'auto':
-        choices = {'float32': torch.float32, 'float16': torch.float16, 'bfloat16': torch.bfloat16}
+def _load_native(model_id, device='cpu', dtype='auto', *, revision=None, local_files_only=False):
+    """Load an original (unquantized) model through its ModelAdapter; no remote code."""
+    from ..adapters import load_adapter
+    adapter = load_adapter(model_id, revision=revision, local_files_only=local_files_only)
+    if isinstance(dtype, str):
+        choices = {'auto': torch.bfloat16, 'float32': torch.float32, 'float16': torch.float16,
+                   'bfloat16': torch.bfloat16}
         if dtype not in choices:
             raise ValueError('dtype must be auto, float32, float16, bfloat16, or a torch.dtype')
         dtype = choices[dtype]
-    model = constructor.from_pretrained(
-        model_id, config=config, dtype=dtype, attn_implementation='eager', trust_remote_code=False,
-        revision=getattr(config, '_commit_hash', None) or revision, local_files_only=local_files_only)
-    model.to(device)
-    model.eval()
-    _text_module(model)[1].config.use_cache = False
-    model.requires_grad_(False)
+    model, _ = adapter.load(model_id, revision=revision, device=device, dtype=dtype, attn='eager',
+                            local_files_only=local_files_only)
     return model
 
 
@@ -164,7 +137,8 @@ class TransformersBackend:
     """
     def __init__(self, model, tokenizer, *, context_length, source_identity,
                  tokenizer_identity, logits_chunk_size=16):
-        _text_module(model)  # Refuse architectures whose top-level head semantics differ.
+        from ..adapters import adapter_for_model
+        adapter_for_model(model)  # Refuse architectures without an adapter.
         self.model, self.tokenizer = model, tokenizer
         self.context_length = _positive(context_length, 'context_length')
         self.logits_chunk_size = _positive(logits_chunk_size, 'logits_chunk_size')
@@ -297,7 +271,7 @@ class TransformersBackend:
 
     @torch.no_grad()
     def score_tokens(self, input_ids, score_positions):
-        from .evaluation import reduce_target_logprobs
+        from .manifest import reduce_target_logprobs
         ids, positions = _score_inputs(input_ids, score_positions, self.vocab_size, self.context_length)
         with self._lock, self._precision():
             hidden = self._hidden(ids)

@@ -12,7 +12,7 @@ from tokenizers import AddedToken, Tokenizer, models, pre_tokenizers, decoders, 
 from transformers import PreTrainedTokenizerFast
 
 from tiny_models import tiny_qwen3_5
-from openbonsai.eval_backends import (TransformersBackend, PrismBackend,
+from openbonsai.eval.backends import (TransformersBackend, PrismBackend,
     PRISM_RUNTIME_SHA, PROTOCOL, REDUCTION, _byte_decoder, local_directory_identity)
 
 
@@ -172,7 +172,7 @@ def test_directory_identity_rejects_symlinks_when_os_permits_them(tmp_path):
 
 
 def test_from_local_forbids_downloads_and_keeps_saved_source(tmp_path, monkeypatch):
-    from openbonsai import eval_backends
+    from openbonsai.eval import backends as eval_backends
     native = native_fixture()
     root = tmp_path / 'saved'
     root.mkdir()
@@ -249,7 +249,7 @@ for line in sys.stdin:
 
 @pytest.fixture
 def worker_factory(tmp_path, monkeypatch):
-    from openbonsai import eval_backends
+    from openbonsai.eval import backends as eval_backends
     monkeypatch.setattr(eval_backends, '_runtime_identity', lambda path, expected:
                         {'path':str(path), 'sha':expected, 'tracked_source_clean':True})
     # Explicit interpreter launch makes these pipe tests runnable on Windows,
@@ -346,7 +346,7 @@ def test_stalled_worker_request_write_has_a_portable_timeout(worker_factory):
 
 
 def test_runtime_pin_and_tracked_cleanliness(tmp_path):
-    from openbonsai.eval_backends import _runtime_identity
+    from openbonsai.eval.backends import _runtime_identity
     def git(*args):
         return subprocess.run(['git','-C',str(tmp_path),*args], check=True, capture_output=True, text=True).stdout.strip()
     git('init')

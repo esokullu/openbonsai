@@ -1,2 +1,3 @@
-# Preserve the authenticated development input bytes on Windows checkouts.
-/research/evaluation/bonsai-development/frozen-inputs.json -text
+# Preserve the SHA-pinned evaluation input bytes on Windows checkouts.
+/openbonsai/eval/assets/bonsai-dev/*.json -text
+/openbonsai/eval/assets/bonsai-dev/*.jsonl -text

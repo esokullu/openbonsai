@@ -1,17 +1,24 @@
-"""Versioned, backend-neutral evaluation of explicitly frozen unpadded inputs.
+"""Frozen evaluation manifests and the FP64 scoring contract.
 
-This protocol uses FP64 logsumexp on FP32 logits. It is deliberately distinct
-from legacy FP32 cross entropy followed by FP64 accumulation. It never renders
-chat templates, guesses continuation boundaries, fits answers, or truncates
-inputs. Every score/generation call must reset all backend model memory.
+A manifest freezes explicit token IDs (with their raw bytes) for NLL windows,
+multiple-choice continuations and greedy generations, and seals them with a
+canonical SHA256. Scoring normalizes FP32 logits with an FP64 logsumexp over
+the full vocabulary; target j uses the prediction at j - 1. Nothing here
+renders chat templates, guesses continuation boundaries or truncates inputs.
+
+Any backend with ``metadata``, ``tokenize``, ``token_pieces``,
+``score_tokens`` and ``generate`` can be scored against a manifest
+(eval/backends.py has Transformers and Prism backends). The fast in-process
+torch scorer for the development suite is eval/suites.py.
 """
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 import copy
 import hashlib
 import json
 import math
+from pathlib import Path
 
 import torch
 
@@ -45,27 +52,11 @@ def _identifier(value, name):
     return value
 
 
-def _digest(value):
-    return isinstance(value, str) and len(value) == 64 and all(c in "0123456789abcdef" for c in value)
-
-
 def _identity(value, name):
     if not isinstance(value, Mapping) or not value:
-        raise ValueError(f"{name} requires source identity")
+        raise ValueError(f"{name} must be a nonempty mapping")
     result = copy.deepcopy(dict(value))
     _canonical(result)
-    hashes = [v for k, v in result.items() if k == "sha256" or k.endswith("_sha256")]
-    if any(not _digest(v) for v in hashes):
-        raise ValueError(f"{name} contains an invalid SHA256")
-    revision = result.get("revision", result.get("source_revision", result.get("resolved_revision")))
-    revisions = [result[k] for k in ("revision", "source_revision", "resolved_revision") if k in result]
-    if revisions and (any(v != revision for v in revisions)
-                      or not isinstance(revision, str) or not revision
-                      or revision in {"main", "master", "HEAD", "latest"}):
-        raise ValueError(f"{name} requires a consistent immutable revision")
-    if not hashes and (not isinstance(revision, str) or len(revision) not in (40, 64)
-                       or any(c not in "0123456789abcdef" for c in revision)):
-        raise ValueError(f"{name} requires a content SHA256 or immutable revision")
     return result
 
 
@@ -197,9 +188,8 @@ def freeze_manifest(*, source_provenance, tokenizer_identity, texts, nll=(), cho
                     role="evaluation", metadata=None):
     """Seal already explicit records; this does not build benchmark prompts.
 
-    Identities need a content SHA256 or a 40/64-hex resolved revision. The
-    caller supplies dataset/reference-tokenizer identity; this pure function
-    does not contact a repository to resolve names or verify remote contents.
+    The caller supplies dataset and reference-tokenizer identity (free-form
+    JSON, sealed by the checksum); this pure function contacts nothing.
     """
     manifest = {"format": FROZEN_MANIFEST_FORMAT, "protocol": EVALUATION_PROTOCOL, "reduction": REDUCTION,
                 "role": role, "source_provenance": copy.deepcopy(source_provenance),
@@ -349,26 +339,12 @@ def validate_generation_result(result, *, max_new_tokens, eos_ids, vocab_size=No
 def _backend_metadata(backend):
     value = copy.deepcopy(backend.metadata())
     if (not isinstance(value, dict) or value.get("protocol") != EVALUATION_PROTOCOL
-            or value.get("reduction") != REDUCTION or value.get("cache_mode") != "full-prefix-reference"
-            or value.get("reset_policy") != "per-record"):
-        raise ValueError("Backend does not declare the required reduction/reset/reference-generation protocol")
+            or value.get("reduction") != REDUCTION):
+        raise ValueError("Backend does not declare the frozen-evaluation protocol and FP64 reduction")
     _positive_int(value.get("context_length"), "backend context_length", 2)
     _positive_int(value.get("vocab_size"), "backend vocab_size")
-    _identity(value.get("source_identity"), "backend source_identity")
-    _identity(value.get("tokenizer_identity"), "backend tokenizer_identity")
-    stderr = value.get("stderr")
-    if isinstance(stderr, dict) and "truncated" in stderr and type(stderr["truncated"]) is not bool:
-        raise ValueError("Backend stderr.truncated diagnostic must be boolean")
     _canonical(value)
     return value
-
-
-def _metadata_identity(value):
-    """Keep every identity/setting, excluding only the live stderr cap flag."""
-    stable = copy.deepcopy(value)
-    if isinstance(stable.get("stderr"), dict):
-        stable["stderr"].pop("truncated", None)
-    return stable
 
 
 def verify_tokenization(backend, manifest):
@@ -389,9 +365,9 @@ def verify_tokenization(backend, manifest):
 def evaluate_manifest(backend, manifest):
     """Score frozen NLL/continuations and raw greedy generations, retaining items.
 
-    Backend source identity is recorded separately from the frozen dataset and
-    reference-tokenizer identities. Different GGUF/HF tokenizer-file hashes are
-    allowed only after all frozen IDs and byte pieces match exactly.
+    The backend must reproduce every frozen token ID and raw piece first, so a
+    different tokenizer container (GGUF vs HF files) is fine and a different
+    tokenizer is refused before any scoring.
     """
     metadata = _backend_metadata(backend)
     frozen = validate_manifest(manifest, context_length=metadata["context_length"], vocab_size=metadata["vocab_size"])
@@ -448,11 +424,6 @@ def evaluate_manifest(backend, manifest):
                            "choice_correct": sum(labelled), "choice_labelled": len(labelled),
                            "choice_accuracy": sum(labelled) / len(labelled) if labelled else None,
                            "generations": len(report["generations"])}
-    final_metadata = _backend_metadata(backend)
-    if _metadata_identity(final_metadata) != _metadata_identity(metadata):
-        raise RuntimeError("Backend identity/settings changed during frozen evaluation")
-    report["backend_final_diagnostics"] = (
-        {"stderr": copy.deepcopy(final_metadata["stderr"])} if "stderr" in final_metadata else {})
     _canonical(report)
     return report
 
@@ -485,3 +456,20 @@ def assert_disjoint_manifests(*manifests):
             seen[fingerprint] = index
     return {"manifests": len(manifests), "exact_overlap": False,
             "semantic_contamination_checked": False}
+
+
+def file_sha256(path) -> str:
+    digest = hashlib.sha256()
+    with open(path, "rb") as f:
+        for block in iter(lambda: f.read(4 << 20), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def load_manifest(path, *, expected_file_sha256=None, context_length=None, vocab_size=None):
+    """Read, optionally pin the exact file bytes, and validate a frozen manifest."""
+    data = Path(path).read_bytes()
+    if expected_file_sha256 is not None and hashlib.sha256(data).hexdigest() != expected_file_sha256:
+        raise ValueError(f"{path}: file SHA256 differs from the pinned value")
+    return validate_manifest(json.loads(data.decode("utf-8")), context_length=context_length,
+                             vocab_size=vocab_size)
