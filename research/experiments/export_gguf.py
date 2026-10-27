@@ -22,6 +22,9 @@ Conventions (see the export spec; all checked against the fork's source):
     every module of that width AND signs_from_seed(seed) (what e2e_kd.py rebuilds), else refused.
   * e2e_state.pt norms that differ from the snapshot need --e2e-norms (export) or
     --ignore-e2e-norms (deliberately drop); they are never dropped silently.
+  * e2e_state.pt["small"] (e2e_kd.py --train-small: norms, conv1d, in_proj_a/b, A_log, dt_bias, final
+    norm as FP32 masters) is always exported, rounded to BF16 (the dtype the trained model computed with);
+    a trained tensor without an F32 slot is refused.
   * GatedDeltaNet: V heads grouped -> tiled (tiled t = r*n_k + k takes grouped g = k*rep + r) on
     in_proj_qkv V rows, in_proj_z rows, conv1d V channels, in_proj_a/b rows, A_log, dt_bias.
     out_proj (ssm_out) columns stay grouped (prism.hadamard.gdn_v_grouped = true).
@@ -60,6 +63,9 @@ DEFAULT_HEADER = HERE / "ref" / "bonsai2_9b_header.json"
 DEFAULT_TOKENS = HERE / "ref" / "bonsai2_9b_tokens.json.gz"  # official tokenizer.ggml.tokens (sha256 == header's)
 OFFICIAL_SIZE = 1_997_486_976
 DEFAULT_NAME = "OpenBonsai-Qwen3.5-9B-PTQ1_0"
+# Compute dtype of e2e_kd.py's trained high-precision tensors (quick_eval.load_model loads every parameter in
+# BF16; Qwen3.5 keeps no module in FP32), so e2e_state.pt["small"] masters are exported rounded through it.
+E2E_SMALL_DTYPE = torch.bfloat16
 
 # ---------------------------------------------------------------------------------------------
 # GGUF / ggml constants
@@ -453,9 +459,24 @@ class TernarySources:
         self.ep = torch.load(endpoints, map_location="cpu", mmap=True, weights_only=True)
         self.e2e = torch.load(e2e, map_location="cpu", mmap=True, weights_only=True) if e2e else None
         self.e2e_scales = (self.e2e or {}).get("scales", {})
-        self.e2e_norms = (self.e2e or {}).get("norms", {})
+        self.e2e_norms = (self.e2e or {}).get("norms", {}) or {}
+        # e2e_kd.py --train-small: FP32 masters of every high-precision decoder tensor (no "norms" entry)
+        self.e2e_small = (self.e2e or {}).get("small", {}) or {}
         log(f"loaded states (mmap) in {time.time() - t0:.1f}s: {len(self.state['modules'])} modules, "
-            f"endpoints {sorted(self.ep)}, e2e scales {len(self.e2e_scales)}, e2e norms {len(self.e2e_norms)}")
+            f"endpoints {sorted(self.ep)}, e2e scales {len(self.e2e_scales)}, e2e norms {len(self.e2e_norms)}, "
+            f"e2e small {len(self.e2e_small)}")
+
+    def f32_override(self, short, op, use_e2e_norms):
+        """The trained FP32 value of a high-precision tensor (HF name relative to the text model), or None.
+
+        e2e_state.pt["small"] (--train-small) holds FP32 masters; e2e_kd.py computed with the master cast to
+        the parameter's dtype on every access (_CastTo), BF16 for every tensor quick_eval.load_model loads, so
+        the master is rounded through E2E_SMALL_DTYPE first. ["norms"] (older runs) only with --e2e-norms."""
+        if short in self.e2e_small:
+            return self.e2e_small[short].to(E2E_SMALL_DTYPE).to(torch.float32)
+        if use_e2e_norms and op in ("plus1", "copy") and short in self.e2e_norms:
+            return self.e2e_norms[short].to(torch.float32)
+        return None
 
     def entry(self, key):
         return self.ep[key] if key in ("lm_head", "embed_tokens") else self.state["modules"][key]
@@ -542,9 +563,36 @@ def check_inputs(plan, src):
     return signs, notes
 
 
+def check_e2e_small(plan, src, snap):
+    """e2e_kd.py --train-small saves e2e_state.pt['small'] (FP32 masters of norms, conv1d, in_proj_a/b, A_log,
+    dt_bias, final norm) instead of 'norms'. They are always exported (rounded through E2E_SMALL_DTYPE, what the
+    trained model computed with); a tensor without an F32 slot is refused, never dropped."""
+    if not src.e2e_small:
+        return []
+    if src.e2e_norms:
+        raise SystemExit("e2e_state.pt carries both 'small' and 'norms'; e2e_kd.py writes one or the other")
+    slots = {t.key[len(HF):]: t for t in plan if t.kind == "f32"}
+    unknown = sorted(set(src.e2e_small) - set(slots))
+    if unknown:
+        raise SystemExit(f"e2e small tensors with no F32 slot in the Prism layout (would be dropped): {unknown[:5]}")
+    changed = []
+    for k, v in src.e2e_small.items():
+        x = snap.get(slots[k].key)
+        if tuple(v.shape) != tuple(x.shape):
+            raise SystemExit(f"e2e small {k}: shape {tuple(v.shape)} != snapshot {tuple(x.shape)}")
+        if not torch.equal(src.f32_override(k, slots[k].op, False), x.to(E2E_SMALL_DTYPE).to(torch.float32)):
+            changed.append(k)
+    return [f"e2e small (--train-small): {len(src.e2e_small)} of {len(slots)} F32 tensors trained, {len(changed)} "
+            f"differ from the snapshot in {str(E2E_SMALL_DTYPE).split('.')[-1]}; exporting the trained values "
+            f"rounded to {str(E2E_SMALL_DTYPE).split('.')[-1]}"]
+
+
 def check_e2e_norms(plan, src, snap, use_e2e_norms, ignore_e2e_norms):
     """e2e_kd.py always saves e2e_state.pt['norms'] (every RMSNorm weight). Exporting the snapshot norms while
     the state carries trained ones would silently drop them, so that needs an explicit choice."""
+    if src.e2e_small and (use_e2e_norms or ignore_e2e_norms):
+        raise SystemExit("--e2e-norms / --ignore-e2e-norms apply to e2e_state.pt['norms']; this state has "
+                         "'small' (--train-small), which is always exported")
     if use_e2e_norms and ignore_e2e_norms:
         raise SystemExit("--e2e-norms and --ignore-e2e-norms are mutually exclusive")
     if use_e2e_norms and not src.e2e_norms:
@@ -857,10 +905,10 @@ class TensorProducer:
     def f32_array(self, t):
         x = self.snap.get(t.key).to(torch.float32)  # exact for BF16 and F32 sources
         short = t.key[len(HF):]
-        if self.use_e2e_norms and t.op in ("plus1", "copy") and short in self.src.e2e_norms:
-            nv = self.src.e2e_norms[short].to(torch.float32)
+        nv = self.src.f32_override(short, t.op, self.use_e2e_norms)
+        if nv is not None:
             if tuple(nv.shape) != tuple(x.shape):
-                raise SystemExit(f"e2e norm {short}: shape {tuple(nv.shape)} != {tuple(x.shape)}")
+                raise SystemExit(f"e2e tensor {short}: shape {tuple(nv.shape)} != {tuple(x.shape)}")
             self.stats["e2e_norm_overrides"].append((short, float((nv - x).abs().max())))
             x = nv
         if t.op == "plus1":
@@ -1207,8 +1255,9 @@ class Verifier:
                 hf = f"{HF}layers.{m.group(1)}.{sub}"
             x = self.snap.get(hf).float()
             short = hf[len(HF):]
-            if self.use_e2e_norms and op in ("plus1", "copy") and short in self.src.e2e_norms:
-                x = self.src.e2e_norms[short].float()
+            nv = self.src.f32_override(short, "squeeze" if op == "conv" else op, self.use_e2e_norms)
+            if nv is not None:
+                x = nv
             a = x.numpy()
             if op == "plus1":
                 a = a + np.float32(1)
@@ -1361,6 +1410,7 @@ def main():
     report = {"args": vars(args), "kv": [], "notes": []}
     signs, notes = check_inputs(plan, src)
     notes += check_e2e_norms(plan, src, snap, args.e2e_norms, args.ignore_e2e_norms)
+    notes += check_e2e_small(plan, src, snap)
     report["notes"] += notes
     for n in notes:
         log("input: " + n)
