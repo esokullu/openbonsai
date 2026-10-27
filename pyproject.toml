@@ -14,7 +14,7 @@ test = ["pytest>=9,<10"]
 evaluation = ["psutil>=7.2,<8"]
 
 [project.scripts]
-openbonsai = "openbonsai.cli:main"
+openbonsai = "openbonsai.__main__:main"
 
 [project.urls]
 Repository = "https://github.com/esokullu/openbonsai"
@@ -22,8 +22,7 @@ Repository = "https://github.com/esokullu/openbonsai"
 [tool.setuptools.packages.find]
 include = ["openbonsai*"]
 
-[tool.setuptools.package-data]
-"openbonsai._vendor.rco" = ["LICENSE", "NOTICE"]
-
 [tool.pytest.ini_options]
+# research/ keeps legacy tests for reading only; CI never collects or imports it.
 testpaths = ["tests"]
+norecursedirs = ["research", "runs", ".*", "build", "dist", "*.egg-info"]
