@@ -14,7 +14,8 @@ Two phases, both resumable:
   skipped on rerun.
 - train: AdamW on the log multipliers with warmup + cosine; a checkpoint
   (parameters, optimizer, scheduler, position) every ``ckpt_every`` steps is
-  resumed exactly. The result is ``distill/scales.safetensors`` (fp16).
+  resumed exactly. The result is ``distill/scales.safetensors`` (fp16); its
+  metadata records the quantize/endpoints output digests it was trained on.
 
 ``max_steps`` shortens training: the cosine schedule ends at that step. With
 it unset the schedule spans ``epochs * n_seq / accum`` steps, as in the script.
@@ -30,12 +31,13 @@ import numpy as np
 import torch
 from torch.utils.checkpoint import checkpoint
 
+from ..config import distill_uses_endpoints
 from ..core.losses import kd_chunk_loss
 from ..core.ternary import TernaryEmbedding, TernaryLinear
 from ..formats.atomic import atomic_write_bytes, durable_save
 from ..formats.state import save_scales
 from . import calibrate
-from .common import install_ternary
+from .common import free, install_ternary
 
 
 def teacher_sources(cfg: dict) -> list[dict]:
@@ -247,9 +249,9 @@ def run_train(ctx) -> dict:
     adapter = ctx.adapter()
     model, _ = ctx.load_model()
     state = ctx.quantize_state()
-    if d.get("endpoints", True):
+    if distill_uses_endpoints(ctx.cfg):
         ep = ctx.endpoints_state()
-        if ep is not None and ep.tensors:
+        if ep.tensors:
             state = state.merged(ep)
     install_ternary(adapter, model, state.records(), ctx.device)
     ids, tidx, tlogp = load_teacher(out / "teacher")
@@ -259,7 +261,8 @@ def run_train(ctx) -> dict:
                     max_steps=None if d.get("max_steps") is None else int(d["max_steps"]),
                     device=ctx.device, log=log)
     scales = trained_scales(model, adapter)
-    save_scales(out / "scales.safetensors", scales, {"stage": "distill", "steps": len(history)})
+    save_scales(out / "scales.safetensors", scales,
+                {"stage": "distill", "steps_this_run": len(history), "base": ctx.distill_base()})
     return {"scales": len(scales), "steps_this_run": len(history)}
 
 
@@ -276,16 +279,19 @@ def _reset_if_changed(marker, value: str, paths) -> None:
 
 
 def run(ctx) -> dict:
-    from ..config import canonical_hash, stage_inputs
+    from ..config import canonical_hash, stage_inputs, uses_traces
     out = ctx.run.stage_dir("distill")
     teacher_dir = out / "teacher"
     teacher_dir.mkdir(exist_ok=True)
-    uses_traces = any(s.get("kind") == "traces" and not s.get("path") for s in teacher_sources(ctx.cfg))
-    traces_hash = (ctx.run.done_info("traces") or {}).get("config_hash") if uses_traces else None
+    sources = teacher_sources(ctx.cfg)
+    traces_key = ctx.run.done_key("traces") if uses_traces(sources) else None
     teacher_hash = canonical_hash({"model": stage_inputs(ctx.cfg, "distill")["model"],
-                                   "teacher": ctx.cfg["distill"]["teacher"], "traces": traces_hash})
+                                   "model_sha256": ctx.model_digest(), "teacher": ctx.cfg["distill"]["teacher"],
+                                   "files": ctx.file_digests([str(s["path"]) for s in sources if s.get("path")]),
+                                   "traces": traces_key})
     _reset_if_changed(out / "TEACHER_INPUTS.json", teacher_hash, [teacher_dir])
     _reset_if_changed(out / "TRAIN_INPUTS.json", ctx.stage_hash("distill"),
                       [out / "checkpoint.pt", out / "train.jsonl", out / "scales.safetensors"])
     teacher = run_teacher(ctx)
+    free(ctx.device)   # the teacher model is gone before the student loads
     return {"teacher": teacher, "train": run_train(ctx)}

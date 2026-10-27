@@ -2,15 +2,20 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import gc
+from pathlib import Path
+
 import numpy as np
 import torch
 
 from ..adapters import ModelAdapter, load_adapter
-from ..config import canonical_hash, stage_inputs, upstream
+from ..config import (canonical_hash, distill_uses_endpoints, input_paths, stage_enabled, stage_inputs,
+                      upstream)
 from ..core.geometry import Geometry, check_signs, derive_geometry, make_signs
 from ..core.ternary import TernaryEmbedding, TernaryLinear, dense_weight, shared_hadamard
-from ..formats.state import TernaryState, TernaryTensor, load_scales, load_signs, load_state, save_signs
-from ..rundir import RunDir
+from ..digest import DigestCache
+from ..formats.state import TernaryState, TernaryTensor, load_signs, load_state, read_scales, read_signs, save_signs
+from ..rundir import RunDir, StageNotReady
 
 _DTYPES = {"bfloat16": torch.bfloat16, "float16": torch.float16, "float32": torch.float32}
 
@@ -20,6 +25,7 @@ class StageContext:
     cfg: dict
     run: RunDir
     _adapter: ModelAdapter | None = field(default=None, repr=False)
+    _digests: DigestCache | None = field(default=None, repr=False)
 
     # -- config ----------------------------------------------------------
     @property
@@ -33,9 +39,56 @@ class StageContext:
     def dtype(self) -> torch.dtype:
         return _DTYPES[self.cfg["model"].get("dtype") or "bfloat16"]
 
+    # -- stage identity ----------------------------------------------------
+    def enabled(self, stage: str) -> bool:
+        return stage_enabled(self.cfg, stage)
+
+    def digests(self) -> DigestCache:
+        if self._digests is None:
+            self._digests = DigestCache(self.run.digests_path)
+        return self._digests
+
+    def model_digest(self) -> str | None:
+        """Content digest of a local model directory (None for a hub id, which the revision pins)."""
+        path = Path(self.model_path())
+        return self.digests().tree(path) if path.is_dir() else None
+
+    def file_digests(self, paths) -> dict:
+        return {p: self.digests().file(p) for p in paths}
+
     def stage_hash(self, stage: str) -> str:
-        ups = {u: (self.run.done_info(u) or {}).get("config_hash") for u in upstream(self.cfg, stage)}
-        return canonical_hash({"inputs": stage_inputs(self.cfg, stage), "upstream": ups})
+        """Config sections, named file contents, model contents, upstream [config hash, output digest]."""
+        ups = {u: self.run.done_key(u) for u in upstream(self.cfg, stage)}
+        return canonical_hash({"inputs": stage_inputs(self.cfg, stage), "model_sha256": self.model_digest(),
+                               "files": self.file_digests(input_paths(self.cfg, stage)), "upstream": ups})
+
+    def stale_reason(self, stage: str) -> str | None:
+        """Why ``stage``'s output cannot be used now (None when it and everything it reads are current)."""
+        if not self.enabled(stage):
+            return f"{stage} is disabled in the config"
+        for u in upstream(self.cfg, stage):
+            reason = self.stale_reason(u)
+            if reason is not None:
+                return reason
+        info = self.run.done_info(stage)
+        if info is None:
+            return f"{stage} has not completed"
+        if info.get("config_hash") != self.stage_hash(stage):
+            return f"{stage} output is stale (its config, input files or an upstream stage changed since it ran)"
+        return None
+
+    def require_current(self, stage: str) -> None:
+        reason = self.stale_reason(stage)
+        if reason is not None:
+            raise StageNotReady(f"{reason}; rerun it: openbonsai run --out {self.run.root}")
+
+    def require_inputs(self, stage: str) -> None:
+        """Every stage this one reads is enabled, complete and current."""
+        for u in upstream(self.cfg, stage):
+            if not self.enabled(u):
+                raise StageNotReady(f"{stage} reads the {u} stage's output, but {u} is disabled; "
+                                    f"enable it or give {stage} its own path: sources")
+            self.require_current(u)
 
     def log(self, stage: str):
         return self.run.logger(stage)
@@ -75,22 +128,28 @@ class StageContext:
                                group=int(r["group"]), max_block=int(r["max_block"]))
 
     def signs(self, model) -> tuple[dict, Geometry]:
-        """Per-width signs for this run: written once to run/signs.safetensors."""
+        """Per-width signs for this run in run/signs.safetensors, made from ``rotation.signs``.
+
+        The file records the sign spec and geometry it was made from; when
+        either changes it is rewritten (the stages that use signs hash the same
+        spec, so they rerun)."""
         geo = self.geometry(model)
+        spec = self.cfg["rotation"]["signs"] or {}
+        ident = {"mode": spec.get("mode", "seeded"), "seed": spec.get("seed", "width"),
+                 "path_sha256": self.digests().file(spec["path"]) if spec.get("path") else None,
+                 "geometry": geo.to_json()}
         if self.run.signs_path.exists():
-            signs, block = load_signs(self.run.signs_path)
-            if block != geo.block:
-                raise ValueError(f"run signs were made for block {block}, model geometry needs {geo.block}")
+            signs, block, meta = read_signs(self.run.signs_path)
+            if meta.get("spec") == ident and block == geo.block:
+                check_signs(signs, geo)
+                return signs, geo
+        if spec.get("path"):
+            signs, _ = load_signs(spec["path"])
+            signs = {w: signs[w] for w in geo.widths if w in signs}
         else:
-            spec = self.cfg["rotation"]["signs"] or {}
-            if spec.get("path"):
-                signs, _ = load_signs(spec["path"])
-                signs = {w: signs[w] for w in geo.widths if w in signs}
-            else:
-                signs = make_signs(geo, spec.get("mode", "seeded"), spec.get("seed", "width"))
-            check_signs(signs, geo)
-            save_signs(self.run.signs_path, signs, block=geo.block, meta={"geometry": geo.to_json()})
+            signs = make_signs(geo, ident["mode"], ident["seed"])
         check_signs(signs, geo)
+        save_signs(self.run.signs_path, signs, block=geo.block, meta={"spec": ident})
         return signs, geo
 
     # -- stage outputs -----------------------------------------------------
@@ -107,16 +166,33 @@ class StageContext:
         path = self.run.stage_dir("endpoints", create=False) / "state.safetensors"
         return load_state(path) if path.exists() else None
 
+    def distill_base(self) -> dict:
+        """Output digests of the states distillation trains on (recorded with its scales)."""
+        return {"quantize": (self.run.done_key("quantize") or [None, None])[1],
+                "endpoints": (self.run.done_key("endpoints") or [None, None])[1]
+                if distill_uses_endpoints(self.cfg) else None}
+
     def state_through(self, stage: str) -> TernaryState:
-        """Decoder state, plus endpoints, plus distilled scales, up to ``stage``."""
+        """Decoder state, plus endpoints, plus distilled scales, up to ``stage``.
+
+        Refuses outputs that are missing, disabled or stale, so the codes and
+        scales always come from one consistent pass of every stage."""
+        if stage not in ("quantize", "endpoints", "distill"):
+            raise ValueError(f"no ternary state for stage {stage!r}")
+        self.require_current(stage)
         state = self.quantize_state()
         # Distillation trains (and so evaluates) the endpoints only when it installed them.
-        if stage == "endpoints" or (stage == "distill" and self.cfg["distill"].get("endpoints", True)):
+        if stage == "endpoints" or (stage == "distill" and distill_uses_endpoints(self.cfg)):
             ep = self.endpoints_state()
-            if ep is not None and ep.tensors:
+            if ep is None:
+                raise StageNotReady("endpoints/state.safetensors is missing")
+            if ep.tensors:
                 state = state.merged(ep)
         if stage == "distill":
-            scales = load_scales(self.run.stage_dir("distill", create=False) / "scales.safetensors")
+            scales, meta = read_scales(self.run.stage_dir("distill", create=False) / "scales.safetensors")
+            if meta.get("base") != self.distill_base():
+                raise StageNotReady("distill/scales.safetensors was trained on a different quantize/endpoints "
+                                    "state than the current one; rerun distill")
             state = state.with_scales(scales)
         return state
 
@@ -183,6 +259,8 @@ def legacy_records(legacy: dict):
         yield key, TernaryTensor(t.codes, t.scales), t.signs, t.block
 
 
-def free(device) -> None:
-    if getattr(device, "type", device) == "cuda":
+def free(device=None) -> None:
+    """Collect dropped models, then return cached CUDA memory (call after ``del model``)."""
+    gc.collect()
+    if getattr(device, "type", device) == "cuda" or (device is None and torch.cuda.is_initialized()):
         torch.cuda.empty_cache()

@@ -10,8 +10,13 @@
     openbonsai inspect PATH            summary of a state file or run directory
 
 A stage whose output exists with the same config hash is skipped; ``--force``
-reruns it (and, with ``run``, everything after it). Interrupted stages resume:
-quantize per layer, traces per batch, distill per teacher shard and checkpoint.
+reruns it from scratch, discarding its resumable work (with ``run``, also every
+later stage; distill then keeps its teacher shards unless distill itself is
+named, since they depend only on the BF16 model and data, which their own
+input hash covers). Interrupted stages resume: quantize per layer,
+traces per batch, distill per teacher shard and checkpoint. A stage refuses to
+run on a missing, disabled or stale upstream output; a later stage whose
+inputs changed (another config, or a rerun with a different result) reruns.
 """
 from __future__ import annotations
 
@@ -22,22 +27,20 @@ import sys
 from pathlib import Path
 
 from . import __version__
-from .config import STAGES, ConfigError, load_config
-from .rundir import RunDir
+from .config import STAGES, ConfigError, load_config, stage_enabled
+from .rundir import RunDir, StageNotReady
 
 # Resumable units that are valid only for the inputs they were made from.
 _RESUMABLE = {"traces": ("parts",), "quantize": ("layers",)}
+# Everything --force discards before rerunning a stage.
+_FORCE_RESET = {**_RESUMABLE, "distill": ("checkpoint.pt", "train.jsonl", "TRAIN_INPUTS.json")}
+_TEACHER = ("teacher", "TEACHER_INPUTS.json")
 
 
 def _stage_module(stage: str):
     from .stages import calibrate, distill, endpoints, evaluate, export, quantize, traces
     return {"traces": traces, "calibrate": calibrate, "quantize": quantize, "endpoints": endpoints,
             "distill": distill, "export": export, "eval": evaluate}[stage]
-
-
-def _enabled(cfg: dict, stage: str) -> bool:
-    section = cfg.get(stage) or {}
-    return section.get("enabled", True) is not False
 
 
 def resolve_config(args, run: RunDir) -> dict:
@@ -60,35 +63,68 @@ def resolve_config(args, run: RunDir) -> dict:
     return cfg
 
 
-def _prepare(ctx, stage: str, config_hash: str) -> None:
-    """Drop resumable units made under different inputs; record the current inputs."""
+def _remove(path: Path) -> None:
+    if path.is_dir():
+        shutil.rmtree(path, ignore_errors=True)
+    elif path.exists():
+        path.unlink()
+
+
+def _prepare(ctx, stage: str, config_hash: str, force) -> None:
+    """Drop resumable units made under different inputs (all of them on --force); record the inputs.
+
+    ``force="downstream"``: forced only because an earlier stage was; distill keeps its teacher."""
     from .formats.atomic import atomic_write_json
+    d = ctx.run.stage_dir(stage)
+    if force:
+        teacher = _TEACHER if stage == "distill" and force != "downstream" else ()
+        for name in _FORCE_RESET.get(stage, ()) + teacher:
+            _remove(d / name)
     if stage not in _RESUMABLE:
         return
-    d = ctx.run.stage_dir(stage)
     marker = d / "INPUTS.json"
     if marker.exists() and json.loads(marker.read_text(encoding="utf-8")).get("config_hash") != config_hash:
-        for sub in _RESUMABLE.get(stage, ()):
-            shutil.rmtree(d / sub, ignore_errors=True)
+        for sub in _RESUMABLE[stage]:
+            _remove(d / sub)
     atomic_write_json(marker, {"config_hash": config_hash})
 
 
-def execute(ctx, stage: str, *, force: bool = False, **kwargs) -> str:
-    """Run one stage unless it is complete with the same config hash. Returns a status word."""
+def execute(ctx, stage: str, *, force=False, **kwargs) -> str:
+    """Run one stage unless it is complete with the same config hash. Returns a status word.
+
+    ``force``: False, True (rerun from scratch) or "downstream" (see ``_prepare``)."""
+    from .digest import file_sha256
+    from .stages.common import free
     log = ctx.log(stage)
-    if not _enabled(ctx.cfg, stage):
+    if not stage_enabled(ctx.cfg, stage):
+        ctx.run.clear_done(stage)   # a disabled stage's old output must not feed later stages
         log("disabled in config; skipped")
         return "disabled"
+    ctx.require_inputs(stage)
     config_hash = ctx.stage_hash(stage)
     if stage != "eval" and not force and ctx.run.is_done(stage, config_hash):
         log(f"up to date ({config_hash[:12]}); skipped")
         return "skipped"
-    _prepare(ctx, stage, config_hash)
+    _prepare(ctx, stage, config_hash, force)
     ctx.run.clear_done(stage)
-    result = _stage_module(stage).run(ctx, **kwargs)
+    try:
+        result = _stage_module(stage).run(ctx, **kwargs)
+    finally:
+        free(ctx.device)
     if stage != "eval":
-        ctx.run.mark_done(stage, config_hash, result=result)
+        output = ctx.run.output_path(stage)
+        ctx.run.mark_done(stage, config_hash, result=result,
+                          output_sha256=file_sha256(output) if output is not None and output.exists() else None)
     return "ran"
+
+
+def preflight(ctx) -> None:
+    """Fail before any work on settings a later stage would refuse."""
+    e = ctx.cfg["endpoints"]
+    if stage_enabled(ctx.cfg, "endpoints") and "ternary" in (e.get("head"), e.get("embedding")) \
+            and ctx.adapter().tied:
+        raise ConfigError("this model ties its embedding and head; ternary endpoints are not supported yet. "
+                          "Set endpoints.head and endpoints.embedding to bf16 (or endpoints.enabled=false)")
 
 
 def cmd_run(args) -> int:
@@ -96,6 +132,7 @@ def cmd_run(args) -> int:
     from .stages.export import ExportNotAvailable
     run = RunDir(args.out)
     ctx = StageContext(resolve_config(args, run), run)
+    preflight(ctx)
     stop = STAGES.index(args.until) if args.until else len(STAGES) - 1
     forced = set(args.force or ())
     statuses = {}
@@ -103,7 +140,7 @@ def cmd_run(args) -> int:
         if stage in (args.skip or ()):
             statuses[stage] = "skipped by --skip"
             continue
-        force = bool(forced) and any(STAGES.index(f) <= i for f in forced)
+        force = True if stage in forced else ("downstream" if any(STAGES.index(f) < i for f in forced) else False)
         try:
             statuses[stage] = execute(ctx, stage, force=force)
         except ExportNotAvailable:
@@ -185,7 +222,7 @@ def main(argv=None) -> int:
     args = build_parser().parse_args(argv)
     try:
         return args.func(args)
-    except (ConfigError, FileNotFoundError, NotImplementedError) as error:
+    except (ConfigError, FileNotFoundError, NotImplementedError, StageNotReady) as error:
         print(f"openbonsai: error: {error}", file=sys.stderr)
         return 2
     except RuntimeError as error:

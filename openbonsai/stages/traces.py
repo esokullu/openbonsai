@@ -160,4 +160,15 @@ def run(ctx) -> dict:
                "thinking": bool(c.get("thinking")), "max_new_tokens": int(c["max_new_tokens"])}
     atomic_write_json(out / "summary.json", summary)
     log(f"{summary['records']} traces, {summary['tokens']} tokens")
+    needed = trace_tokens_needed(ctx.cfg)
+    if summary["tokens"] < needed:
+        log(f"WARNING: calibrate needs about {needed} trace tokens but the traces hold {summary['tokens']}; "
+            "raise traces.prompts.n (or max_new_tokens) before calibrating")
     return summary
+
+
+def trace_tokens_needed(cfg: dict) -> int:
+    """Tokens the calibrate sources read from traces.jsonl (block count x seq_len)."""
+    c = cfg["calibrate"]
+    return sum(int(s.get("n") or 0) * int(c["seq_len"]) for s in c["sources"]
+               if s.get("kind") == "traces" and not s.get("path"))

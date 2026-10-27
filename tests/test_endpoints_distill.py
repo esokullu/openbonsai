@@ -7,7 +7,7 @@ import torch
 
 from openbonsai.cli import execute
 from openbonsai.core.ternary import TernaryEmbedding, TernaryLinear
-from openbonsai.formats.state import load_scales
+from openbonsai.formats.state import read_scales
 from openbonsai.stages import distill as D
 from openbonsai.stages.common import apply_dense, install_ternary
 
@@ -142,9 +142,18 @@ def test_distill_stage_writes_scales_and_eval_uses_them(endpointed):
     ctx = endpointed
     assert execute(ctx, "distill") == "ran"
     out = ctx.run.stage_dir("distill")
-    scales = load_scales(out / "scales.safetensors")
+    scales, meta = read_scales(out / "scales.safetensors")
+    assert meta["base"] == ctx.distill_base() and meta["base"]["endpoints"] is not None
     state = ctx.state_through("distill")
     assert all(torch.equal(state.tensors[k].scales, v) for k, v in scales.items())
     steps = [json.loads(line)["step"] for line in (out / "train.jsonl").read_text().splitlines()]
     assert steps == [1, 2]
     assert execute(ctx, "distill") == "skipped"
+    # Logging cadence is not part of the result: changing it neither reruns nor drops the checkpoint.
+    ctx.cfg["distill"].update(log_every=7, ckpt_every=3)
+    assert execute(ctx, "distill") == "skipped"
+    # A second teacher-complete run does not load the teacher model.
+    loads = []
+    real = ctx.load_model
+    ctx.load_model = lambda: (loads.append(1), real())[1]
+    assert D.run_teacher(ctx)["rows"] == 4 and loads == []

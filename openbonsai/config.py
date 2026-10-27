@@ -1,8 +1,10 @@
 """Run configuration: built-in defaults, a YAML file, then ``--set a.b=c`` overrides.
 
 The resolved config is saved as ``run.yaml`` in the run directory. Each stage
-hashes the config sections it depends on plus its upstream stages' hashes; a
-stage whose output exists with the same hash is skipped.
+hashes the config sections it depends on, the contents of the files they name
+(``path:`` entries, a local model directory) and its upstream stages' config
+hashes and output digests; a stage whose output exists with the same hash is
+skipped (openbonsai.stages.common.StageContext.stage_hash).
 """
 from __future__ import annotations
 
@@ -56,19 +58,19 @@ DEFAULTS: dict = {
         "teacher": {"n_seq": 2048, "seq_len": 2048, "seed": 1, "shard": 64, "topk": 64, "sources": None},
         "train": ["scales"],
         "endpoints": True,         # train endpoint scales too when the endpoints are ternary
-        "lr": 2.0e-3,
+        "lr": 1.0e-3,              # every measured 9B run used e2e_kd.py --lr 1e-3 (the script default was 2e-3)
         "epochs": 1,
         "accum": 8,
         "warmup": 10,
         "chunk": 512,
         "log_every": 5,
         "ckpt_every": 16,
-        "max_steps": None,
+        "max_steps": None,         # train only this many optimizer steps; the cosine schedule ends there
     },
     "export": {"format": "ptq1_0-gguf"},
     "eval": {
-        "from": "auto",            # auto = the last completed stage
-        "suites": ["dev", "extended"],
+        "from": "auto",            # auto = the last stage whose output is current
+        "suites": ["dev", "extended", "compare"],  # dev/extended need the Qwen3.5 tokenizer; compare works for any
         "generations": True,
         "compare": {"seq_len": 512, "n": 8, "seed": 7, "topk": 64, "sources": None},
     },
@@ -207,10 +209,17 @@ def canonical_hash(value) -> str:
 
 
 _MODEL_IDENTITY = ("path", "revision", "adapter", "dtype", "attn")
+# Settings that cannot change a stage's output (logging and checkpoint cadence).
+_UNHASHED = {"distill": ("log_every", "ckpt_every")}
+
+
+def stage_enabled(cfg: dict, stage: str) -> bool:
+    section = cfg.get(stage) or {}
+    return section.get("enabled", True) is not False
 
 
 def stage_inputs(cfg: dict, stage: str) -> dict:
-    """The config sections a stage's output depends on (device excluded)."""
+    """The config sections a stage's output depends on (device and logging excluded)."""
     model = {k: cfg["model"].get(k) for k in _MODEL_IDENTITY}
     sections = {
         "traces": ("traces",),
@@ -221,20 +230,56 @@ def stage_inputs(cfg: dict, stage: str) -> dict:
         "export": ("export",),
         "eval": ("eval",),
     }[stage]
-    return {"stage": stage, "model": model, **{s: cfg[s] for s in sections}}
+    out = {"stage": stage, "model": model}
+    for s in sections:
+        value = copy.deepcopy(cfg[s])
+        for key in _UNHASHED.get(s, ()):
+            value.pop(key, None)
+        out[s] = value
+    return out
+
+
+def _source_paths(sources) -> list[str]:
+    return [str(s["path"]) for s in sources or () if s.get("path")]
+
+
+def input_paths(cfg: dict, stage: str) -> list[str]:
+    """Local files a stage reads through ``path:`` entries (their contents are part of its hash)."""
+    paths = []
+    if stage == "traces":
+        prompts = cfg["traces"].get("prompts") or {}
+        paths += [str(prompts["path"])] if prompts.get("path") else []
+    elif stage == "calibrate":
+        paths += _source_paths(cfg["calibrate"]["sources"])
+    if stage in ("quantize", "endpoints", "distill"):
+        signs = cfg["rotation"].get("signs") or {}
+        paths += [str(signs["path"])] if signs.get("path") else []
+    if stage == "distill":
+        paths += _source_paths(cfg["distill"]["teacher"].get("sources"))
+    return paths
+
+
+def uses_traces(sources) -> bool:
+    """True when a source list reads the traces stage output (a traces source without its own path)."""
+    return any(s.get("kind") == "traces" and not s.get("path") for s in sources or ())
+
+
+def distill_uses_endpoints(cfg: dict) -> bool:
+    return bool(cfg["distill"].get("endpoints", True)) and stage_enabled(cfg, "endpoints")
 
 
 def upstream(cfg: dict, stage: str) -> tuple[str, ...]:
-    uses_traces = any(s.get("kind") == "traces" and not s.get("path") for s in cfg["calibrate"]["sources"])
+    """Stages whose outputs this stage reads under this config."""
     teacher_sources = cfg["distill"]["teacher"].get("sources")
-    distill_traces = teacher_sources is None or any(
-        s.get("kind") == "traces" and not s.get("path") for s in teacher_sources)
+    distill_traces = teacher_sources is None or uses_traces(teacher_sources)
+    if stage == "export":
+        return (next((s for s in ("distill", "endpoints") if stage_enabled(cfg, s)), "quantize"),)
     return {
         "traces": (),
-        "calibrate": ("traces",) if uses_traces else (),
+        "calibrate": ("traces",) if uses_traces(cfg["calibrate"]["sources"]) else (),
         "quantize": ("calibrate",),
         "endpoints": ("quantize", "calibrate"),
-        "distill": ("quantize", "endpoints") + (("traces",) if distill_traces else ()),
-        "export": ("distill",),
+        "distill": ("quantize",) + (("endpoints",) if distill_uses_endpoints(cfg) else ())
+                   + (("traces",) if distill_traces else ()),
         "eval": (),
     }[stage]

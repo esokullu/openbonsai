@@ -11,6 +11,10 @@ Sources (``--from``):
   ``ternary_state.pt`` and/or ``endpoint_state.pt``; comma-separated). Legacy
   per-module signs are applied exactly as ``apply_state`` did.
 
+A stage source must be enabled, complete and current (same config, inputs and
+upstream outputs as when it ran); ``auto`` picks the last such stage. So a
+rerun quantize never meets distilled scales trained on the old codes.
+
 Results go to ``eval/<source>.<suite>.json``.
 """
 from __future__ import annotations
@@ -32,9 +36,11 @@ STAGE_SOURCES = ("bf16", "quantize", "endpoints", "distill")
 def resolve_source(ctx, source: str | None) -> str:
     if source in (None, "auto"):
         for stage in ("distill", "endpoints", "quantize"):
-            if ctx.run.done_info(stage) is not None:
+            if ctx.stale_reason(stage) is None:
                 return stage
         return "bf16"
+    if source in STAGE_SOURCES[1:]:
+        ctx.require_current(source)
     return source
 
 
@@ -76,19 +82,19 @@ def compare_blocks(ctx, tok) -> torch.Tensor:
     return blocks
 
 
-def _reference(ctx, blocks) -> dict:
-    """BF16 reference statistics, cached per block set."""
+def _reference(ctx, blocks, model) -> dict:
+    """BF16 reference statistics of the unmodified ``model``, cached per model and block set."""
     from ..config import canonical_hash
+    from ..formats.atomic import durable_save
     out = ctx.run.stage_dir("eval")
-    key = canonical_hash({"blocks": blocks.tolist(), "model": ctx.cfg["model"].get("path"),
+    m = ctx.cfg["model"]
+    key = canonical_hash({"blocks": blocks.tolist(), "model": [m.get(k) for k in ("path", "revision", "dtype", "attn")],
+                          "model_sha256": ctx.model_digest(),
                           "topk": int(ctx.cfg["eval"]["compare"]["topk"])})[:16]
     path = out / f"compare-reference-{key}.pt"
     if path.exists():
         return torch.load(path, weights_only=True)
-    model, _ = ctx.load_model()
     ref = S.compare_reference(model, blocks, topk=int(ctx.cfg["eval"]["compare"]["topk"]))
-    del model
-    from ..formats.atomic import durable_save
     durable_save(ref, path)
     return ref
 
@@ -104,10 +110,11 @@ def run(ctx, source: str | None = None, suites=None, install_mode: str = "auto")
     out = ctx.run.stage_dir("eval")
     results = {}
     reference = blocks = None
-    if "compare" in suites:
-        blocks = compare_blocks(ctx, ctx.load_tokenizer())
-        reference = _reference(ctx, blocks)
     model, tok = ctx.load_model()
+    if "compare" in suites:
+        blocks = compare_blocks(ctx, tok)
+        model.eval()
+        reference = _reference(ctx, blocks, model)   # before any ternary weights go in
     label = install(ctx, model, source, install_mode)
     model.eval()
     for suite in suites:

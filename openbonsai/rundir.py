@@ -2,14 +2,18 @@
 
     runs/<name>/
       run.yaml            resolved config
-      signs.safetensors   per-width sign vectors (written once)
+      signs.safetensors   per-width sign vectors (rewritten only when rotation.signs changes)
+      digests.json        cached SHA-256 of input files (by size and mtime)
       traces/ calib/ quantize/ endpoints/ distill/ export/ eval/
       logs/<stage>.log
 
 A stage is complete when ``<stage>/DONE.json`` exists; it records the stage's
-config hash. Rerunning skips a stage whose hash is unchanged. Within a stage,
-units of work (a decoder layer, a teacher shard, a distillation checkpoint)
-are written atomically, so a crash loses at most the unit in progress.
+config hash and the SHA-256 of its output file (``OUTPUTS``). Downstream
+hashes include both, so a stage that reran with a different result makes
+every later stage stale. Rerunning skips a stage whose hash is unchanged.
+Within a stage, units of work (a decoder layer, a teacher shard, a
+distillation checkpoint) are written atomically, so a crash loses at most the
+unit in progress.
 """
 from __future__ import annotations
 
@@ -23,6 +27,13 @@ from .config import dump
 from .formats.atomic import atomic_write_bytes, atomic_write_json
 
 _STAGE_DIRS = {"calibrate": "calib"}
+# The file each stage produces for later stages (relative to its directory).
+OUTPUTS = {"traces": "traces.jsonl", "calibrate": "tokens.npy", "quantize": "state.safetensors",
+           "endpoints": "state.safetensors", "distill": "scales.safetensors"}
+
+
+class StageNotReady(RuntimeError):
+    """A stage's input is missing, stale (config or upstream changed) or disabled."""
 
 
 class RunDir:
@@ -36,6 +47,14 @@ class RunDir:
     @property
     def signs_path(self) -> Path:
         return self.root / "signs.safetensors"
+
+    @property
+    def digests_path(self) -> Path:
+        return self.root / "digests.json"
+
+    def output_path(self, stage: str) -> Path | None:
+        name = OUTPUTS.get(stage)
+        return self.stage_dir(stage, create=False) / name if name else None
 
     def stage_dir(self, stage: str, create: bool = True) -> Path:
         path = self.root / _STAGE_DIRS.get(stage, stage)
@@ -63,9 +82,14 @@ class RunDir:
         info = self.done_info(stage)
         return info is not None and info.get("config_hash") == config_hash
 
-    def mark_done(self, stage: str, config_hash: str, **info) -> None:
+    def mark_done(self, stage: str, config_hash: str, *, output_sha256: str | None = None, **info) -> None:
         atomic_write_json(self.stage_dir(stage) / "DONE.json",
-                          {"stage": stage, "config_hash": config_hash, **info})
+                          {"stage": stage, "config_hash": config_hash, "output_sha256": output_sha256, **info})
+
+    def done_key(self, stage: str) -> list | None:
+        """What a downstream stage hashes for this one: [config hash, output digest]."""
+        info = self.done_info(stage)
+        return None if info is None else [info.get("config_hash"), info.get("output_sha256")]
 
     def clear_done(self, stage: str) -> None:
         path = self.stage_dir(stage, create=False) / "DONE.json"

@@ -14,7 +14,6 @@ Output: ``calib/tokens.npy`` (int32 [N, seq_len]) and ``calib/sources.json``.
 """
 from __future__ import annotations
 
-import hashlib
 import io
 import json
 import random
@@ -23,6 +22,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
+from ..digest import file_sha256
 from ..formats.atomic import atomic_write_bytes, atomic_write_json
 
 HUB = {
@@ -49,14 +49,6 @@ def resolve_file(src: dict, *, local_files_only: bool = False, default_path=None
     from huggingface_hub import hf_hub_download
     return Path(hf_hub_download(hub["repo"], hub["file"], revision=hub.get("revision"), repo_type="dataset",
                                 local_files_only=local_files_only))
-
-
-def file_sha256(path) -> str:
-    digest = hashlib.sha256()
-    with open(path, "rb") as f:
-        for chunk in iter(lambda: f.read(8 << 20), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
 
 
 def pack(stream, seq_len, n_blocks, bos=None):

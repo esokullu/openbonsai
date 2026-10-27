@@ -3,7 +3,9 @@
 Port of research/experiments/endpoints.py with the same arithmetic.
 
 LM head: GPTQ with the Hessian of its actual inputs (final-norm hidden states
-of the already-ternary decoder) on the calibration blocks. Rows are
+of the already-ternary decoder) on the run's calibration blocks (all of
+them: 256 x 2048 in the 9B example; the measured endpoints.py runs built their
+own 128 blocks of 64 WikiText-2, 48 chat and 16 trace blocks). Rows are
 independent, so the head is processed in row chunks.
 
 Embedding: no input Hessian exists (inputs are one-hot), but an embedding
