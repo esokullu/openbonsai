@@ -15,7 +15,7 @@ from pathlib import Path
 
 import yaml
 
-STAGES = ("traces", "calibrate", "quantize", "endpoints", "distill", "export", "eval")
+STAGES = ("traces", "calibrate", "quantize", "endpoints", "refine", "distill", "export", "eval")
 
 DEFAULTS: dict = {
     "model": {
@@ -62,6 +62,31 @@ DEFAULTS: dict = {
     # two: a tied table stays high precision; ternary for a tied table is refused)
     "endpoints": {"enabled": True, "head": "auto", "embedding": "auto", "damp": 0.01,
                   "chunk": 16384, "batch": 4},
+    # Optional block-wise training of the codes and scales, layer by layer (docs/refine.md; stages/refine.py).
+    "refine": {
+        "enabled": False,
+        "layers": None,            # [start, stop) of decoder layers; null = all
+        "window": 1,               # layers trained together (stride = window)
+        "blocks": 128,             # training blocks: seeded subset of calibrate's, stratified by source
+        "val_blocks": 8,           # held out: per-layer metrics and rollback
+        "seed": 0,
+        "batch": 1,                # blocks per optimizer step (the layer kwargs are captured at this batch size)
+        "epochs": 4,
+        "target": "original",      # original (original prefix, GPTAQ-style) | quantized (student prefix) | mix
+        "mix": 0.5,                # weight of the quantized-target term under target: mix
+        "assign": "nearest",       # nearest (threshold s/2) | quantile (`zeros` zeros per group)
+        "zeros": 42,               # zeros per group under assign: quantile (Bonsai: 42 of 128)
+        "zero_anneal": 0.25,       # fraction of the steps to move from GPTQ's zero count to `zeros`
+        "init": "center",          # center (latent = input codes) | original (+ clipped residual of the weights)
+        "lr_codes": 5.0e-3,        # latent weights, in units of the group's input scale
+        "lr_scales": 5.0e-4,       # log multipliers of the scales
+        "warmup": 0.05,
+        "freeze_codes_after": 0.8,  # fraction of the steps; 0 = scales only, 1 = never freeze
+        "eps": 1.0e-10,            # AdamW eps
+        "checkpoint": "auto",      # gradient checkpointing per layer: auto = on for window >= 2 or batch > 2
+        "cache": "auto",           # activation streams: auto | cuda | cpu | disk (not part of the hash)
+        "rollback": True,          # a window whose held-out error did not go down keeps its input codes
+    },
     "distill": {
         "enabled": True,
         "teacher": {"n_seq": 2048, "seq_len": 2048, "seed": 1, "shard": 64, "topk": 64, "sources": None},
@@ -293,6 +318,18 @@ _MODEL_IDENTITY = ("path", "revision", "adapter", "dtype", "attn")
 _UNHASHED = {"distill": ("log_every", "ckpt_every"), "export": ("chunk_rows",)}
 
 
+def refine_hashed(refine: dict) -> dict:
+    """The refine settings that can change its result: not where the streams live (``cache``), and
+    ``mix`` / ``zeros`` / ``zero_anneal`` only under the target and assign rule that use them."""
+    out = {k: v for k, v in refine.items() if k != "cache"}
+    if out.get("target") != "mix":
+        out.pop("mix", None)
+    if out.get("assign") != "quantile":
+        out.pop("zeros", None)
+        out.pop("zero_anneal", None)
+    return out
+
+
 def stage_enabled(cfg: dict, stage: str) -> bool:
     section = cfg.get(stage) or {}
     return section.get("enabled", True) is not False
@@ -306,6 +343,7 @@ def stage_inputs(cfg: dict, stage: str) -> dict:
         "calibrate": ("calibrate",),
         "quantize": ("rotation", "quantize"),
         "endpoints": ("rotation", "endpoints"),
+        "refine": ("rotation", "refine"),
         "distill": ("rotation", "distill"),
         "export": ("export",),
         "eval": ("eval",),
@@ -324,6 +362,8 @@ def stage_inputs(cfg: dict, stage: str) -> dict:
                 value.pop(key, None)
             if value.get("batch_tokens") is None:
                 value.pop("batch_tokens", None)
+        if s == "refine":
+            value = refine_hashed(value)
         out[s] = value
     return out
 
@@ -343,7 +383,7 @@ def input_paths(cfg: dict, stage: str) -> list[str]:
             paths += [str(prompts["path"])] if prompts.get("path") else []
     elif stage == "calibrate":
         paths += _source_paths(cfg["calibrate"]["sources"])
-    if stage in ("quantize", "endpoints", "distill"):
+    if stage in ("quantize", "endpoints", "refine", "distill"):
         signs = cfg["rotation"].get("signs") or {}
         paths += [str(signs["path"])] if signs.get("path") else []
     if stage == "distill":
@@ -361,17 +401,23 @@ def distill_uses_endpoints(cfg: dict) -> bool:
 
 
 def upstream(cfg: dict, stage: str) -> tuple[str, ...]:
-    """Stages whose outputs this stage reads under this config."""
+    """Stages whose outputs this stage reads under this config.
+
+    Refine (when enabled) reads quantize's state, the calibration blocks and, when endpoints is on, its
+    ternary embedding; distill and the export then read refine's decoder state instead of quantize's.
+    With refine disabled every other stage's list is what it was before refine existed."""
     teacher_sources = cfg["distill"]["teacher"].get("sources")
     distill_traces = teacher_sources is None or uses_traces(teacher_sources)
+    refine = (("refine",) if stage_enabled(cfg, "refine") else ())
     if stage == "export":
-        return (next((s for s in ("distill", "endpoints") if stage_enabled(cfg, s)), "quantize"),)
+        return (next((s for s in ("distill", "refine", "endpoints") if stage_enabled(cfg, s)), "quantize"),)
     return {
         "traces": (),
         "calibrate": ("traces",) if uses_traces(cfg["calibrate"]["sources"]) else (),
         "quantize": ("calibrate",),
         "endpoints": ("quantize", "calibrate"),
-        "distill": ("quantize",) + (("endpoints",) if distill_uses_endpoints(cfg) else ())
+        "refine": ("quantize", "calibrate") + (("endpoints",) if stage_enabled(cfg, "endpoints") else ()),
+        "distill": ("quantize",) + refine + (("endpoints",) if distill_uses_endpoints(cfg) else ())
                    + (("traces",) if distill_traces else ()),
         "eval": (),
     }[stage]

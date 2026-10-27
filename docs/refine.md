@@ -1,6 +1,6 @@
-# Refine: block-wise training of codes and scales (design)
+# Refine: block-wise training of codes and scales
 
-**Status: design, not implemented.** This page specifies an optional stage `refine` that runs after quantize and endpoints and before distill. Nothing here is measured. The numbers are arithmetic from shapes, or estimates from the throughput of earlier runs, and each one says which.
+**Status: implemented, not yet measured on a real model.** The optional stage `refine` (`openbonsai/stages/refine.py`, off by default) runs after quantize and endpoints and before distill. It passes its acceptance tests on tiny random Qwen3.5 and Llama models on the CPU (`tests/test_refine.py`). Nothing on this page is measured on 9B. The numbers are arithmetic from shapes, or estimates from the throughput of earlier runs, and each one says which. Where the code settles a detail the design left open, or differs from it, [Implementation notes](#implementation-notes) says so.
 
 ## Why
 
@@ -18,7 +18,7 @@ Budget: everything fits one RTX 5090 (32 GB, Windows). When VRAM overflows, the 
 The stage order becomes traces → calibrate → quantize → endpoints → **refine** → distill → export → eval. Refine is off by default (`refine.enabled: false`).
 
 - **Input.** The quantize state (codes, fp16 scales and shared signs per width), the calibration tokens, and the ternary embedding from endpoints when endpoints made one. The ternary embedding goes into the student's path, so layer 0 sees the real input error.
-- **Output.** `refine/state.safetensors` in the same `TernaryState` format, with the same keys, signs, block and group as quantize's state. Layers outside `refine.layers` are copied from quantize unchanged. Distill, export and eval read it through one accessor, `ctx.decoder_state()`: refine's state when refine is enabled, otherwise quantize's. GGUF export, the codec and the evaluators need no change. Distill then trains log multipliers starting from refine's scales.
+- **Output.** `refine/state.safetensors` in the same `TernaryState` format, with the same keys, signs, block and group as quantize's state. Layers outside `refine.layers` are copied from quantize unchanged. Distill, export and eval read it through one accessor, `ctx.decoder_state()`: refine's state when refine is enabled, otherwise quantize's. GGUF export, the codec and the evaluators need no change. Distill then trains log multipliers starting from refine's scales. With distill disabled, the export writes refine's state (plus the endpoints), and `openbonsai eval --from refine` scores it with dequantized weights, as `--from endpoints` does.
 - **The head.** Endpoints rounded the head with the Hessian of the *unrefined* decoder's final hidden states. Refine leaves the head alone, and distill retrains its scales. Re-running the head's GPTQ after refine takes about one minute. It is a follow-up, if the pilot shows the head Hessian has gone stale.
 
 ## Parametrization
@@ -70,7 +70,7 @@ At layer 0 the two targets coincide, unless the embedding is ternary.
 ## Per-layer procedure
 
 1. **Setup, once.** Load the model, capture the layer-0 inputs and each layer's kwargs (rotary tables and masks) at `refine.batch` with quantize's `capture_layer0_inputs` and `capture_layer_kwargs`, then move the decoder layers to the CPU. The GPU holds one layer at a time (two with `window: 2`).
-   - **Calibration subset.** Training uses a seeded subset of `blocks` calibration blocks, stratified by source, plus `val_blocks` more. The calibration file is ordered by source, so a prefix would be all WikiText. The reasoning config's file is half traces, and the subset keeps that share.
+   - **Calibration subset.** Training uses a seeded subset of `blocks` calibration blocks, stratified by source, plus `val_blocks` held-out blocks drawn first (so they do not change with `blocks`). Calibrate permutes its blocks with its seed, so a prefix of the file is already a random mix; refine recovers each block's source from `calib/sources.json` and that seed and keeps the shares exact. The reasoning config's file is half traces, and the subset keeps that share.
 2. **Target pass.** Move original layer i to the GPU and compute T^i under `no_grad`. In `original` mode, T^i overwrites X_fp^i in place and becomes X_fp^(i+1). The held-out blocks always get both targets, so every arm is also scored against the common original target, as in the teacher-target control.
 3. **Student.** Copy the layer, install `LatentTernaryLinear` for its planned linears (V, u from the current state), and keep every other tensor frozen at its original value: norms, conv1d, `in_proj_a`/`in_proj_b`, `A_log` and `dt_bias`. Distill's `train.small` can train those later.
 4. **Train.** Train for E epochs over the training blocks in a seeded order, one optimizer step per `batch` blocks. Freeze the codes at `freeze_codes_after`.
@@ -104,7 +104,7 @@ At layer 0 the two targets coincide, unless the embedding is ternary.
 | **Total** | **~12.5** |
 
 - **Window 2** adds about 4.5 GB, for about 17 GB.
-- **Streams.** In `original` mode only two streams are resident: T^i overwrites X_fp^i, and X_q^(i+1) overwrites X_q^i. That is 2 × N × 16 MiB in all. `cache: auto` keeps them on the GPU while the total stays under 20 GB, otherwise in pinned CPU memory, otherwise on disk (a store like `DiskRecords` in [the CAT-Q trainer](../research/catq/trainer.py)).
+- **Streams.** In `original` mode only two streams are resident: T^i overwrites X_fp^i, and X_q^(i+1) overwrites X_q^i. That is 2 × N × 16 MiB in all (`quantized`: X_q and T; `mix`: three). `cache: auto` keeps them on the GPU while the streams fit 8 GiB, otherwise in pinned CPU memory while they fit half the free RAM, otherwise on disk in `refine/streams/` (one file per element, like `DiskRecords` in [the CAT-Q trainer](../research/catq/trainer.py)); the files are deleted when the stage ends. Where the streams live does not change the result, and `cache` is not part of the stage's hash.
 - **This machine** has 256 GiB of RAM: the BF16 model on the CPU (about 18 GB) plus streams up to N = 4096 (128 GiB) fit.
 - **The GPU's peak** stays near 8 GB once the streams are off it.
 
@@ -126,7 +126,7 @@ Add about 3 minutes of setup (load and capture). Read every row as within a fact
 
 ## Configuration
 
-Defaults as proposed. None of these keys exists yet.
+The defaults, as in `openbonsai/config.py`:
 
 ```yaml
 refine:
@@ -154,20 +154,36 @@ refine:
   rollback: true
 ```
 
-The stage's hash covers `rotation` and `refine`, and its upstream is quantize, calibrate, and endpoints when the embedding is ternary. Distill's upstream and its recorded `base` digests gain refine when refine is enabled, so a changed refine makes distill stale.
+The stage's hash covers `rotation` and `refine` (not `cache`; `mix` only under `target: mix`, and `zeros` and `zero_anneal` only under `assign: quantile`). Its upstream is quantize, calibrate, and endpoints whenever endpoints is enabled. Distill's upstream and its recorded `base` digests gain refine when refine is enabled, so a changed refine makes distill and the export stale. With refine disabled, every other stage's hash is what it was before refine existed, so existing run directories stay current.
 
-## Code changes
+## Code
 
 - **`openbonsai/core/ternary.py`:** `LatentTernaryLinear(TernaryLinear)`, with the assignment rules, the STE, `freeze()`, and `hard()`, which returns (int8 codes, fp16 scales).
-- **`openbonsai/stages/refine.py` (new):** the stream store (GPU, pinned CPU or disk), the per-layer loop and the training loop, per-layer save and resume, and `report.json`. Capture and the layer forward come from `stages/quantize.py`.
-- **`openbonsai/config.py`:** the `refine` defaults, `refine` added to `STAGES` after endpoints, `stage_inputs`, and `upstream`.
+- **`openbonsai/stages/refine.py`:** `check_config` (the run's preflight calls it), the stratified block subset, the stream store (GPU, pinned CPU or disk), the per-window loop and the training loop, per-layer save and resume, and `report.json`. Capture and the layer forward come from `stages/quantize.py`.
+- **`openbonsai/config.py`:** the `refine` defaults, `refine` in `STAGES` after endpoints, `stage_inputs`, and `upstream`.
 - **`openbonsai/stages/common.py`:** `decoder_state()`, `state_through("refine")`, and a refine digest in `distill_base()`. Distill switches from `quantize_state()` to `decoder_state()`.
-- **Eval:** `refine` becomes a `--from` source.
+- **CLI:** `openbonsai refine --run DIR`; `openbonsai run` runs it between endpoints and distill when it is enabled; `--force refine` discards its saved layers.
+- **Eval:** `refine` is a `--from` source; `--from auto` picks it after distill.
 - **Tests:** `tests/test_refine.py`.
+
+### Implementation notes
+
+Where the code settles a detail the design left open, or differs from it:
+
+- **The ternary embedding** enters the student's stream as a `TernaryEmbedding` (the runtime arithmetic, as distill uses), installed after the original-prefix stream is captured.
+- **Ties under `quantile`** are broken by the magnitude of the original rotated weight (exactly, as a lexicographic key), and a latent at exactly 0 that must become nonzero takes that weight's sign. The design said "the initial residual".
+- **The zero-count anneal** is at its start at step 0 (so step 0 is exact), and the codes freeze at the anneal's value for the freeze step. The preflight refuses a `zero_anneal` above `freeze_codes_after`, which would freeze the codes before every group reached `zeros`.
+- **Rollback** applies to a window whose codes or scales changed and whose held-out error against its own target (for `mix`, the weighted sum) is not strictly lower. A window that did not change is not called rolled back.
+- **The streams advance** through the hardened layer rebuilt from the saved int8 codes and fp16 scales, not through the training module, so later layers see exactly the state on disk. Resume rebuilds them the same way, which is what makes a resumed run byte-identical.
+- **Layer files** carry the window's statistics and its seconds and peak VRAM (`meta.report`). The final state's meta holds only deterministic fields (range, hashed settings, rolled-back layers), so equal inputs give a byte-identical `state.safetensors`.
+- **A non-finite loss** stops the stage with an error instead of saving a broken layer.
+- **Memory (arithmetic, not measured):** until the backward pass, autograd keeps each linear's FP32 codes-plus-STE tensor (for the scale gradient) and its BF16 weight, 6 bytes per weight or about 1.3 GB per 9B layer, where the table above counts 0.54 GB. That puts window 1 at about 13.3 GB. A custom autograd function that saves only the int8 codes would win back 0.9 GB if it is ever needed.
+- **Setup on the GPU:** the whole BF16 model (about 18 GB) is on the GPU while the streams are captured (with the streams there too under `cache: auto`, about 22 GB at N = 128), then it moves to CPU memory.
+- **Seen on the tiny fixtures only:** with the 9B default `lr_codes` (5e-3), the fixture's 24 steps per layer flip no codes, as the step-budget arithmetic above predicts (a latent moves about lr per Adam step). The tests use 0.05.
 
 ## Acceptance (tiny models, CPU)
 
-On the tiny Qwen3.5 and dense fixtures, with `CUDA_VISIBLE_DEVICES=-1`:
+On the tiny Qwen3.5 and dense fixtures, with `CUDA_VISIBLE_DEVICES=-1` (all pass, `tests/test_refine.py`):
 1. **Step 0 is the identity.** With `epochs: 0` (or both learning rates 0), `refine/state.safetensors` holds bit-for-bit the quantize state's codes and scales. Before training, each student layer's output equals `TernaryLinear`'s output bitwise. Under `assign: quantile` this holds at the first step, before annealing starts.
 2. **Loss decreases.** The held-out relative error after training is below step 0 for the mean over layers, and no rolled-back layer gets worse.
 3. **Codes change.** With a learning rate large enough for the fixture, some codes flip, and the flip stats in the layer meta are nonzero and match a direct comparison. With `freeze_codes_after: 0`, the codes equal the input codes and only the scales differ. Under `assign: quantile`, every group ends with exactly `zeros` zeros.
@@ -183,6 +199,34 @@ Run it after the reasoning-mix job finishes, in a new run directory. Copy that r
 - **Before distill (minutes per arm).** Dev NLL and Wiki 16K, the `compare` KL against BF16, and GSM8K limited to 50 problems with thinking off (`eval.reasoning.gsm8k.n`). Per-layer held-out error against the common original target, flips, zero fraction, eps-damped fraction, seconds and peak VRAM, from the layer metas.
 - **Gate.** The best arm must beat A0 by at least 0.05 dev NLL before distill, with a lower KL. GSM8K before distill is likely near the floor and is only a tiebreaker: 50 problems have a standard error of about ±3.
 - **If it passes.** Refine all 32 layers with the winning target (about 17 min), then distill (about 1 h) and the full reasoning suites: GSM8K 100 and HumanEval 50 with thinking off, against the reasoning-mix distilled result. Only that comparison decides whether refine stays in the pipeline.
+
+**Commands.** Each GPU step is its own job under the machine's `gpu.lock` (`runs/gpu_job.sh` waits for the lock and an idle GPU). Run from a frozen worktree of the commit that has refine, so later edits on the branch cannot change a running arm. Each arm gets its own copy of the finished reasoning-mix run's traces, calibrate, quantize and endpoints outputs (their recorded hashes stay valid, because refine leaves every other stage's hash unchanged while it is disabled), plus the cached BF16 `compare` reference. A0 is `--from endpoints` in the first copy.
+
+```bash
+git -C D:/openbonsai/work/framework-v1 worktree add --detach D:/openbonsai/work/refine-pilot-snapshot <commit>
+cd /d/openbonsai/work/refine-pilot-snapshot
+export PYTHONPATH=D:/openbonsai/work/refine-pilot-snapshot
+PY=D:/openbonsai/.venv-fla/Scripts/python.exe; R=D:/openbonsai/runs; J=$R/gpu_job.sh
+SRC=$R/2026-10-27-reasoning-mix-v1
+for ARM in original quantized; do
+  D=$R/2026-10-28-refine-pilot-$ARM
+  mkdir -p $D/traces $D/quantize $D/eval
+  cp $SRC/run.yaml $SRC/signs.safetensors $D/
+  find $SRC/traces -maxdepth 1 -type f -exec cp {} $D/traces/ \;
+  cp -r $SRC/calib $SRC/endpoints $D/
+  cp $SRC/quantize/*.json $SRC/quantize/state.safetensors $D/quantize/
+  cp -r $SRC/eval/compare-reference-* $D/eval/
+  bash $J refine-$ARM $PY -m openbonsai refine --run $D --set refine.enabled=true \
+    --set 'refine.layers=[0, 8]' --set refine.target=$ARM > $R/refine-pilot-$ARM.stdout 2>&1
+  bash $J refine-$ARM-eval $PY -m openbonsai eval --run $D --from refine --suite dev,compare,gsm8k \
+    --set 'eval.reasoning.thinking=[off]' --set eval.reasoning.gsm8k.n=50 > $R/refine-pilot-$ARM-eval.stdout 2>&1
+done
+bash $J refine-a0-eval $PY -m openbonsai eval --run $R/2026-10-28-refine-pilot-original --from endpoints \
+  --suite dev,compare,gsm8k --set 'eval.reasoning.thinking=[off]' --set eval.reasoning.gsm8k.n=50 \
+  > $R/refine-pilot-a0-eval.stdout 2>&1
+```
+
+The per-layer numbers are in each arm's `logs/refine.log` and `refine/report.json` (`objective_*` against the arm's own target, `val_*.original` against the common original target, `flips`, `zeros_after`, `eps_damped`, `seconds`, `peak_vram_gb`). The scores are in `eval/endpoints.*.json` (A0) and `eval/refine.*.json`.
 
 ## Risks and open questions
 

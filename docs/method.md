@@ -104,6 +104,8 @@ None of the dev generations in these runs was a usable answer: they looped, stop
 
 These results say CAT-Q *alone at small budgets* failed here. They say nothing about CAT-Q at the paper's settings, or as a refinement of GPTQ's codes. That combination is the next experiment. CAT-Q moves into the package only if it beats GPTQ plus distillation on the same data. The reports are in `research/runs/2026-10-26-*` and `research/docs/`.
 
+A different refinement of GPTQ's codes, block-wise training of latent weights and scales with a straight-through estimator (EfficientQAT's Block-AP, started from GPTQ's codes), is in the package as the optional `refine` stage, off by default. It has not run on 9B yet: [refine.md](refine.md).
+
 ## Endpoints: ternary head and embedding
 
 **What.** The LM head is rounded by GPTQ, with the Hessian of its real inputs: the final hidden states of the already-ternary decoder, on all 256 calibration blocks. The token embedding has no useful input Hessian, because its input is a one-hot vector. But an embedding row reaches the network only through layer 0's input norm, whose output is proportional to gain ⊙ e. Here gain = 1 + w for Qwen3.5's zero-centered norm, and w for the usual one. So the embedding is rounded by GPTQ with H = diag(gain²), rotated, which minimizes the error the first layer actually sees. Rows are independent, so both run in chunks of rows. Together they take about a minute.

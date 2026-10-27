@@ -4,7 +4,7 @@
       run.yaml            resolved config
       signs.safetensors   per-width sign vectors (rewritten only when rotation.signs changes)
       digests.json        cached SHA-256 of input files (by size and mtime)
-      traces/ calib/ quantize/ endpoints/ distill/ export/ eval/
+      traces/ calib/ quantize/ endpoints/ refine/ distill/ export/ eval/
       export/<name>.gguf  the PTQ1_0 GGUF (or export.out) and its .export.json report
       logs/<stage>.log
 
@@ -32,7 +32,7 @@ from .formats.atomic import atomic_write_bytes, atomic_write_json
 _STAGE_DIRS = {"calibrate": "calib"}
 # The file each stage produces for later stages (relative to its directory).
 OUTPUTS = {"traces": "traces.jsonl", "calibrate": "tokens.npy", "quantize": "state.safetensors",
-           "endpoints": "state.safetensors", "distill": "scales.safetensors"}
+           "endpoints": "state.safetensors", "refine": "state.safetensors", "distill": "scales.safetensors"}
 
 
 class StageNotReady(RuntimeError):

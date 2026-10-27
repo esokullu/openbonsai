@@ -182,23 +182,38 @@ class StageContext:
         path = self.run.stage_dir("endpoints", create=False) / "state.safetensors"
         return load_state(path) if path.exists() else None
 
+    def refine_state(self) -> TernaryState:
+        path = self.run.stage_dir("refine", create=False) / "state.safetensors"
+        if not path.exists():
+            raise StageNotReady(f"{path} is missing; run the refine stage")
+        return load_state(path)
+
+    def decoder_state(self) -> TernaryState:
+        """The decoder codes and scales later stages build on: refine's state when refine is enabled,
+        otherwise quantize's."""
+        return self.refine_state() if self.enabled("refine") else self.quantize_state()
+
     def distill_base(self) -> dict:
         """Output digests of the states distillation trains on (recorded with its scales)."""
-        return {"quantize": (self.run.done_key("quantize") or [None, None])[1],
+        base = {"quantize": (self.run.done_key("quantize") or [None, None])[1],
                 "endpoints": (self.run.done_key("endpoints") or [None, None])[1]
                 if distill_uses_endpoints(self.cfg) else None}
+        if self.enabled("refine"):    # only then: scales distilled before refine existed stay valid
+            base["refine"] = (self.run.done_key("refine") or [None, None])[1]
+        return base
 
     def state_through(self, stage: str) -> TernaryState:
         """Decoder state, plus endpoints, plus distilled scales, up to ``stage``.
 
+        ``refine`` and ``distill`` build on ``decoder_state()`` (refine's codes when refine is enabled).
         Refuses outputs that are missing, disabled or stale, so the codes and
         scales always come from one consistent pass of every stage."""
-        if stage not in ("quantize", "endpoints", "distill"):
+        if stage not in ("quantize", "endpoints", "refine", "distill"):
             raise ValueError(f"no ternary state for stage {stage!r}")
         self.require_current(stage)
-        state = self.quantize_state()
+        state = self.quantize_state() if stage in ("quantize", "endpoints") else self.decoder_state()
         # Distillation trains (and so evaluates) the endpoints only when it installed them.
-        if stage == "endpoints" or (stage == "distill" and distill_uses_endpoints(self.cfg)):
+        if stage == "endpoints" or (stage == "refine" and self.enabled("endpoints"))                 or (stage == "distill" and distill_uses_endpoints(self.cfg)):
             ep = self.endpoints_state()
             if ep is None:
                 raise StageNotReady("endpoints/state.safetensors is missing")
@@ -207,8 +222,8 @@ class StageContext:
         if stage == "distill":
             scales, meta = read_scales(self.run.stage_dir("distill", create=False) / "scales.safetensors")
             if meta.get("base") != self.distill_base():
-                raise StageNotReady("distill/scales.safetensors was trained on a different quantize/endpoints "
-                                    "state than the current one; rerun distill")
+                raise StageNotReady("distill/scales.safetensors was trained on a different quantize/endpoints"
+                                    "/refine state than the current one; rerun distill")
             state = state.with_scales(scales)
         return state
 

@@ -12,6 +12,7 @@ OpenBonsai is an open (Apache-2.0) framework that compresses a dense language mo
 - Qwen3.5-9B: measured end to end, with the research scripts and with the package's own `openbonsai run` (results below).
 - Dense Llama, Mistral, Qwen2/2.5 and Qwen3: implemented in a generic adapter, tested only on tiny random models on CPU, including loading tiny Llama and Qwen3 GGUFs in Prism's runtime. There are no real-model results for them yet. Whether Prism's runtime can run the result depends on the architecture (see [Other models](#other-models)).
 - ScaleQ/CAT-Q refinement is in `research/`, not in the pipeline: it has not beaten GPTQ plus distillation yet.
+- An optional `refine` stage that trains GPTQ's codes and scales layer by layer ([docs/refine.md](docs/refine.md)) is implemented and off by default. It is tested only on tiny random models; its 9B pilot has not run.
 
 ## How it works
 
@@ -25,6 +26,7 @@ calibration blocks: WikiText-2 train + UltraChat + its own traces (+ your JSONL)
    2 round       sequential GPTQ to {-1, 0, +1} codes, fp16 scale per 128 weights
   (3 refine)     ScaleQ/CAT-Q: research/ only, not in the default pipeline
      endpoints   ternary LM head and token embedding (GPTQ)
+    [refine]     optional, off: train codes + scales per layer (docs/refine.md)
    4 distill     group scales against the BF16 model's top-64, codes frozen
         │
         ▼

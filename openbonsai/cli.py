@@ -1,15 +1,16 @@
 """``openbonsai`` command line.
 
     openbonsai run --model Qwen/Qwen3.5-9B --config examples/qwen3_5-9b.yaml --out runs/my-model
-        = traces -> calibrate -> quantize -> endpoints -> distill -> export -> eval
+        = traces -> calibrate -> quantize -> endpoints -> [refine] -> distill -> export -> eval
+        (refine is off by default: refine.enabled=true; docs/refine.md)
 
     openbonsai <stage> --run runs/my-model [--set section.key=value ...] [--force]
-        stages: traces calibrate quantize endpoints distill export eval
+        stages: traces calibrate quantize endpoints refine distill export eval
 
     openbonsai export --run runs/my-model [--out X.gguf|DIR] [--name NAME] [--verify | --no-verify]
         a PTQ1_0 GGUF, or a latent checkpoint folder when the model has no GGUF layout (export.format);
         DIR is the checkpoint folder itself (an existing one is replaced only if it is a latent checkpoint)
-    openbonsai eval --run runs/my-model --from bf16|quantize|endpoints|distill|PATH --suite dev,extended,compare,teacher
+    openbonsai eval --run runs/my-model --from bf16|quantize|endpoints|refine|distill|PATH --suite dev,extended,compare,teacher
         PATH: state.safetensors, legacy .pt[,.pt], or a PTQ1_0 .gguf (ours or the official
         Ternary Bonsai; --run defaults to <gguf>.eval and --model gives the config and tokenizer)
     openbonsai eval --run runs/my-model --from distill --suite gsm8k,humaneval --set 'eval.reasoning.thinking=[off,on]'
@@ -24,7 +25,7 @@ A stage whose output exists with the same config hash is skipped; ``--force``
 reruns it from scratch, discarding its resumable work (with ``run``, also every
 later stage; distill then keeps its teacher shards unless distill itself is
 named, since they depend only on the BF16 model and data, which their own
-input hash covers). Interrupted stages resume: quantize per layer,
+input hash covers). Interrupted stages resume: quantize and refine per layer,
 traces per batch, distill per teacher shard and checkpoint. A stage refuses to
 run on a missing, disabled or stale upstream output; a later stage whose
 inputs changed (another config, or a rerun with a different result) reruns.
@@ -44,7 +45,7 @@ from .rundir import RunDir, StageNotReady
 
 # Resumable units that are valid only for the inputs they were made from. (The traces stage keys its
 # cached batches by content in traces/cache/, which survives config edits; parts/ is the old layout.)
-_RESUMABLE = {"traces": ("parts",), "quantize": ("layers",)}
+_RESUMABLE = {"traces": ("parts",), "quantize": ("layers",), "refine": ("layers", "streams")}
 # Everything --force discards before rerunning a stage.
 _FORCE_RESET = {**_RESUMABLE, "traces": ("parts", "cache"),
                 "distill": ("checkpoint.pt", "train.jsonl", "TRAIN_INPUTS.json")}
@@ -52,9 +53,9 @@ _TEACHER = ("teacher", "TEACHER_INPUTS.json")
 
 
 def _stage_module(stage: str):
-    from .stages import calibrate, distill, endpoints, evaluate, export, quantize, traces
+    from .stages import calibrate, distill, endpoints, evaluate, export, quantize, refine, traces
     return {"traces": traces, "calibrate": calibrate, "quantize": quantize, "endpoints": endpoints,
-            "distill": distill, "export": export, "eval": evaluate}[stage]
+            "refine": refine, "distill": distill, "export": export, "eval": evaluate}[stage]
 
 
 def _overrides(args) -> list[tuple[tuple[str, ...], object]]:
@@ -228,6 +229,9 @@ def preflight(ctx, stages=STAGES) -> None:
     endpoints_on = stage_enabled(ctx.cfg, "endpoints")
     if endpoints_on and "endpoints" in stages:
         ternary_endpoints(ctx.cfg, adapter)    # unknown modes; ternary for a tied table
+    if stage_enabled(ctx.cfg, "refine") and "refine" in stages:
+        from .stages.refine import check_config
+        check_config(ctx.cfg, adapter.n_layers)   # values, layer range, blocks vs the calibration set
     if stage_enabled(ctx.cfg, "traces") and "traces" in stages:
         from .stages.traces import checked_chat_kwargs, trace_sources
         check_chat_template(ctx)
@@ -378,7 +382,7 @@ def build_parser() -> argparse.ArgumentParser:
         s.add_argument("--force", action="store_true", help="rerun even if up to date")
         if stage == "eval":
             s.add_argument("--from", dest="source", default=None,
-                           help="bf16 | quantize | endpoints | distill | state.safetensors | legacy.pt[,more.pt] "
+                           help="bf16 | quantize | endpoints | refine | distill | state.safetensors | legacy.pt[,more.pt] "
                                 "| model.gguf")
             s.add_argument("--suite", default=None, help="comma-separated: dev, extended, compare, teacher, gsm8k, humaneval "
                                 "(the last two: eval.reasoning.*)")

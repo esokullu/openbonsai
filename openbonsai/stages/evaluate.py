@@ -1,10 +1,11 @@
-"""Score a run's model (BF16, or after quantize/endpoints/distill) on the suites.
+"""Score a run's model (BF16, or after quantize/endpoints/refine/distill) on the suites.
 
 Sources (``--from``):
 
 - ``bf16``: the original model;
-- ``quantize``, ``endpoints``: dequantized weights (C * s) R^T written into the
-  model, as the decoder-only and endpoint results were scored;
+- ``quantize``, ``endpoints``, ``refine``: dequantized weights (C * s) R^T written
+  into the model, as the decoder-only and endpoint results were scored
+  (``refine``: refine's decoder state plus the endpoints when they are on);
 - ``distill``: TernaryLinear/TernaryEmbedding modules with the distilled fp16
   scales (the runtime arithmetic, as e2e_kd.py scored it), plus the distilled
   high-precision tensors when ``distill.train.small``;
@@ -64,7 +65,7 @@ from ..formats.state import load_legacy_pt, load_state
 from . import calibrate
 from .common import apply_dense, apply_small, densify, free, has_ternary, install_ternary, legacy_records
 
-STAGE_SOURCES = ("bf16", "quantize", "endpoints", "distill")
+STAGE_SOURCES = ("bf16", "quantize", "endpoints", "refine", "distill")
 
 
 def is_gguf(source) -> bool:
@@ -73,7 +74,7 @@ def is_gguf(source) -> bool:
 
 def resolve_source(ctx, source: str | None) -> str:
     if source in (None, "auto"):
-        for stage in ("distill", "endpoints", "quantize"):
+        for stage in ("distill", "refine", "endpoints", "quantize"):
             if ctx.stale_reason(stage) is None:
                 return stage
         return "bf16"
