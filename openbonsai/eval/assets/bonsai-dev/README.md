@@ -1,7 +1,7 @@
-# Frozen Bonsai development comparison
+# Bonsai development evaluation inputs
 
 [frozen-inputs.json](frozen-inputs.json) is the exact reviewed conversion input
-supplied to the [completed official Bonsai CPU run](../../../docs/official-bonsai-development-result.md).
+supplied to the [completed official Bonsai CPU run](../../../../research/docs/official-bonsai-development-result.md).
 The run saved and evaluated a semantically identical JSON copy with different
 serialization bytes; both hashes are recorded in the validation receipt. This
 file is included for reproducible evaluation and transfer to the separate 5090
@@ -42,17 +42,30 @@ Public dataset provenance is recorded in the manifest:
 Dataset and tokenizer material retain their respective licenses. The original
 transport, rendering helper hashes, tokenizer file hashes, selected source IDs,
 and explicit normalization policy are recorded in the manifest and the
-[validation receipt](../../../validation-official-bonsai-development.json).
+[validation receipt](../../../../research/validation/validation-official-bonsai-development.json).
 
-Use the [native profile](../../../configs/evaluation/bonsai-development-native.json)
-or [Prism CPU profile](../../../configs/evaluation/bonsai-development-cpu.json)
-with the [matched evaluation runner](../../../docs/matched-evaluation.md).
-Profile identity binds the canonical manifest hash; command-line expected
-manifest hashes bind the exact file bytes. Models, authenticated tokenizer
-assets and an appropriate runtime are still required. Packaging the inputs
-does not authorize overlapping GPU work or establish native CUDA feasibility.
+Score it in torch with `openbonsai eval --suite dev` (openbonsai/eval/suites.py),
+or a GGUF in Prism's llama.cpp with
+[tools/prism/evaluate_prism_manifest.py](../../../../tools/prism/evaluate_prism_manifest.py),
+which applies the full token-ID and raw-piece checks of openbonsai/eval/manifest.py.
+The history of the matched comparison is in
+[research/docs/matched-evaluation.md](../../../../research/docs/matched-evaluation.md).
 
 The official result uses centered FP64 normalization of FP32 logits. Earlier
 OpenBonsai FP32 cross-entropy scalars cannot be converted into an exact matched
 baseline; rescore the original and selected completed artifact. These common
 inputs and probability rules do not make different backend kernels identical.
+
+## Extended suite inputs
+
+`openbonsai eval --suite extended` reads two more files, copied byte for byte
+from local runs and pinned by SHA256 in openbonsai/eval/suites.py:
+
+| File | Bytes | SHA256 | Contents |
+|---|---|---|---|
+| `legacy-eval-inputs.json` | 689368 | `2952cf072dff2e9b00b09a59a5f2345a02b3e509725854af07ea8478f8a7a64c` | From `runs/2026-10-26-5090-pilot/eval-inputs.json`: 32 x 513-token WikiText-2 test windows (16,384 scored tokens), 100 ARC-Easy letter questions, 10 prompts (unused). |
+| `chat-traces16.jsonl` | 77139 | `443aaba5e5b41c641c27cdcd45f34fd5a2e770fa466321c9bbab84436ff40aaf` | From `runs/2026-10-26-5090-activation-diagnostic-v1/data/search-consumed16.jsonl`: 16 Qwen3.5-9B greedy answers to UltraChat 200k first-turn prompts, disjoint from calibration. |
+
+All three files are tokenized for Qwen/Qwen3.5-9B; the suites refuse other
+tokenizers (use `--suite compare` for a model with its own tokenizer).
+

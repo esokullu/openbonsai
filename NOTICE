@@ -14,11 +14,14 @@ below.
 Evaluation and calibration text
 -------------------------------------------------------------------------------
 
-research/evaluation/bonsai-development/frozen-inputs.json, and some reports
-under research/runs/, contain text excerpts from the datasets below. The
-excerpts keep their original licenses; they are not relicensed under
-Apache-2.0. Changes: excerpts were selected, tokenized with the Qwen3.5
-tokenizer and, for ARC, rendered as A/B/C/D multiple-choice prompts.
+The evaluation inputs in openbonsai/eval/assets/bonsai-dev/ (frozen-inputs.json,
+legacy-eval-inputs.json, chat-traces16.jsonl), the small example data in
+examples/, and some reports under research/runs/ contain text excerpts from
+the datasets below. The excerpts keep their original licenses; they are not
+relicensed under Apache-2.0. Changes: excerpts were selected, tokenized with
+the Qwen3.5 tokenizer and, for ARC, rendered as A/B/C/D multiple-choice
+prompts; chat-traces16.jsonl holds Qwen3.5-9B answers to UltraChat prompts.
+examples/tiny-data/ is original text written for the tests.
 
   WikiText-2 (raw), Salesforce/wikitext, revision
   b08601e04326c79dfdd32d625aee71d232d685c3.
@@ -54,7 +57,8 @@ PrismML-Eng/llama.cpp, pinned at c9c34bc9c4042c13a31598ebf43461cd0ad8f00d, is
 a fork of llama.cpp (ggml-org/llama.cpp). tools/prism/prism_eval_worker.cpp
 compiles against its C API. The PTQ1_0 block layout and lookup table, and the
 prism.hadamard.* GGUF metadata conventions, used in this repository (for
-example research/tools/audit_bonsai_ternary.py) mirror that source. Where code
+example openbonsai/formats/ptq1_0.py and research/tools/audit_bonsai_ternary.py)
+mirror that source. Where code
 or formats are mirrored, the following notice applies; the copyright line in
 LICENSE at the pinned commit is authoritative:
 
@@ -93,7 +97,7 @@ keeps its original copyright and license terms and is not covered by
 Apache-2.0. See research/papers/README.md.
 
 The CAT-Q code under research/catq/ and the AYOT trace generation in
-openbonsai/prepare.py are independent implementations informed by that paper
+openbonsai/stages/traces.py are independent implementations informed by that paper
 and by the BitTern CAT-Q release (IntelChina-AI/BitTern, commit
 5a8fcd4f7e0366554b732d300a37e6ea467c3c35, projects/cat-q). No BitTern source
 files are included.

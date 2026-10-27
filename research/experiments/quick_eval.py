@@ -19,7 +19,7 @@ from transformers import AutoTokenizer, Qwen3_5ForConditionalGeneration
 
 ROOT = Path(__file__).resolve().parents[2]  # repo root; this file lives in research/experiments/
 SNAPSHOT = Path("D:/openbonsai/runs/hf-cache/hub/models--Qwen--Qwen3.5-9B/snapshots/c202236235762e1c871ad0ccb60c8ee5ba337b9a")
-FROZEN = ROOT / "research/evaluation/bonsai-development/frozen-inputs.json"
+FROZEN = ROOT / "openbonsai/eval/assets/bonsai-dev/frozen-inputs.json"
 
 
 def load_model(device="cuda"):
