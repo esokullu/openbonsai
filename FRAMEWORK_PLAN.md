@@ -1,5 +1,7 @@
 # OpenBonsai framework plan (for approval)
 
+> **Status, 27 October 2026.** P1 to P3 are on `framework/v1`; P4 (README, docs, web copy) is the docs commit after them. P5 (CAT-Q) has not started. This page is kept as the plan that was approved; the measured numbers below are the ones known when it was written. Current results: [README.md](README.md#results) and [docs/method.md](docs/method.md).
+
 Goal: the repo becomes a reusable, Bonsai-format ternary compression framework.
 Qwen3.5-9B is supported today. Other dense models (Nanbeige, other Qwen sizes, Llama-style) get small per-architecture adapters.
 Research history lives in `research/`, in the same repo.

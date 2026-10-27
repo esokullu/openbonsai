@@ -13,6 +13,8 @@ Which case you are in:
 - **A dense model with a new `model_type`** (same seven Linears per layer): add one family row to `FAMILIES` in `adapters/dense.py` and one tiny config to the tests.
 - **A new architecture** (other Linears, other layer kinds, a recurrent block): write an adapter, about 150 lines plus its GGUF layout if Prism can load it.
 
+Status: only Qwen3.5-9B has been compressed and measured end to end. The dense adapter is tested on tiny random Llama, Mistral, Qwen2 and Qwen3 models on CPU, including loading tiny GGUFs in Prism's runtime; no real dense model has been run yet. Whatever the adapter, run the [sensitivity scan](#choosing-the-high-precision-tensors-a-sensitivity-scan) on the real model before trusting its `keep` list.
+
 ## What an adapter provides
 
 | Member | What it says | Dense adapter | Qwen3.5 adapter |
@@ -169,32 +171,18 @@ Check the arch is in Prism's `prism.hadamard` switch, and that every folded weig
 
 ## Choosing the high-precision tensors: a sensitivity scan
 
-The `keep` list and the endpoint defaults should come from measurement, not guesses. The scan we ran on Qwen3.5-9B (`research/runs/2026-10-26-5090-diagnosis/report.md`) is a fake-quant ablation:
+An adapter's `keep` list, and whether the endpoints stay BF16, should come from measurement, not guesses. A sensitivity scan rounds one part of the model at a time, leaves everything else in BF16, and scores the result. It needs no training, and each row takes about a minute on one GPU for a 9B model.
 
-1. Quantize the whole model once, with the same method you will ship (the measured scan used the early learned-factor quantizer; with the package, use the `quantize` stage output).
-2. Start from the BF16 model and dequantize **only one family** (`only_gate_proj`, `only_out_proj`, ...), or one layer type (`only_full_attention`), or the first N layers. Everything else stays BF16. Score the dev manifest (2,048 WikiText-2 tokens and 20 ARC-Easy questions; `compare` for a model without the Qwen3.5 tokenizer).
-3. Also do the complement: quantize everything except one family (`retain_*`).
-4. Compare each family's NLL delta with its share of the parameters.
+### The recipe
 
-Excerpt (Qwen3.5-9B, BF16 dev NLL 2.4238, ARC-Easy 19/20; each row quantizes only that family, labels as in the report):
+1. **Get a quantized state** with the method you will ship: `openbonsai run --model <model> --config <config> --out runs/scan --until quantize`. (A cheaper first pass rounds to nearest with rotation and no calibration, as `research/experiments/quick_eval.py` does. It overstates the damage, but it gives a quick first ranking.)
+2. **Score the BF16 model once** on a fixed held-out set: `compare` blocks for any model, or the `dev` suite for the Qwen3.5 tokenizer.
+3. **Only one family.** For each family of linear layers (`mlp.gate_proj`, `linear_attn.out_proj`, ...), load the BF16 model, write the rounded weights of that family only, and score. Do the same per layer type (all attention layers, all MLPs) and per depth (the first N layers, the last N, layer 0 alone).
+4. **Everything but one family** (the complement): round all families except one. If keeping one family barely helps, that family is not the problem, however bad its "only" row looked.
+5. **Per layer, for the worst family.** Round that family in one layer at a time. A single outlier layer is common: in Qwen3.5-9B it is layer 0's Gated DeltaNet `out_proj`.
+6. **Write down each family's share of the decoder's parameters** next to its NLL delta.
 
-| Row | Dev NLL delta | ARC-Easy |
-|---|---|---|
-| `only_up_proj` | +0.92 | 16/20 |
-| `only_gate_proj` | +3.85 | 13/20 |
-| `only_down_proj` | +1.58 | 18/20 |
-| `only_in_proj_qkv` | +0.40 | 16/20 |
-| `only_in_proj_z` | +0.53 | 10/20 |
-| `only_out_proj` (Gated DeltaNet output) | +4.90 | 9/20 |
-| `only_full_attention` | +1.97 | 8/20 |
-
-How to read it:
-
-- A family whose delta is far out of proportion to its size is a candidate for high precision. If it is a small tensor, keeping it costs almost nothing: Qwen3.5's `in_proj_a`/`in_proj_b` gates are about 0.1% of the decoder.
-- A large family with a large delta (here `gate_proj`, `out_proj`) should stay ternary. It is where GPTQ, endpoint calibration and scale distillation have to work; keeping it would cost most of the compression.
-- The runtime format has the last word. A kept Linear needs an F32 (or other float) slot in the target GGUF. Prism stores Qwen3.5's `ssm_alpha`/`ssm_beta` (`in_proj_a`/`in_proj_b`) as F32, so they are kept; a family Prism expects as PTQ1_0 cannot be kept without a new layout.
-
-To run the same scan with the package on any model, after a run has finished `quantize`:
+With the package, after a run has finished `quantize` (steps 2 and 3; the filters below the code give the other rows):
 
 ```python
 from openbonsai.config import DEFAULTS, check_keys, deep_merge
@@ -203,7 +191,7 @@ from openbonsai.rundir import RunDir
 from openbonsai.stages.common import StageContext, apply_dense, free
 from openbonsai.stages.evaluate import compare_blocks
 
-run = RunDir("runs/my-model")
+run = RunDir("runs/scan")
 ctx = StageContext(check_keys(deep_merge(DEFAULTS, run.load_config())), run)
 adapter, state = ctx.adapter(), ctx.state_through("quantize")
 model, tok = ctx.load_model()
@@ -211,7 +199,7 @@ blocks = compare_blocks(ctx, tok)
 reference = S.compare_reference(model, blocks, topk=64)
 del model
 families = sorted({key.split(".", 2)[2] for key in state.tensors if key.startswith("layers.")})
-for family in families:                                   # only_<family>
+for family in families:                                   # only <family>
     model, _ = ctx.load_model()
     apply_dense(adapter, model, [r for r in state.records() if r[0].endswith("." + family)])
     r = S.compare(model, blocks, reference)
@@ -220,7 +208,60 @@ for family in families:                                   # only_<family>
     free(ctx.device)
 ```
 
-For a per-layer scan, filter on `r[0].startswith(f"layers.{i}.")` instead. The state is from sequential GPTQ, so each family's codes were fitted on inputs from an already-quantized prefix. Read the scan as the sensitivity of that state's families, not of independently quantized ones.
+- **One whole layer:** filter on `r[0].startswith(f"layers.{i}.")`.
+- **One family in one layer:** `r[0] == f"layers.{i}.{family}"`.
+- **Complement:** use `not r[0].endswith("." + family)`.
+
+The state comes from sequential GPTQ, so each family's codes were fitted on inputs from an already-rounded prefix. Read the scan as the sensitivity of that state's families, not of independently rounded ones.
+
+### Decision rules
+
+Keep a linear layer in high precision only if **all three** hold:
+
+1. **The runtime format has a float slot for it.** A kept Linear must be stored as F32 (or another float type) in the target GGUF. Prism stores Qwen3.5's `in_proj_a`/`in_proj_b` as F32 (`ssm_alpha`/`ssm_beta`), so they can be kept. A family Prism expects as PTQ1_0 cannot be kept without a new layout, and a new layout means a file Prism's released runtime may not load.
+2. **It is small.** Keeping it should cost well under 1% of the ternary size. Qwen3.5's `in_proj_a`/`in_proj_b` are about 0.1% of the decoder.
+3. **Its damage is out of proportion to its size,** in both the "only" and the complement scans.
+
+Everything else stays ternary, including large families with large deltas. Keeping them would cost most of the compression; they are where GPTQ, endpoint calibration and scale distillation have to do their work. For a sensitive family, first try what the pipeline can change: more or better calibration data, a scan of the GPTQ state instead of the rounded-to-nearest one, and distillation.
+
+For the endpoints:
+- Score `endpoints.head` and `endpoints.embedding` set to `bf16` and to `ternary` separately; both are config settings, so no code is needed.
+- A 2 GB-class file needs both ternary, because the embedding and head of a large-vocabulary model are as big as the ternary decoder.
+- A tied table stays high precision (`auto`).
+
+Accept a decision only on the end-to-end numbers: `compare` (and your own task) after distillation. In our runs, local error was a poor predictor of the final model.
+
+### What the scans found on Qwen3.5-9B
+
+Rounded to nearest with rotation, no calibration (`research/experiments/out/`; BF16 dev NLL 2.423, ARC-Easy 19/20):
+
+| Rounded alone | Dev NLL | ARC /20 |
+|---|---|---|
+| Gated DeltaNet `out_proj`, all layers | 4.253 | 13 |
+| `gate_proj` + `up_proj` | 3.082 | 18 |
+| `down_proj` | 2.638 | 19 |
+| `in_proj_qkv` / `in_proj_z` | 2.511 / 2.487 | 17 / 20 |
+| `in_proj_a` + `in_proj_b` | 2.412 | 19 |
+| Layer 0's `out_proj` only | 4.013 | 15 |
+| `out_proj` of layer 1, 2, 4, 8, 16, 24 or 30 only | 2.417 to 2.445 | 19 to 20 |
+| Everything except `out_proj`, `in_proj_a`, `in_proj_b` | 6.647 | 6 |
+
+The earlier learned-factor quantizer (`research/runs/2026-10-26-5090-diagnosis/report.md`; NLL deltas against BF16) put the same two families first, `out_proj` and `gate_proj`:
+
+| Rounded alone | Dev NLL delta | ARC /20 |
+|---|---|---|
+| `up_proj` | +0.92 | 16 |
+| `gate_proj` | +3.85 | 13 |
+| `down_proj` | +1.58 | 18 |
+| `in_proj_qkv` | +0.40 | 16 |
+| `in_proj_z` | +0.53 | 10 |
+| `out_proj` (Gated DeltaNet output) | +4.90 | 9 |
+| All full-attention layers | +1.97 | 8 |
+
+What we did with it:
+- `in_proj_a`/`in_proj_b` stay F32. Rounding them costs nothing measurable, but they are tiny and Prism's format stores them as F32 anyway.
+- `out_proj`, and layer 0's in particular, is the most sensitive family. Prism's format has no float slot for it, so it stays ternary, and GPTQ plus distillation handle it: the whole model reaches dev NLL 2.892.
+- Keeping all of `out_proj` (the complement row) still leaves 6.6, so no single family is the problem under plain rounding: the damage is spread out, and calibration has to fix it.
 
 ## Worked example 1: Qwen3.5 (hybrid)
 
@@ -251,10 +292,14 @@ A Llama-architecture checkpoint (`model_type: llama`, also how Nanbeige4-style m
 
 ```
 openbonsai run --model <dir or HF id> --config examples/qwen3_5-9b.yaml --out runs/my-llama \
-    --set 'eval.suites=[compare]' --set export.format=auto
+    --set 'eval.suites=[compare]' --set export.format=auto --set model.revision=null
 ```
 
-`dev` and `extended` need the Qwen3.5 tokenizer, so use `compare`, which scores against the model's own BF16. The 9B example asks for ternary endpoints and a GGUF explicitly. For a tied model, also pass `--set endpoints.head=auto --set endpoints.embedding=auto`. What happens:
+- `dev` and `extended` need the Qwen3.5 tokenizer, so use `compare`, which scores against the model's own BF16.
+- The 9B example pins Qwen's commit, so `model.revision=null` (or your own commit) is needed for a Hugging Face id. A local folder ignores it.
+- The 9B example asks for ternary endpoints and a GGUF explicitly. For a tied model, also pass `--set endpoints.head=auto --set endpoints.embedding=auto`.
+
+What happens:
 
 - **Plan:** `[q,k,v] -> [o] -> [gate,up] -> [down]` in every layer, nothing kept. Biases, if the config has `attention_bias` or `mlp_bias`, stay high precision.
 - **Geometry:** from the widths, e.g. block 2048 for Llama 3.1 8B (14336 = 2048 x 7). The export notes that Prism has been verified at block 4096 only.

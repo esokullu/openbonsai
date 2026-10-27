@@ -2,16 +2,52 @@
 
 `openbonsai eval --run DIR --from SOURCE --suite dev,extended,compare,teacher,gsm8k,humaneval` writes one JSON file per suite to `DIR/eval/<source>.<suite>.json` (the reasoning suites: one per thinking mode, `DIR/eval/<source>.<suite>.think-<off|on>.json`).
 
+`SOURCE` is a stage of the run (`bf16`, `quantize`, `endpoints`, `distill`) or a file: a run state, a legacy research `.pt`, a latent checkpoint's `ternary.safetensors`, or any PTQ1_0 GGUF, ours or the official Ternary Bonsai. For a GGUF, `--run` may be left out (it defaults to `<file>.eval`); the config or `--model` only supplies the model's configuration, its tokenizer and the BF16 reference:
+
+```
+openbonsai eval --config examples/qwen3_5-9b.yaml --from Ternary-Bonsai-2-9B-PTQ1_0.gguf --suite dev,extended,compare
+```
+
+When you report a compressed model, report it next to its own BF16 original on the same suites, and say which data it was compressed with (see [Keeping test data out](#keeping-test-data-out)).
+
 | Suite | Data | What it reports |
 |---|---|---|
 | `dev` | Frozen Qwen3.5 manifest: 2,048 WikiText-2 test tokens, 20 ARC-Easy questions, 4 generations | `nll`, `arc_correct`, generations |
 | `extended` | 16,384 WikiText-2 test tokens, 100 ARC-Easy questions, 16 held-out chat traces | `wiki16k_nll`, `arc100`, `chat_nll` |
 | `compare` | `eval.compare`: `n` held-out blocks of `seq_len` tokens (WikiText-2 test by default), scored against the model's own BF16 original | NLL of both, `top1_agreement`, EAR and KL (below) |
 | `teacher` | The first `eval.teacher.rows` rows of this run's distillation teacher shards (stored BF16 top-k) | Top-k EAR bounds and KL only; no BF16 model is loaded |
-| `gsm8k` | 100 frozen GSM8K test problems, greedy chat generation | `score` (e.g. `71/100`), `hit_cap`, per-problem records |
-| `humaneval` | 50 frozen HumanEval problems, greedy chat generation, tests run in a subprocess | `score` (pass@1, e.g. `30/50`), passed/failed/timeout, `hit_cap`, per-problem records |
+| `gsm8k` | 100 frozen GSM8K test problems, greedy chat generation | `score` (correct / 100), `hit_cap`, per-problem records |
+| `humaneval` | 50 frozen HumanEval problems, greedy chat generation, tests run in a subprocess | `score` (pass@1, passed / 50), passed/failed/timeout, `hit_cap`, per-problem records |
 
 `dev` and `extended` only accept the Qwen3.5 tokenizer. `compare` works for any model, so use it for your own fine-tune. The teacher shards are the data distillation trains on, so `teacher` is in-sample for a distilled model; use `compare` for held-out numbers. `gsm8k` and `humaneval` work for any model with a chat template (next section).
+
+## Frozen inputs
+
+Every scored input is pinned, so numbers from different runs, machines and backends can be compared:
+
+| Suite | Inputs | Pinned by |
+|---|---|---|
+| `dev` | `openbonsai/eval/assets/bonsai-dev/frozen-inputs.json`: 4 WikiText-2 test windows of 513 tokens (2,048 scored tokens), 20 ARC-Easy validation questions as A/B/C/D letter choices, 4 generation prompts (greedy, 128 tokens) | file SHA256 `9936a538...`, canonical `frozen_sha256` `8021d9cc...`, tokenizer Qwen/Qwen3.5-9B at `c202236` |
+| `extended` | `legacy-eval-inputs.json`: 32 WikiText-2 test windows of 513 tokens (16,384 scored tokens) and 100 ARC-Easy letter questions; `chat-traces16.jsonl`: 16 greedy Qwen3.5-9B answers to UltraChat first-turn prompts | SHA256 of both files in `openbonsai/eval/suites.py` |
+| `gsm8k`, `humaneval` | `openbonsai/eval/assets/reasoning/`: 100 GSM8K and 50 HumanEval test problems, chosen by a seeded SHA256-rank selector | file SHA256 and `content_sha256`; dataset repo, revision and file SHA256 |
+| `compare` | `eval.compare.n` blocks of `seq_len` tokens (default 8 × 512, seed 7) from WikiText-2 *test* at the pinned revision, or your `eval.compare.sources` | the config hash; built at run time, not a frozen file |
+
+- **Checked on load.** Every frozen file is checked against its hashes when it is loaded. The `dev` and `extended` token IDs must match the tokenizer exactly, raw pieces included, or scoring is refused.
+- **Windows.** `.gitattributes` keeps the bytes unchanged on Windows checkouts.
+- **Probabilities.** The `dev` suite takes FP32 logits and normalizes them in FP64. ARC is scored by the likelihood of the answer letter, not of the answer text.
+- **Not a fresh held-out set.** The `dev` inputs are reused development data (role `search_validation`): we looked at them throughout development.
+- **Details.** `openbonsai/eval/assets/bonsai-dev/README.md` and `openbonsai/eval/assets/reasoning/README.md`.
+
+## Keeping test data out
+
+The pipeline fits the model on three kinds of data: the calibration blocks (quantize, endpoints), the distillation teacher's data, and the prompts the traces answer. Here is what keeps evaluation data out of them, and what does not:
+
+- **GSM8K and HumanEval test problems: enforced.** Every data source and every trace prompt is checked. A source that names a test split, a local copy of a test file, or text that contains a test problem is refused, and the stage stops. Eval checks the stored tokens again before it scores a stage (details in the next section). Your own `kind: jsonl` data goes through the same check.
+- **WikiText-2: separated by split, not enforced.** The default calibration and distillation data read WikiText-2 *train*; `dev`, `extended` and `compare` score WikiText-2 *test*. The articles differ, but the source is the same, so the WikiText numbers of a model compressed with the default data are partly in-domain. Say so when you report them. To remove the effect, leave WikiText out of `calibrate.sources` and `distill.teacher.sources` and rerun.
+- **ARC.** Not in any default data source.
+- **Chat traces.** `chat-traces16.jsonl` holds the answers to 16 UltraChat prompts from rows below 5,000. The calibration and distillation UltraChat data start at row 6,000. The traces stage is different: the example config samples its 160 prompts from rows 0 to 5,999, and that sample includes 2 of the 16 (source rows 859 and 3307). A run with those defaults is therefore partly in-sample on `chat_nll`. The measured 9B results did not have this problem: their traces came from a fixed set disjoint from the 16. To avoid it, pass `--set 'traces.prompts.rows=[5000,6000]'`. Either way, the default data contains other answers generated by the same model, so `chat_nll` is in-distribution by design.
+- **`teacher`.** In-sample for a distilled model, by definition.
+- **Anything else is up to you.** No other check exists. Keep your own evaluation sets out of your calibration data.
 
 ## Reasoning suites (`gsm8k`, `humaneval`)
 
@@ -24,7 +60,7 @@ openbonsai eval --run runs/x --from model.gguf --suite humaneval --set eval.reas
 
 **Data.** Fixed TEST subsets are frozen in `openbonsai/eval/assets/reasoning/`: 100 GSM8K (`main` test) and 50 HumanEval problems, picked by a seeded SHA256-rank selector from datasets pinned by repo and revision (see that folder's README). Each manifest records the dataset, revision, file SHA256, seed, selector rule, row ids and its own content SHA256; the loader checks them. Evaluation needs no download. `eval.reasoning.<suite>.n` takes the first `n` of a subset, which is what the selector picks for that `n`. A larger `n` reads the dataset from the Hugging Face cache or hub (HF_HUB_OFFLINE works), or from a local parquet given as `eval.reasoning.<suite>.path`. Those extra problems are not frozen.
 
-These are test data. The calibrate, distillation-teacher and traces stages refuse sources that name these test splits, local copies of the test files, and any data stream or trace prompt that contains a test problem: every problem of both splits (1,319 GSM8K, 164 HumanEval) when they are in the Hugging Face cache, else the frozen subsets. Before it scores `quantize`, `endpoints` or `distill`, eval decodes the run's stored `calib/tokens.npy` (and, for `distill`, `distill/teacher/input_ids.npy`) in build order and refuses them if they contain a problem it is about to score. That covers data built before the guard existed, or without the full splits (a larger `n`). A clean check is remembered in `eval/heldout-checked.json`. Future math or code calibration must come from training splits (for example `openai/gsm8k` `main/train-00000-of-00001.parquet`).
+These are test data (see [Keeping test data out](#keeping-test-data-out)). The calibrate, distillation-teacher and traces stages refuse sources that name these test splits, local copies of the test files, and any data stream or trace prompt that contains a test problem: every problem of both splits (1,319 GSM8K, 164 HumanEval) when they are in the Hugging Face cache, else the frozen subsets. Before it scores `quantize`, `endpoints` or `distill`, eval decodes the run's stored `calib/tokens.npy` (and, for `distill`, `distill/teacher/input_ids.npy`) in build order and refuses them if they contain a problem it is about to score. That covers data built before the guard existed, or without the full splits (a larger `n`). A clean check is remembered in `eval/heldout-checked.json`. Future math or code calibration must come from training splits (for example `openai/gsm8k` `main/train-00000-of-00001.parquet`).
 
 **Generation.** Decoding is plain greedy (argmax) for every model. A checkpoint's `generation_config.json` is not applied: `generate` would otherwise take its `repetition_penalty`, `no_repeat_ngram_size`, `bad_words_ids`, `suppress_tokens` or `min_length`, which a model built from a GGUF does not have, so a BF16 and a GGUF run of one model would decode differently. Prompts use the model's own chat template (`enable_thinking` for Qwen3.5). A template that prints today's date (Llama 3.2, Mistral Small) sees a fixed 26 Jul 2024, so prompts and cache keys do not change from day to day. Generation stops at the adapter's EOS ids. Prompts run in left-padded batches of `eval.reasoning.batch` (default 16) with the KV cache. A thinking mode the template has no switch for (`on` for Llama, Mistral, Qwen2) fails before the model loads, and `openbonsai run` checks it before the first stage.
 
@@ -78,10 +114,28 @@ Both are exact when the stored log-probabilities are exact. The `compare` refere
 
 **Cost.** `compare` computes the full metrics when `eval.compare.full: true`, which is the default. The BF16 reference pass then keeps its raw logits on disk in `eval/compare-reference-<key>.logits/`, one file per block, in the model's dtype. The size is `n × (seq_len − 1) × vocab` values: about 2 GB for Qwen3.5-9B (vocabulary 248,320) at the defaults `n: 8`, `seq_len: 512`. Later evaluations of other sources (quantize, endpoints, distill, a GGUF) reuse the cache without loading the BF16 model again. Positions are processed 64 at a time, so peak memory stays at a few `[64, vocab]` FP64 slabs. Set `eval.compare.full: false` to keep only the top-k metrics.
 
+## Scoring in Prism's runtime
+
+`openbonsai eval --from model.gguf` builds the model from the file in PyTorch: the same codes, scales and F32 tensors, computed with PyTorch's arithmetic. To score the file in Prism's own llama.cpp runtime instead:
+
+- **The `dev` suite, on exactly the same inputs.** `tools/prism/evaluate_prism_manifest.py` drives a small C++ worker built against Prism at the pinned commit. Build it with `python tools/prism/build_prism_eval.py --source <Prism checkout> --build-dir <dir>`. The runner applies the same token-ID and raw-piece checks and the same FP64 normalization:
+  ```
+  python tools/prism/evaluate_prism_manifest.py --worker <prism-eval-worker> --model model.gguf --output out/dev
+  ```
+  The official Ternary Bonsai 2 9B scored dev NLL 3.192 and ARC 16/20 this way, against 3.191 and 17/20 in PyTorch.
+- **Perplexity.** `llama-perplexity -m model.gguf -f wiki.test.raw -c 512 --chunks 8`, with the WikiText-2 test set as raw text. This uses llama.cpp's own tokenization and windows, so it is not comparable with the `dev` NLL. Compare files with each other under the same command.
+- **Full log-probabilities.** `python tools/prism/compare_logits.py --bin <Prism build>/bin --gguf model.gguf --text text.txt` reads back llama-perplexity's full-vocabulary log-probabilities (`--kl-divergence-base`). Use it to compare the runtime with the PyTorch model of the same state. `tests/test_dense.py` does this for tiny Llama and Qwen3 GGUFs when `OPENBONSAI_PRISM_BIN` points to a Prism build.
+
+Prism's CPU matrix products quantize the activations to 8 bits (Q8_0 operands), so its numbers differ slightly from PyTorch's.
+
 ## Comparing with published numbers
 
-SLQ's reported EAR is not comparable with `ear_full`, or with either top-k bound:
+Before you put another method's numbers next to ours, check what they measure.
+
+**EAR.** SLQ's reported EAR is not comparable with `ear_full`, or with either top-k bound:
 - **Tokens.** It uses only BF16's top-10 tokens, renormalized over those 10. Any mass either model puts outside them is ignored. A model can score near 1 there while its full-vocabulary EAR is much lower, so it is neither a lower nor an upper bound on `ear_full`.
 - **Data.** It is measured on calibration data, the data the quantizer was fit on. Our `compare` blocks are held out.
 
 When comparing against another method, report `ear_full` (or the `ear_top64_lb`–`ear_top64_ub` interval) on held-out text, and state the data and the vocabulary coverage of their number.
+
+**Perplexity and NLL.** They depend on the tokenizer, the window length, the stride, whether the first tokens of each window are scored, and the split. Our `dev` NLL scores positions 1–512 of four independent 513-token windows. Numbers from another harness are comparable only after you rescore both models in one harness.

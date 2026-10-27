@@ -1,51 +1,59 @@
 # OpenBonsai research archive
 
-This folder holds the history and evidence behind the OpenBonsai framework: the
-experiment scripts that produced the current method, the older CAT-Q and
-staged-pipeline code, findings documents, validation receipts and run reports.
+This folder holds the history and evidence behind the OpenBonsai framework:
+- the experiment scripts that produced the current method;
+- the older CAT-Q and staged-pipeline code;
+- findings documents, validation receipts and run reports.
 
-Nothing here is part of the package. `openbonsai/` never imports from
-`research/`, and pytest does not collect it (`testpaths = ["tests"]`,
-`norecursedirs` includes `research`). The framework plan is
-[../FRAMEWORK_PLAN.md](../FRAMEWORK_PLAN.md).
+Nothing here is part of the package. `openbonsai/` never imports from `research/`, and pytest does not collect it (`testpaths = ["tests"]`, and `norecursedirs` includes `research`). The method the package ships, with its evidence, is in [../docs/method.md](../docs/method.md). The framework plan is [../FRAMEWORK_PLAN.md](../FRAMEWORK_PLAN.md).
+
+## The research line in brief
+
+1. **26 October 2026: CAT-Q staged pipeline.** We started from the ScaleQ-1.58 paper ([papers/](papers/README.md)): AYOT traces plus CAT-Q calibration, with Hadamard rotations added to match Prism's layout. On one RTX 5090 at small budgets (16 to 128 samples), every compressed 9B model failed. Dev NLL stayed between 8.3 and 13.3 (BF16: 2.42), ARC answers collapsed to one letter, and the generations were unusable. Rotations, teacher-target controls, longer first-layer training and optimizer settings each improved a local reconstruction metric without restoring the model. The reports are in `runs/2026-10-26-*` and `runs/2026-10-27-5090-*`, and the findings in `docs/`.
+2. **27 October 2026: GPTQ.** A fake-quant sweep (`experiments/quick_eval.py`, logs in `experiments/out/`) located the damage. Sequential GPTQ ternary rounding (`experiments/gptq_ternary.py`) then reached dev NLL 3.30 in about 10 minutes, with BF16 endpoints: for the first time close to the official Ternary Bonsai's 3.19. Scale refitting after GPTQ was tried and dropped (5.15).
+3. **Endpoints, distillation, export.** The ternary head and embedding (`experiments/endpoints.py`), scale distillation (`experiments/e2e_kd.py`) and the PTQ1_0 GGUF export (`experiments/export_gguf.py`) completed the method: dev NLL 2.892 with every weight ternary, in a 2 GB file that Prism's llama.cpp runs.
+4. **The framework.** `openbonsai/` ports those scripts with the same arithmetic. CPU tests check the ports bit for bit against embedded copies of the script functions, and the package's 9B GGUF is byte-identical to the research export (`validation/p2-export-parity.md`). The CAT-Q code stays here until it beats GPTQ plus distillation on the same data.
 
 ## Rerunning history
 
-The code here is kept to be read, not run in place. Modules moved out of
-`openbonsai/` keep their relative imports (`from .quantizer import ...`), which
-no longer resolve from their new folders.
+The code here is kept to be read, not run in place. Modules moved out of `openbonsai/` keep their relative imports (`from .quantizer import ...`), which no longer resolve from their new folders.
 
 To run the old code, check out a tag or commit:
 
 | What | Where it last ran in place |
 |---|---|
-| Staged pipeline, CAT-Q, mixed formats, endpoint calibration, RCO, diagnostics, smoke and preflight modules, and all their tests | tag `legacy-staged-pipeline` (2fadacf): `git checkout legacy-staged-pipeline && python -m pytest` |
+| Staged pipeline, CAT-Q, mixed formats, endpoint calibration, RCO, diagnostics, smoke and preflight modules, and all their tests | tag `legacy-staged-pipeline` (2fadacf) |
 | `experiments/` scripts (GPTQ ternary, endpoints, KD, quick eval) | commit 5373d45, at `experiments/` |
 | `experiments/export_gguf.py`, `make_synthetic_state.py`, `ref/` and the endpoints `requires_grad_(False)` fix | branch `research/scaleq-recovery` (c2dc532, 5eba901), at `experiments/`; applied here under `research/experiments/` with the same content |
 
-Paths inside `docs/`, `validation/` and `runs/` refer to the layout at those
-commits (for example `docs/...`, `openbonsai/pipeline.py`, `tools/...`).
+For the tag, use a separate worktree, so your current checkout and its runs stay untouched:
+
+```
+git worktree add ../openbonsai-legacy legacy-staged-pipeline
+cd ../openbonsai-legacy
+python -m pytest
+```
+
+The experiment scripts still contain machine-specific `D:/` paths for their data and outputs; change them before running.
+
+Paths inside `docs/`, `validation/` and `runs/` refer to the layout at those commits (for example `docs/...`, `openbonsai/pipeline.py`, `tools/...`).
 
 ### Following file history across the move
 
-Most moves were pure renames, so `git log --follow <new path>` reaches the old
-history. Two renames in commit c331407 are misleading: the renamed files were
-then rewritten (323884c) as ports of different code, so their followed history
-belongs to unrelated predecessors:
+Most moves were pure renames, so `git log --follow <new path>` reaches the old history. Two renames in commit c331407 are misleading. The renamed files were then rewritten (323884c) as ports of different code, so their followed history belongs to unrelated predecessors:
 
 | New path | `git log --follow` shows | Real ancestor |
 |---|---|---|
 | `openbonsai/stages/calibrate.py` | the old `openbonsai/calibration.py` (a token-ID loader) | `research/experiments/calib_data.py` |
 | `tests/test_traces.py` | the old `tests/test_calibration.py` | only that file's `openbonsai/prepare.py` tests (prompt reading, generation) are ancestors; its token-ID loader tests went with `calibration.py` |
 
-For those, read the ancestor's history directly
-(`git log -- research/experiments/calib_data.py experiments/calib_data.py`).
+For those, read the ancestor's history directly (`git log -- research/experiments/calib_data.py experiments/calib_data.py`).
 
 ## Layout
 
 | Path | Contents | Moved from |
 |---|---|---|
-| `experiments/` | The scripts behind the current method: `gptq_ternary.py` (sequential GPTQ ternary rounding), `endpoints.py` (ternary embedding and head), `e2e_kd.py` (scale distillation from top-64 teacher outputs), `quick_eval.py` (dev suite), `calib_data.py`; `out/` holds the fake-quant sweep logs. Reference for the package ports; still contains machine-specific `D:/` paths. | `experiments/` |
+| `experiments/` | The scripts behind the current method: `gptq_ternary.py` (sequential GPTQ ternary rounding), `endpoints.py` (ternary embedding and head), `e2e_kd.py` (scale distillation from top-64 teacher outputs), `export_gguf.py` (PTQ1_0 GGUF), `quick_eval.py` (dev suite, fake-quant sweep), `calib_data.py`. `out/` holds the fake-quant sweep logs. Reference for the package ports; still contains machine-specific `D:/` paths. | `experiments/` |
 | `catq/` | CAT-Q ternary quantizer, window trainer, rotated ternary modules and the legacy Qwen3.5 adapter, with tests. Moves into the package only if it beats GPTQ + distillation on the same data. | `openbonsai/` |
 | `endpoints/` | CAT-Q embedding and head quantizers, calibration, export and head evaluation, with tests. Superseded by `experiments/endpoints.py`. | `openbonsai/` |
 | `rco/` | RCO mixed-precision allocation and candidates, plus vendored RCO code under `_vendor/rco/` with its own LICENSE and NOTICE, with tests. | `openbonsai/` |
@@ -53,38 +61,92 @@ For those, read the ancestor's history directly
 | `legacy/` | The v0 artifact format (`export.py`, `text_export.py`), mixed formats (`mixed_formats.py`, `mixed_export.py`) and the v0 CLI, with tests, including the base-3 codec tests. | `openbonsai/` |
 | `tools/` | Official Bonsai GGUF inventory, the PTQ1_0 code/scale audit with its independent decoder (`audit_bonsai_ternary.py`, `bonsai_ternary_decoder.cpp`), random-fixture preparation and probes. | `tools/` |
 | `evaluation/bonsai-development/` | A pointer: the frozen development manifest moved into the package as `openbonsai/eval/assets/bonsai-dev/frozen-inputs.json` (same bytes); `experiments/quick_eval.py` reads it there. | (already here) |
-| `docs/` | 21 findings documents, plus `research-log.md`, the former root README. | `docs/`, `README.md` |
-| `validation/` | 27 validation receipts. | repo root |
+| `docs/` | 21 findings documents, plus `research-log.md`, the former root README (index below). | `docs/`, `README.md` |
+| `validation/` | 27 validation receipts (JSON) and `p2-export-parity.md`, the record of the package export's byte parity. | repo root |
 | `papers/` | The ScaleQ-1.58 paper (arXiv:2608.01078) and its provenance. | `papers/` |
-| `runs/<run>/` | Small reports copied from the local `runs/` directory: `REPORT.md`/`report.md`, `results.json`, `experiment-plan.json`, `summary.md`, `analysis/*.md`, `log.txt`, `eval.json`, and for the 2026-10-27 GPTQ/endpoint/Bonsai-start runs their logs (`stdout.log` is the run's `runs/<name>.stdout`). No checkpoints, tensors, caches or receipts. `2026-10-27-e2e-kd-shared-v1` was still training when these were copied and is not included yet. | local `runs/` |
+| `runs/<run>/` | Small reports copied from the local `runs/` directory (index below). No checkpoints, tensors, caches or receipts. | local `runs/` |
 
-The optional Prism CPU manifest runner moved to `tools/prism/` (outside
-`research/`), and its tests to `tests/prism/`. Its admission forecast,
-deadline and process-group supervision were dropped (tag
-`legacy-staged-pipeline` keeps them).
+The optional Prism CPU manifest runner moved to `tools/prism/` (outside `research/`), and its tests to `tests/prism/`. Its admission forecast, deadline and process-group supervision were dropped; the tag `legacy-staged-pipeline` keeps them.
 
-The package ports of `experiments/` (core/gptq, stages/quantize, endpoints,
-distill, calibrate, eval/suites) keep the scripts' arithmetic; tests/
-test_gptq_parity.py and tests/test_calibrate.py check them bitwise against
-embedded copies of the script functions, without importing `research/`.
+The package ports of `experiments/` (core/gptq, stages/quantize, endpoints, distill, calibrate, eval/suites) keep the scripts' arithmetic. `tests/test_gptq_parity.py` and `tests/test_calibrate.py` check them bit for bit against embedded copies of the script functions, without importing `research/`.
+
+## Run reports
+
+`stdout.log` is a run's `runs/<name>.stdout`. Numbers are on the frozen dev suite (2,048 WikiText-2 test tokens, 20 ARC-Easy questions) unless stated.
+
+**The current method (27 October):**
+
+| Run | What it holds |
+|---|---|
+| `runs/2026-10-27-gptq-ternary-v1/` | GPTQ, 128 calibration blocks, scale refit after GPTQ: dev NLL 5.149, ARC 8 (`eval.json`, `log.txt`) |
+| `runs/2026-10-27-gptq-ternary-norefit/` | Same without the refit: 3.319, ARC 9 |
+| `runs/2026-10-27-gptq-ternary-256/` | 256 blocks with refit: started, not evaluated (`log.txt` holds the config) |
+| `runs/2026-10-27-gptq-ternary-256-norefit/` | 256 blocks, no refit, per-module signs: 3.2954, ARC 13 |
+| `runs/2026-10-27-gptq-shared-256/` | Same with one sign vector per width (Prism's layout): 3.3183, ARC 15; extended suite 3.103, ARC 78/100, chat 1.964 |
+| `runs/2026-10-27-endpoints-256/` | Endpoints on the per-module-sign decoder: one line of log, no result |
+| `runs/2026-10-27-endpoints-shared-256/` | Ternary endpoints on the shared-sign decoder: head only 3.3831 (ARC 16), embedding only 3.4161 (11), both 3.4793 (13) |
+| `runs/gguf-test/` | The PTQ1_0 GGUF exporter on a synthetic 9B state with edge cases: export logs, verification reports, a negative control, and Prism's load log |
+| not copied yet | The distillation runs `2026-10-27-e2e-kd-shared-v1` (2.892, ARC 19) and `-small-v1` (2.884), and the GGUF with its Prism perplexity logs (`2026-10-27-gguf-shared-v1`: 11.93, against 16.51 for the official model). Their numbers are quoted in [../docs/method.md](../docs/method.md). |
+
+**Starting from Prism's weights (separate experiment, not a from-scratch result):**
+
+| Run | What it holds |
+|---|---|
+| `runs/2026-10-27-bonsai-start-convert/` | The official Ternary Bonsai 2 9B converted to PyTorch and scored: 3.191, ARC 17 |
+| `runs/2026-10-27-bonsai-start-scales/` | Prism's codes kept, group scales distilled on 2.1M tokens: 2.706, ARC 18 |
+| `runs/2026-10-27-bonsai-start-lora/` | Same budget, with low-rank adapters instead of scales: 2.713, ARC 17 |
+| `runs/2026-10-27-bonsai-start-heldout/` | The base, scale and LoRA variants against the teacher on held-out data |
+
+**The CAT-Q line (26–27 October), all failed on quality:**
+
+| Run | What it holds |
+|---|---|
+| `runs/2026-10-26-5090-pilot/` | First small pilot: exact serialization, quality lost (NLL +10.5) |
+| `runs/2026-10-26-5090-diagnosis/` | Diagnosis of the pilot: damage spread over all families; a fixed-code least-squares scale recovery lowers NLL by 2 nats but leaves ARC at 4/20 and the answers unusable |
+| `runs/2026-10-26-5090-corrected/` | Corrected 16×1 pipeline: 11.19, ARC 1 |
+| `runs/2026-10-26-5090-rotations/` | Rotated vs unrotated 16×8 pair: 9.26 vs 14.44 |
+| `runs/2026-10-26-5090-ultrachat/`, `-ultrachat-attempt2/` | UltraChat calibration, rotated 16×8 vs 128×1: 8.50 and 9.12, all ARC answers "A" |
+| `runs/2026-10-26-5090-diversity-gate/` | Diversity control, stopped at the source-data gate |
+| `runs/2026-10-26-5090-activation-diagnostic-v1/`, `-v2/` | Prefix drift versus conditional reconstruction: v1 stopped, v2 measurement only |
+| `runs/2026-10-26-5090-teacher-target-repair-v1/`, `-v2/` | Original-prefix teacher targets: v1 stopped before fitting; v2 a local improvement, quality still failed |
+| `runs/2026-10-26-5090-original-prefix-sequential-v1/`, `-v2/` | Sequential original-prefix run: v1 stopped at the resource gate; v2 completed, 11.85, all ARC answers "A" |
+| `runs/2026-10-27-5090-v2-raw-factor-evidence-review/` | Evidence review of the v2 run |
+| `runs/2026-10-27-5090-window0-budget-control-v1/` | 512 vs 128 first-layer updates: local MSE −46% |
+| `runs/2026-10-27-5090-window0-epsilon-control-v1/`, `-v2/` | AdamW epsilon 1e-9 vs 1e-8: v1 stopped before launch; v2 local MSE −24.5% |
+| `runs/2026-10-27-5090-head-rotation-preflight-v1/`, `-pair-v1/` | Head rotation preflight (failed) and test logs |
+| `runs/2026-10-27-5090-cuda-workspace-diagnostic-v1/` | A synthetic CUDA workspace diagnostic |
+
+## Findings documents
+
+| Document | Subject |
+|---|---|
+| [docs/research-log.md](docs/research-log.md) | The former root README: the research line as it was written at the time |
+| [docs/research-direction.md](docs/research-direction.md) | The rotation research plan and its decision gates |
+| [docs/method.md](docs/method.md) | The CAT-Q-era compression method and its reference boundaries (superseded by [../docs/method.md](../docs/method.md)) |
+| [docs/staged-pipeline.md](docs/staged-pipeline.md) | The staged local BF16 compression pipeline (tag `legacy-staged-pipeline`) |
+| [docs/rotations-audit.md](docs/rotations-audit.md) | Prism's rotation contract and our prototype |
+| [docs/5090-runtime.md](docs/5090-runtime.md) | The first rotated 5090 result and runtime integration |
+| [docs/activation-diagnostic.md](docs/activation-diagnostic.md) | Prefix drift versus conditional reconstruction |
+| [docs/teacher-target-control.md](docs/teacher-target-control.md) | Teacher target provenance control |
+| [docs/sequential-original-target-result.md](docs/sequential-original-target-result.md) | Sequential original targets: alignment improved, quality did not |
+| [docs/window0-calibration-result.md](docs/window0-calibration-result.md) | Longer first-layer calibration: a local improvement |
+| [docs/window0-epsilon-result.md](docs/window0-epsilon-result.md) | Smaller AdamW epsilon: a second local improvement |
+| [docs/optimizer-diagnostics.md](docs/optimizer-diagnostics.md) | Observing stored AdamW moments |
+| [docs/endpoint-calibration.md](docs/endpoint-calibration.md), [docs/embedding-calibration.md](docs/embedding-calibration.md) | CAT-Q head and embedding calibration |
+| [docs/bonsai-reference-preflight.md](docs/bonsai-reference-preflight.md) | Inventory of the official Bonsai checkpoint |
+| [docs/bonsai-ternary-statistics.md](docs/bonsai-ternary-statistics.md) | The official Bonsai codes: 32.76% zeros, actual and hypothetical packing sizes |
+| [docs/official-bonsai-development-result.md](docs/official-bonsai-development-result.md) | The official Bonsai on the frozen dev suite in Prism's CPU runtime: 3.192, ARC 16/20 |
+| [docs/matched-evaluation.md](docs/matched-evaluation.md) | Matched evaluation across transformers and Prism |
+| [docs/storage-budget.md](docs/storage-budget.md) | The broad-coverage storage budget |
+| [docs/base3-packing.md](docs/base3-packing.md) | Lossless base-3 packing, and when BITCOS would win |
+| [docs/text-only-export.md](docs/text-only-export.md) | Native text-only extraction |
+| [docs/rco-audit.md](docs/rco-audit.md) | Source audit of RCO mixed-precision allocation |
 
 ## Removed from the tree
 
-These exist only at tag `legacy-staged-pipeline`:
+These exist only at the tag `legacy-staged-pipeline`:
 
 - Staged-pipeline orchestration: `openbonsai/pipeline.py`, `pipeline_sources.py`, `pipeline_decoder.py`, `pipeline_endpoints.py`, `pipeline_prepare.py`, `stage_runtime.py`, `evaluation_supervisor.py`.
 - Smoke modules: `openbonsai/rotation_smoke.py`, `head_smoke.py`, `embedding_smoke.py`.
 - Supervised and preflight tools: `tools/evaluate_transformers_manifest.py` with `configs/evaluation/bonsai-development-native.json`, `tools/preflight_bonsai_reference.py`, `tools/smoke_prism_eval.py`.
 - Their tests: 11 `test_pipeline_*.py`, `test_stage_runtime.py`, `test_evaluation_supervisor.py`, `test_transformers_manifest_runner.py`, `test_transformers_runner_controls.py`, `test_native_dtype_policy.py`, `test_bonsai_reference_preflight.py`.
-
-## Where the main results are
-
-| Result | Source |
-|---|---|
-| GPTQ ternary decoder, 256 calibration samples, no scale refit: dev NLL 3.2954, ARC 13/20 (BF16: 2.424, ARC 19/20) | `runs/2026-10-27-gptq-ternary-256-norefit/` |
-| The same with one shared sign vector per width (Prism's layout): dev NLL 3.3183, ARC 15/20 | `runs/2026-10-27-gptq-shared-256/` |
-| Ternary endpoints on the shared-sign decoder: head only 3.3831 (ARC 16/20), embedding only 3.4161 (11/20), both 3.4793 (13/20) | `runs/2026-10-27-endpoints-shared-256/stdout.log` |
-| 128 samples: with scale refit NLL 5.149 (ARC 8/20), without 3.319 (ARC 9/20) | `runs/2026-10-27-gptq-ternary-v1/`, `runs/2026-10-27-gptq-ternary-norefit/` |
-| Official Bonsai baseline: dev NLL 3.192, ARC 16/20 | `docs/official-bonsai-development-result.md` |
-| Fake-quant sweep (which layer types are most sensitive) | `experiments/out/` |
-| Earlier CAT-Q runs on the RTX 5090 | `docs/` and `runs/2026-10-26-*`, `runs/2026-10-27-5090-*` |
