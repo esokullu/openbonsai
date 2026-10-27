@@ -112,8 +112,50 @@ def _byte_decoder():
     return {chr(code): byte for byte, code in zip(original, codes)}
 
 
+# Interim Qwen3.5-only helpers, copied from the legacy adapter (now
+# research/catq/adapter.py) so this module has no research imports. The
+# ModelAdapter registry replaces them in the package step.
+def _text_module(model):
+    from transformers import Qwen3_5ForCausalLM, Qwen3_5ForConditionalGeneration
+    if isinstance(model, Qwen3_5ForCausalLM) and model.config.model_type == 'qwen3_5_text':
+        return 'model', model.model
+    if isinstance(model, Qwen3_5ForConditionalGeneration) and model.config.model_type == 'qwen3_5':
+        return 'model.language_model', model.model.language_model
+    raise ValueError('Only native dense Qwen3.5 text or conditional-generation models are supported')
+
+
+def _load_native(model_id, device='cpu', dtype='auto', *, revision='main', local_files_only=False):
+    """Load a native Qwen3.5 text or conditional-generation model; no remote code."""
+    from transformers import AutoConfig, Qwen3_5ForCausalLM, Qwen3_5ForConditionalGeneration
+    config = AutoConfig.from_pretrained(
+        model_id, revision=revision, local_files_only=local_files_only, trust_remote_code=False)
+    if getattr(config, 'quantization_config', None) is not None:
+        raise ValueError('Reconstruction requires original unquantized target weights')
+    if config.model_type == 'qwen3_5_text':
+        constructor = Qwen3_5ForCausalLM
+    elif config.model_type == 'qwen3_5':
+        if config.text_config.model_type != 'qwen3_5_text' or config.vision_config.model_type != 'qwen3_5_vision':
+            raise ValueError('Unsupported Qwen3.5 subconfiguration')
+        constructor = Qwen3_5ForConditionalGeneration
+    else:
+        raise ValueError(f'Unsupported model_type: {config.model_type!r}; expected dense Qwen3.5')
+    if isinstance(dtype, str) and dtype != 'auto':
+        choices = {'float32': torch.float32, 'float16': torch.float16, 'bfloat16': torch.bfloat16}
+        if dtype not in choices:
+            raise ValueError('dtype must be auto, float32, float16, bfloat16, or a torch.dtype')
+        dtype = choices[dtype]
+    model = constructor.from_pretrained(
+        model_id, config=config, dtype=dtype, attn_implementation='eager', trust_remote_code=False,
+        revision=getattr(config, '_commit_hash', None) or revision, local_files_only=local_files_only)
+    model.to(device)
+    model.eval()
+    _text_module(model)[1].config.use_cache = False
+    model.requires_grad_(False)
+    return model
+
+
 class TransformersBackend:
-    """Native dense Qwen3.5 or its mixed-format replacement; caller owns model.
+    """Native dense Qwen3.5 (modules may be swapped in place); caller owns model.
 
     One native decoder forward computes hidden rows, then the unchanged native
     head is called in bounded output-position batches. Full vocabulary logits
@@ -122,7 +164,6 @@ class TransformersBackend:
     """
     def __init__(self, model, tokenizer, *, context_length, source_identity,
                  tokenizer_identity, logits_chunk_size=16):
-        from .adapter import _text_module
         _text_module(model)  # Refuse architectures whose top-level head semantics differ.
         self.model, self.tokenizer = model, tokenizer
         self.context_length = _positive(context_length, 'context_length')
@@ -155,13 +196,11 @@ class TransformersBackend:
                    model_kind='original', device='cpu', dtype='auto', logits_chunk_size=16,
                    expected_model_sha256=None, expected_tokenizer_sha256=None):
         from transformers import AutoTokenizer
-        from .adapter import load_base_model
-        from .mixed_export import load_mixed
         model_path = Path(model_path).absolute()
-        if model_kind not in ('original', 'mixed'):
-            raise ValueError('model_kind must be original or mixed')
-        tokenizer_path = Path(tokenizer_path).absolute() if tokenizer_path is not None else (
-            model_path / 'tokenizer' if model_kind == 'mixed' else model_path)
+        if model_kind != 'original':
+            # Mixed artifacts are a legacy format (research/legacy; tag legacy-staged-pipeline).
+            raise ValueError('model_kind must be original')
+        tokenizer_path = Path(tokenizer_path).absolute() if tokenizer_path is not None else model_path
         source = local_directory_identity(model_path)
         tokens = copy.deepcopy(source) if tokenizer_path == model_path else local_directory_identity(tokenizer_path)
         if expected_model_sha256 is not None and source['sha256'] != expected_model_sha256:
@@ -169,8 +208,7 @@ class TransformersBackend:
         if expected_tokenizer_sha256 is not None and tokens['sha256'] != expected_tokenizer_sha256:
             raise ValueError('Tokenizer directory SHA256 mismatch')
         tokenizer = AutoTokenizer.from_pretrained(str(tokenizer_path), local_files_only=True, trust_remote_code=False)
-        model = (load_mixed(model_path, device=device) if model_kind == 'mixed' else
-                 load_base_model(str(model_path), device=device, dtype=dtype, local_files_only=True))
+        model = _load_native(str(model_path), device=device, dtype=dtype, local_files_only=True)
         source['model_kind'] = model_kind
         return cls(model, tokenizer, context_length=context_length, source_identity=source,
                    tokenizer_identity=tokens, logits_chunk_size=logits_chunk_size)

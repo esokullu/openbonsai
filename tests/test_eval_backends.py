@@ -11,10 +11,9 @@ import torch
 from tokenizers import AddedToken, Tokenizer, models, pre_tokenizers, decoders, normalizers
 from transformers import PreTrainedTokenizerFast
 
-from openbonsai.adapter import tiny_model
+from tiny_models import tiny_qwen3_5
 from openbonsai.eval_backends import (TransformersBackend, PrismBackend,
     PRISM_RUNTIME_SHA, PROTOCOL, REDUCTION, _byte_decoder, local_directory_identity)
-from openbonsai.mixed_formats import MixedEmbedding, MixedLinear, bf16_candidate
 
 
 IDENTITY = {'sha256': 'a' * 64, 'kind': 'declared-random-test-fixture'}
@@ -29,35 +28,25 @@ def tokenizer_fixture():
                                    additional_special_tokens=['<|test|>'])
 
 
-def native_fixture(*, multimodal=False, mixed=False, chunk=2):
+def native_fixture(*, multimodal=False, chunk=2):
     torch.set_num_threads(2)
-    model = tiny_model(seed=91, multimodal=multimodal)
+    model = tiny_qwen3_5(seed=91, multimodal=multimodal)
     # Actual Qwen also has padded model rows with no tokenizer entry.
     model.resize_token_embeddings(260, mean_resizing=False)
     model.eval()
-    if mixed:
-        model.to(torch.bfloat16)
-        source = model.get_input_embeddings()
-        model.set_input_embeddings(MixedEmbedding(bf16_candidate(
-            source.weight, module_kind='embedding'), row_chunk_size=3))
-        model.lm_head = MixedLinear(bf16_candidate(model.lm_head.weight), row_chunk_size=37)
     return TransformersBackend(model, tokenizer_fixture(), context_length=32,
         source_identity=IDENTITY, tokenizer_identity=IDENTITY, logits_chunk_size=chunk)
 
 
-@pytest.mark.parametrize('multimodal,mixed', [(False, False), (True, False), (False, True), (True, True)])
-def test_native_selected_position_scores_match_direct_full_vocab(multimodal, mixed, monkeypatch):
-    backend = native_fixture(multimodal=multimodal, mixed=mixed)
+@pytest.mark.parametrize('multimodal', [False, True])
+def test_native_selected_position_scores_match_direct_full_vocab(multimodal):
+    backend = native_fixture(multimodal=multimodal)
     ids, selected = [10, 20, 10, 40, 50, 259], [1, 3, 4, 5]
     with torch.no_grad():
         logits = backend.model(input_ids=torch.tensor([ids]), use_cache=False).logits[0].float().double()
     expected = [float(logits[j-1, ids[j]] - torch.logsumexp(logits[j-1], dim=0)) for j in selected]
     calls = []
     hook = backend.model.lm_head.register_forward_pre_hook(lambda _, args: calls.append(args[0].shape[1]))
-    if mixed:
-        # Reading this property would decode the entire vocabulary table.
-        monkeypatch.setattr(MixedEmbedding, 'weight', property(lambda _: (_ for _ in ()).throw(
-            AssertionError('Full table materialization is forbidden'))))
     result = backend.score_tokens(ids, selected)
     hook.remove()
     assert calls == [2, 2]
@@ -183,7 +172,7 @@ def test_directory_identity_rejects_symlinks_when_os_permits_them(tmp_path):
 
 
 def test_from_local_forbids_downloads_and_keeps_saved_source(tmp_path, monkeypatch):
-    from openbonsai import adapter
+    from openbonsai import eval_backends
     native = native_fixture()
     root = tmp_path / 'saved'
     root.mkdir()
@@ -193,7 +182,7 @@ def test_from_local_forbids_downloads_and_keeps_saved_source(tmp_path, monkeypat
     def load(path, **kwargs):
         calls.append((path, kwargs))
         return native.model
-    monkeypatch.setattr(adapter, 'load_base_model', load)
+    monkeypatch.setattr(eval_backends, '_load_native', load)
     backend = TransformersBackend.from_local(root, context_length=32, dtype='float32')
     assert calls == [(str(root), {'device': 'cpu', 'dtype': 'float32', 'local_files_only': True})]
     assert backend.tokenize('hello') == native.tokenize('hello')
