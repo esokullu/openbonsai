@@ -166,7 +166,19 @@ class ModelAdapter:
 
     def gguf_reference(self) -> dict | None:
         """A published file's header dump when this config is that model's (the export then asserts
-        an identical tensor layout and KV key list; verification only)."""
+        an identical tensor layout and the runtime KVs)."""
+        return None
+
+    def gguf_source_rows(self, name: str, n: int) -> np.ndarray | None:
+        """Export verification: the source row (dim 0) each of the ``n`` rows of GGUF tensor ``name``
+        holds, stated independently of ``gguf_tensors()`` (from the tensor's name, by arithmetic), so a
+        wrong permutation in the layout fails verification. None: no independent rule (the verifier
+        then can only check the codec and I/O against the layout's own permutation)."""
+        return None
+
+    def gguf_f32_op(self, name: str) -> str | None:
+        """Export verification: the F32 transform of GGUF tensor ``name`` (``formats.gguf.F32_OPS``),
+        stated independently of ``gguf_tensors()``; None: no independent rule."""
         return None
 
     def gguf_check(self, kvd: dict) -> None:

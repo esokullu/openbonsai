@@ -49,6 +49,18 @@ GENERAL_TYPE = "model"
 SAMPLING = {"min_p": 0.0, "temp": 1.0, "top_p": 0.95, "top_k": 20, "penalty_repeat": 1.0}
 _GEN_CONFIG_SAMPLING = {"min_p": "min_p", "temp": "temperature", "top_p": "top_p", "top_k": "top_k",
                         "penalty_repeat": "repetition_penalty"}
+# transformers 5.20.2 Qwen3_5TextRotaryEmbedding: rope_parameters.get("mrope_section", [11, 11, 10]). It
+# always recomposes the sections interleaved (mrope_interleaved is not read), as the qwen35 runtime does.
+MROPE_SECTION_DEFAULT = (11, 11, 10)
+
+# Export verification (independent of gguf_tensors): GGUF tensor stem -> how its rows map to the HF tensor
+# ("qkv": value heads of the q|k|v channels, "v": value heads, "head": one row per value head) and the F32
+# transform. The value-head rule, in arithmetic: tiled index t = r * n_k + k holds grouped g = k * rep + r.
+_ROW_KIND = {"attn_qkv": "qkv", "attn_gate": "v", "ssm_conv1d": "qkv", "ssm_a": "head", "ssm_alpha": "head",
+             "ssm_beta": "head", "ssm_dt": "head"}
+_F32_OP = {"output_norm": "plus1", "attn_norm": "plus1", "post_attention_norm": "plus1", "attn_q_norm": "plus1",
+           "attn_k_norm": "plus1", "ssm_norm": "copy", "ssm_a": "neg_exp", "ssm_alpha": "copy", "ssm_beta": "copy",
+           "ssm_dt": "copy", "ssm_conv1d": "squeeze"}
 
 
 def v_head_perm(n_k: int, n_v: int, unit: int) -> np.ndarray:
@@ -66,6 +78,8 @@ class Qwen35GGUF:
 
     def _gguf_dims(self) -> dict:
         tc = self.text_config
+        if getattr(tc, "attention_bias", False):
+            raise GGUFError("attention_bias: the qwen35 GGUF layout has no bias tensors for q/k/v/o_proj")
         d = {"hid": int(tc.hidden_size), "ffn": int(tc.intermediate_size), "vocab": int(tc.vocab_size),
              "n_k": int(tc.linear_num_key_heads), "n_v": int(tc.linear_num_value_heads),
              "dk": int(tc.linear_key_head_dim), "dv": int(tc.linear_value_head_dim),
@@ -147,6 +161,32 @@ class Qwen35GGUF:
         rest = sorted((t.source + ".weight", t.name) for t in folded if t.source != "lm_head")
         return head + [name for _, name in rest]
 
+    @staticmethod
+    def _stem(name: str) -> str:
+        """'blk.3.ssm_a' -> 'ssm_a'; 'blk.0.attn_qkv.weight' -> 'attn_qkv'; 'output_norm.weight' -> 'output_norm'."""
+        parts = name.split(".")
+        return parts[2] if parts[0] == "blk" else parts[0]
+
+    def gguf_source_rows(self, name: str, n: int) -> np.ndarray:
+        """GGUF row i holds HF row out[i] (research/experiments/export_gguf.py Verifier.src_index)."""
+        kind = _ROW_KIND.get(self._stem(name))
+        out = np.arange(n)
+        if kind is None:
+            return out
+        tc = self.text_config
+        n_k, n_v = int(tc.linear_num_key_heads), int(tc.linear_num_value_heads)
+        dv = int(tc.linear_value_head_dim)
+        unit, base = {"head": (1, 0), "v": (dv, 0),
+                      "qkv": (dv, 2 * n_k * int(tc.linear_key_head_dim))}[kind]
+        j = out[base:] - base
+        t, e = j // unit, j % unit
+        r, k = t // n_k, t % n_k
+        out[base:] = base + (k * (n_v // n_k) + r) * unit + e
+        return out
+
+    def gguf_f32_op(self, name: str) -> str | None:
+        return _F32_OP.get(self._stem(name))
+
     # -- metadata ----------------------------------------------------------
     def _sampling(self, model_dir) -> dict:
         out = dict(SAMPLING)
@@ -164,7 +204,12 @@ class Qwen35GGUF:
         d = self._gguf_dims()
         arch = self.gguf_arch
         rp = dict(getattr(tc, "rope_parameters", None) or {})
-        sections = [int(x) for x in rp.get("mrope_section", [])]
+        # transformers' default when the config has none (Qwen3_5TextRotaryEmbedding); the runtime needs
+        # four sections (the fourth, unused for text, is 0) whose sum is not 0.
+        sections = [int(x) for x in rp.get("mrope_section") or MROPE_SECTION_DEFAULT]
+        if len(sections) > 4 or not sum(sections) or min(sections) < 0:
+            raise GGUFError(f"rope_parameters.mrope_section {sections} cannot be written as the qwen35 runtime's "
+                            "four rope.dimension_sections")
         sections += [0] * (4 - len(sections))
         return [
             (f"{arch}.block_count", "u32", int(tc.num_hidden_layers)),          # no MTP block
@@ -227,8 +272,7 @@ class Qwen35GGUF:
         ]
         kvs += [(f"tokenizer.ggml.{G.SPECIAL_KV[typ]}", "u32", int(tid)) for typ, tid in vocab["ids"].items()]
         kvs += [(f"tokenizer.ggml.add_{typ}_token", "bool", bool(flag)) for typ, flag in vocab["add"].items()]
-        if vocab["chat_template"] is not None:
-            kvs.append(("tokenizer.chat_template", "str", vocab["chat_template"]))
+        kvs += G.chat_template_kvs(vocab["chat_template"])
         kvs += [("general.quantization_version", "u32", 2),
                 ("general.file_type", "u32", LLAMA_FTYPE_MOSTLY_PTQ1_0)]
         if "bos" not in vocab["ids"]:

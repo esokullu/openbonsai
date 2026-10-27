@@ -118,3 +118,14 @@ def test_legacy_states_without_stored_signs_use_the_seed(tmp_path):
     torch.save({"modules": modules}, tmp_path / "neither.pt")
     with pytest.raises(ValueError, match="neither signs nor seed"):
         load_legacy_pt(tmp_path / "neither.pt")
+
+
+def test_legacy_signs_that_disagree_with_the_seed_are_refused(tmp_path):
+    """The research scripts rebuilt the rotation from ``seed``; stored signs must be that vector."""
+    modules = _legacy(tmp_path / "ok.pt", shared=False)
+    load_legacy_pt(tmp_path / "ok.pt")
+    st = modules["layers.0.mlp.up_proj"]
+    st["signs"] = -st["signs"]
+    torch.save({"args": {}, "modules": modules}, tmp_path / "flipped.pt")
+    with pytest.raises(ValueError, match="differ from signs_from_seed"):
+        load_legacy_pt(tmp_path / "flipped.pt")

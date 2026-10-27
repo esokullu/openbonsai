@@ -116,17 +116,19 @@ class StageContext:
                                    local_files_only=bool(m.get("local_files_only")),
                                    keep_vision=bool(m.get("keep_vision")))
 
-    def model_dir(self) -> Path:
+    def model_dir(self, *, weights: bool = True) -> Path:
         """Local directory of the model's files (config, tokenizer, safetensors); resolves a hub id
-        through the Hugging Face cache (downloads only when local_files_only is off)."""
+        through the Hugging Face cache (downloads only when local_files_only is off). ``weights=False``
+        fetches only the config, tokenizer and generation files (a GGUF supplies the weights)."""
         path = Path(self.model_path())
         if path.is_dir():
             return path
         from huggingface_hub import snapshot_download
         m = self.cfg["model"]
+        patterns = ["*.json", "*.jinja", "*.txt"] + (["*.safetensors"] if weights else [])
         return Path(snapshot_download(self.model_path(), revision=m.get("revision"),
                                       local_files_only=bool(m.get("local_files_only")),
-                                      allow_patterns=["*.json", "*.safetensors", "*.jinja", "*.txt"]))
+                                      allow_patterns=patterns))
 
     def load_tokenizer(self):
         m = self.cfg["model"]

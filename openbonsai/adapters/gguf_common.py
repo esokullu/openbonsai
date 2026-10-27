@@ -6,6 +6,7 @@
   ``tokenizer_config.json``, ``config.json`` and ``chat_template.jinja``.
   Ported unchanged from research/experiments/export_gguf.py, which matched the
   official Ternary-Bonsai-2-9B tokens, types, merges and ids.
+- ``chat_template_kvs``: the chat template KVs (string or named-list form).
 - ``model_basename`` / ``size_label`` / ``rounded_count``: names for
   ``general.name`` and ``general.size_label``.
 - ``reference_kv_equal``: compare a KV with a header dump entry (arrays by
@@ -18,6 +19,8 @@ import json
 from pathlib import Path
 import re
 import struct
+
+from ..formats.gguf import GGUFError
 
 TOKEN_NORMAL, TOKEN_CONTROL, TOKEN_USER_DEFINED, TOKEN_UNUSED = 1, 3, 4, 5
 SPECIAL_TYPES = ("bos", "eos", "unk", "sep", "pad", "cls", "mask")
@@ -139,6 +142,38 @@ def gpt2_vocab(model_dir, vocab_size: int) -> dict:
             notes.append("tokenizer_config chat_template differs from chat_template.jinja; using tokenizer_config's")
     return {"tokens": tokens, "token_type": types, "merges": merges, "ids": ids, "add": add_flags,
             "chat_template": template, "chkhsh": chkhsh, "notes": notes, "vocab": reverse}
+
+
+def chat_template_kvs(template) -> list[tuple[str, str, object]]:
+    """The chat template KVs gguf-py's ``add_chat_template`` writes: a string as
+    ``tokenizer.chat_template``; tokenizer_config's list form [{"name", "template"}] as
+    ``tokenizer.chat_template.<name>`` per named template (name reduced to [A-Za-z0-9_]), the
+    ``tokenizer.chat_templates`` name list, then the ``default`` one as ``tokenizer.chat_template``."""
+    if template is None:
+        return []
+    if isinstance(template, str):
+        return [("tokenizer.chat_template", "str", template)]
+    if not isinstance(template, (list, tuple)) or not all(isinstance(c, dict) for c in template):
+        raise GGUFError(f"chat_template of type {type(template).__name__}: expected a string or a list of "
+                         "{name, template} entries")
+    kvs, names, default = [], [], None
+    for choice in template:
+        name = "".join(c if c.isascii() and c.isalnum() else "_" for c in str(choice.get("name", "")))
+        body = choice.get("template")
+        if not name or body is None:
+            continue
+        if not isinstance(body, str):
+            raise GGUFError(f"chat_template {name!r}: template is not a string")
+        if name == "default":
+            default = body
+        elif name not in names:
+            names.append(name)
+            kvs.append((f"tokenizer.chat_template.{name}", "str", body))
+    if names:
+        kvs.append(("tokenizer.chat_templates", "arr[str]", names))
+    if default is not None:
+        kvs.append(("tokenizer.chat_template", "str", default))
+    return kvs
 
 
 # -- names --------------------------------------------------------------------

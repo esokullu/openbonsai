@@ -256,23 +256,35 @@ def load_legacy_pt(path) -> dict[str, LegacyTensor]:
     evaluate exactly as ``apply_state`` did. States written before the scripts
     stored ``signs`` (for example the 256-sample per-module run) carry only
     ``seed``; their signs are regenerated with the scripts' ``signs_from_seed``.
+    A module with both must have ``signs == signs_from_seed(seed)``: the scripts
+    (``apply_state``, e2e_kd.py) rebuilt the rotation from the seed, so other
+    stored signs were never the model that was trained or evaluated.
     """
     from ..core.hadamard import seeded_signs
     obj = torch.load(path, map_location="cpu", weights_only=True)
     entries = obj["modules"] if isinstance(obj, dict) and "modules" in obj else obj
-    out = {}
+    out, seeded = {}, {}
     for key, st in entries.items():
         if not isinstance(st, dict) or "codes" not in st:
             continue
         codes = st["codes"].to(torch.int8)
+        width = int(codes.shape[1])
+        if "seed" in st:
+            ck = (int(st["seed"]), width)
+            if ck not in seeded:
+                seeded[ck] = seeded_signs(*ck)
         if "signs" in st:
             signs = st["signs"].to(torch.int8).reshape(-1)
         elif "seed" in st:
-            signs = seeded_signs(int(st["seed"]), int(codes.shape[1]))
+            signs = seeded[ck]
         else:
             raise ValueError(f"{path}: {key} has neither signs nor seed")
-        if signs.numel() != codes.shape[1]:
+        if signs.numel() != width:
             raise ValueError(f"{path}: {key} signs do not match its input width")
+        if "seed" in st and not torch.equal(signs, seeded[ck]):
+            raise ValueError(f"{path}: {key} stored signs differ from signs_from_seed(seed={ck[0]}, {width}); "
+                             "the research scripts rebuilt the rotation from the seed, so the state does not "
+                             "describe the model they trained or evaluated")
         out[key] = LegacyTensor(codes, st["scales"].to(torch.float16), signs, int(st["block"]))
     if not out:
         raise ValueError(f"{path}: no ternary modules found")

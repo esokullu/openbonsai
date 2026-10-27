@@ -107,3 +107,21 @@ def test_load_text_and_multimodal_checkpoints(tiny_dir, tiny_mm_dir):
             out = model.generate(input_ids=ids, max_new_tokens=3, do_sample=False, use_cache=True,
                                  eos_token_id=[0], pad_token_id=0)
         assert out.shape[1] <= ids.shape[1] + 3 and torch.equal(out[0, :ids.shape[1]], ids[0])
+
+
+def test_gguf_eval_fetches_no_hub_weights(monkeypatch, tmp_path):
+    import huggingface_hub
+    from openbonsai.config import load_config
+    from openbonsai.rundir import RunDir
+    from openbonsai.stages.common import StageContext
+    seen = []
+
+    def fake_download(repo, **kw):
+        seen.append(kw["allow_patterns"])
+        return str(tmp_path)
+
+    monkeypatch.setattr(huggingface_hub, "snapshot_download", fake_download)
+    ctx = StageContext(load_config(None, (), model="org/not-a-local-dir"), RunDir(tmp_path / "run"))
+    ctx.model_dir()
+    ctx.model_dir(weights=False)
+    assert "*.safetensors" in seen[0] and not any("safetensors" in p for p in seen[1]) and "*.json" in seen[1]

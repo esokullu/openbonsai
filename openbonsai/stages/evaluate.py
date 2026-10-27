@@ -153,7 +153,8 @@ def teacher_rows(ctx):
 def load_gguf(ctx, path, *, small_fp32: bool = False):
     """The native model built from a PTQ1_0 GGUF on the run's device and dtype."""
     m = ctx.cfg["model"]
-    return ctx.adapter().from_gguf(path, model_dir=ctx.model_dir(), dtype=ctx.dtype, device=ctx.device,
+    model_dir = ctx.model_dir(weights=False)   # config and generation files; the weights come from the GGUF
+    return ctx.adapter().from_gguf(path, model_dir=model_dir, dtype=ctx.dtype, device=ctx.device,
                                    attn=m.get("attn") or "sdpa", small_fp32=small_fp32, log=ctx.log("eval"))
 
 

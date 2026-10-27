@@ -246,7 +246,7 @@ def test_states_the_layout_cannot_hold_are_refused(run_copy, monkeypatch):
     bad = state.with_scales({"lm_head": state.tensors["lm_head"].scales.clone().fill_(float("inf"))})
     with pytest.raises(E.ExportError, match="finite"):
         E.export_gguf(adapter, bad, model_dir, out, name="x", verify=False)
-    assert not out.exists()
+    assert not out.exists() and not out.with_name("x.gguf.tmp").exists()   # no partial file left behind
     monkeypatch.setattr(type(adapter), "tied", property(lambda self: True))
     with pytest.raises(G.GGUFError, match="tied"):
         adapter.gguf_tensors()
@@ -258,6 +258,69 @@ def test_export_preflight_needs_ternary_endpoints(tiny_dir, tmp_path, monkeypatc
     assert cli.main(["run", "--model", str(tiny_dir), "--config", "examples/tiny-qwen3_5.yaml", "--out", str(out),
                      "--set", "endpoints.embedding=bf16"]) == 2
     assert not (out / "traces").exists()
+
+
+def test_export_preflight_needs_distilled_endpoints_and_follows_until_and_skip(tiny_dir, tmp_path, monkeypatch):
+    from openbonsai.config import STAGES, ConfigError, load_config
+    monkeypatch.chdir(ROOT)
+    out = tmp_path / "run"
+    assert cli.main(["run", "--model", str(tiny_dir), "--config", "examples/tiny-qwen3_5.yaml", "--out", str(out),
+                     "--set", "distill.endpoints=false"]) == 2
+    assert not (out / "traces").exists()
+    ctx = StageContext(load_config("examples/tiny-qwen3_5.yaml", ["distill.endpoints=false"], model=str(tiny_dir)),
+                       RunDir(out))
+    with pytest.raises(ConfigError, match="distill.endpoints"):
+        cli.preflight(ctx)
+    cli.preflight(ctx, STAGES[:STAGES.index("distill") + 1])              # --until distill: no export
+    cli.preflight(ctx, [s for s in STAGES if s != "export"])              # --skip export
+    bf16 = StageContext(load_config("examples/tiny-qwen3_5.yaml", ["endpoints.head=bf16"], model=str(tiny_dir)),
+                        RunDir(out))
+    with pytest.raises(ConfigError, match="ternary"):
+        cli.preflight(bf16)
+    cli.preflight(bf16, STAGES[:STAGES.index("distill") + 1])
+
+
+def test_a_wrong_layout_permutation_fails_verification(run_copy, monkeypatch):
+    """The content checks take rows from the adapter's independent rule, not from the layout."""
+    ctx = _ctx(run_copy)
+    adapter = ctx.adapter()
+    real = type(adapter).gguf_tensors
+
+    def broken(self):
+        plan = real(self)
+        for t in plan:
+            if t.name in ("blk.0.attn_gate.weight", "blk.0.ssm_a"):
+                t.perm = None                 # forget the grouped -> tiled value heads
+        return plan
+
+    monkeypatch.setattr(type(adapter), "gguf_tensors", broken)
+    out = run_copy / "wrong.gguf"
+    with pytest.raises(E.ExportError, match="verification failed"):
+        E.export_gguf(adapter, ctx.state_through("distill"), ctx.model_dir(), out, name="wrong",
+                      small=ctx.distill_small(), log=lambda m: None)
+    report = json.loads(out.with_name("wrong.gguf.export.json").read_text())
+    failed = [x for x in report["verify"] if not x["ok"]]
+    assert {x["check"] for x in failed} >= {
+        "layout permutations and F32 transforms == the adapter's independent rule",
+        "decoded PTQ1_0 codes and fp16 scale bits == permuted, canonical state (exact)",
+        "F32 tensors bit-identical to the transformed sources"}
+    assert "blk.0.attn_gate.weight rows" in failed[0]["detail"] and "blk.0.ssm_a rows" in failed[0]["detail"]
+
+
+def test_checkpoint_tensors_without_a_slot_are_refused(run_copy):
+    from types import SimpleNamespace
+    ctx = _ctx(run_copy)
+    adapter = ctx.adapter()
+    plan = adapter.gguf_tensors()
+    with Checkpoint(ctx.model_dir()) as ckpt:
+        E.check_coverage(adapter, plan, ckpt)                            # the tiny checkpoint is covered
+        names = dict(ckpt.map)
+    for extra in ("model.layers.3.self_attn.q_proj.bias", "lm_head.bias"):
+        with pytest.raises(E.ExportError, match="would be dropped"):
+            E.check_coverage(adapter, plan, SimpleNamespace(map={**names, extra: "x"}))
+    E.check_coverage(adapter, plan, SimpleNamespace(map={**names, "mtp.fc.weight": "x"}))   # not the text model
+    with pytest.raises(G.GGUFError, match="attention_bias"):
+        adapter_for_config(tiny_text_config(attention_bias=True)).gguf_tensors()
 
 
 def test_verification_failure_keeps_the_final_path_clean(run_copy, monkeypatch):
@@ -301,6 +364,23 @@ def test_export_command_out_and_verify_flags(run_copy, capsys):
         assert r.value("general.name") == "m"
     assert cli.main(["inspect", str(target)]) == 0
     assert '"general.name": "m"' in capsys.readouterr().out
+    target.unlink()                                                   # a missing output is not "up to date"
+    assert cli.main(["export", "--run", str(run_copy)]) == 0
+    assert '"status": "ran"' in capsys.readouterr().out and target.exists()
+
+
+def test_export_out_is_saved_absolute_and_an_edited_output_reruns(run_copy, capsys):
+    args = cli.build_parser().parse_args(["export", "--run", str(run_copy), "--out", "rel/m.gguf"])
+    assert cli._overrides(args) == [(("export", "out"), str(Path("rel/m.gguf").resolve()))]   # run.yaml outlives cwd
+    target = run_copy / "m.gguf"
+    assert cli.main(["export", "--run", str(run_copy), "--out", str(target), "--no-verify"]) == 0
+    capsys.readouterr()
+    assert cli.main(["export", "--run", str(run_copy)]) == 0
+    assert '"status": "skipped"' in capsys.readouterr().out
+    with open(target, "ab") as f:                                     # an edited output is not current
+        f.write(b"\0")
+    assert cli.main(["export", "--run", str(run_copy)]) == 0
+    assert '"status": "ran"' in capsys.readouterr().out
 
 
 def test_read_gguf_refuses_another_config(run_copy):
@@ -346,13 +426,88 @@ def test_9b_config_gives_the_official_layout_and_weight_names():
 
 
 def test_layout_permutations_match_the_independent_rule():
-    plan = {t.name: t for t in adapter_for_config(tiny_text_config()).gguf_tensors()}
+    adapter = adapter_for_config(tiny_text_config())
+    plan = {t.name: t for t in adapter.gguf_tensors()}
     for name, t in plan.items():
         n = t.shape[0] if t.shape else t.ne[-1]
         want = src_index(kind_of(name), n)
         got = np.arange(n) if t.perm is None else t.perm
         assert np.array_equal(got, want), name
+        assert np.array_equal(adapter.gguf_source_rows(name, n), want), name     # the verifier's rule
+        assert adapter.gguf_f32_op(name) == (None if t.ternary else t.op), name
     assert plan["blk.0.ssm_out.weight"].perm is None          # columns stay grouped; rows untouched
+
+
+def test_mrope_sections_default_like_transformers():
+    def sections(**rope):
+        rp = {"rope_type": "default", "rope_theta": 10000.0, "partial_rotary_factor": 0.25, **rope}
+        kvs = {k: v for k, _, v in adapter_for_config(tiny_text_config(rope_parameters=rp))._hparam_kvs()}
+        return kvs["qwen35.rope.dimension_sections"]
+
+    assert sections(mrope_section=[2, 1, 1]) == [2, 1, 1, 0]
+    assert sections() == [11, 11, 10, 0]                      # transformers' default, not [0, 0, 0, 0]
+    with pytest.raises(G.GGUFError, match="mrope_section"):
+        sections(mrope_section=[0, 0, 0])
+
+
+def test_reference_kvs_compare_runtime_keys_by_key():
+    from openbonsai.adapters.gguf_common import sha_items
+
+    def h(key, typ, value):
+        if typ.startswith("arr["):
+            return {"key": key, "type": typ, "len": len(value), "sha256": sha_items(value)}
+        return {"key": key, "type": typ, "value": value}
+
+    ref = {"kv": [h("general.architecture", "str", "qwen35"), h("general.name", "str", "Official"),
+                  h("qwen35.block_count", "u32", 32), h("prism.hadamard.block_size", "u32", 4096),
+                  h("prism.hadamard.sign_values", "arr[i32]", [1, -1]),
+                  h("tokenizer.ggml.add_bos_token", "bool", False), h("general.file_type", "u32", 143)]}
+    ours = [("general.architecture", "str", "qwen35"), ("general.name", "str", "Mine"),
+            ("qwen35.block_count", "u32", 32), ("prism.hadamard.block_size", "u32", 4096),
+            ("prism.hadamard.sign_values", "arr[i32]", [-1, 1]), ("general.file_type", "u32", 143),
+            ("tokenizer.ggml.add_eos_token", "bool", True), ("tokenizer.ggml.add_bos_token", "bool", True)]
+    hard, soft = E.reference_kv_diff(ours, ref, "qwen35")     # a fine-tune: other tokenizer flags, KV order
+    assert hard == [] and soft == ["general.name", "tokenizer.ggml.add_bos_token",
+                                   "tokenizer.ggml.add_eos_token not in the reference"]
+    same_keys = [kv for kv in ours if not kv[0].startswith(("general.name", "tokenizer."))]
+    same_keys += [("general.name", "str", "Official"), ("tokenizer.ggml.add_bos_token", "bool", False)]
+    assert E.reference_kv_diff(same_keys, ref, "qwen35") == ([], ["KV order"])
+    hard, _ = E.reference_kv_diff([kv for kv in ours if kv[0] not in ("general.file_type", "prism.hadamard.block_size")]
+                                  + [("qwen35.extra", "u32", 1), ("prism.hadamard.block_size", "u32", 128)],
+                                  ref, "qwen35")
+    assert "general.file_type missing" in hard and "prism.hadamard.block_size (128 vs 4096)" in hard \
+        and "qwen35.extra not in the reference" in hard
+
+
+def test_chat_templates_in_the_list_form_are_written_like_gguf_py():
+    from openbonsai.adapters.gguf_common import chat_template_kvs
+    assert chat_template_kvs(None) == [] and chat_template_kvs("t") == [("tokenizer.chat_template", "str", "t")]
+    assert chat_template_kvs([{"name": "tool-use", "template": "T"}, {"name": "default", "template": "D"},
+                              {"name": "", "template": "skipped"}, {"name": "rag", "template": "R"}]) == [
+        ("tokenizer.chat_template.tool_use", "str", "T"), ("tokenizer.chat_template.rag", "str", "R"),
+        ("tokenizer.chat_templates", "arr[str]", ["tool_use", "rag"]), ("tokenizer.chat_template", "str", "D")]
+    with pytest.raises(G.GGUFError, match="chat_template"):
+        chat_template_kvs({"default": "D"})
+
+
+SNAPSHOT_9B = Path(os.environ.get("OPENBONSAI_PARITY_SNAPSHOT", "D:/openbonsai/runs/hf-cache/hub/"
+                                  "models--Qwen--Qwen3.5-9B/snapshots/c202236235762e1c871ad0ccb60c8ee5ba337b9a"))
+
+
+@pytest.mark.skipif(not (SNAPSHOT_9B / "tokenizer.json").exists(), reason="the Qwen3.5-9B snapshot is not here")
+def test_a_9b_fine_tune_with_its_own_tokenizer_settings_keeps_the_reference_layout(tmp_path):
+    """A 9B config is held to the official runtime KVs, not to the official tokenizer KV list."""
+    for f in ("tokenizer.json", "config.json", "chat_template.jinja"):
+        shutil.copy(SNAPSHOT_9B / f, tmp_path / f)
+    tcfg = json.loads((SNAPSHOT_9B / "tokenizer_config.json").read_text(encoding="utf-8"))
+    tcfg.update(bos_token="<|endoftext|>", add_eos_token=False)
+    (tmp_path / "tokenizer_config.json").write_text(json.dumps(tcfg), encoding="utf-8")
+    adapter = adapter_for_config(_qwen35_9b_text_config())
+    plan = adapter.gguf_tensors()
+    signs = {w: torch.ones(w, dtype=torch.int8) for w in (4096, 12288)}
+    kvs, _ = adapter.gguf_kvs(tmp_path, name="mine", signs=signs, block=4096, tensors=plan)
+    hard, soft = E.reference_kv_diff(kvs, adapter.gguf_reference(), "qwen35")
+    assert hard == [] and "tokenizer.ggml.add_eos_token not in the reference" in soft
 
 
 def test_unsupported_layer_schedules_are_refused():

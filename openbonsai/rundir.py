@@ -11,7 +11,9 @@
 A stage is complete when ``<stage>/DONE.json`` exists; it records the stage's
 config hash and the SHA-256 of its output file (``OUTPUTS``, or the export's GGUF). Downstream
 hashes include both, so a stage that reran with a different result makes
-every later stage stale. Rerunning skips a stage whose hash is unchanged.
+every later stage stale. Rerunning skips a stage whose hash is unchanged and
+whose output is still there with the recorded SHA-256 (a deleted, moved or
+edited output reruns the stage).
 Within a stage, units of work (a decoder layer, a teacher shard, a
 distillation checkpoint) are written atomically, so a crash loses at most the
 unit in progress.

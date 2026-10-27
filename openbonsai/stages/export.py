@@ -14,11 +14,19 @@ loads; for the 9B config the bytes are identical (tests/test_export_parity.py).
 - Refused: a state without ternary ``lm_head``/``embed_tokens`` (the layout
   stores both as PTQ1_0), a state with per-module signs (the file holds one
   sign vector per input width), group sizes other than 128, codes outside
-  {-1, 0, 1}, non-finite scales, and distilled tensors without a slot.
-- Written to ``<out>.tmp``, fsynced, verified (re-read: structure and KVs,
-  every PTQ1_0 block decoded against the state, every F32 tensor bit for bit,
-  and a FP64 function check of sample rows through the runtime's own
-  transform), then renamed. A report goes to ``<out>.export.json``.
+  {-1, 0, 1}, non-finite scales, distilled tensors without a slot, and
+  checkpoint tensors of the text model without a slot (e.g. biases).
+- When the config is a published file's (``adapter.gguf_reference()``, the
+  9B), the tensor layout and the runtime KVs (architecture, hyperparameters,
+  ``prism.hadamard.*`` except the sign values, file type) must equal it, by
+  key; tokenizer and descriptive KVs may differ (a fine-tune's own).
+- Written to ``<out>.tmp`` (removed if writing fails), fsynced, verified
+  (re-read: structure and KVs, every PTQ1_0 block decoded against the state,
+  every F32 tensor bit for bit, and a FP64 function check of sample rows
+  through the runtime's own transform), then renamed. The content checks
+  take rows and F32 transforms from the adapter's independent rule
+  (``gguf_source_rows`` / ``gguf_f32_op``), so a wrong permutation in the
+  layout fails. A report goes to ``<out>.export.json``.
 """
 from __future__ import annotations
 
@@ -39,6 +47,10 @@ from ..formats.state import LegacyTensor, TernaryState, legacy_to_state
 
 ENDPOINTS = ("lm_head", "embed_tokens")
 FUNC_TOL = 1e-6
+EXPORT_NEEDS_DISTILLED_ENDPOINTS = (
+    "export writes the distilled state, but distill.endpoints is false: the distilled model keeps BF16 "
+    "endpoints, and the PTQ1_0 GGUF stores the LM head and the token embedding as ternary. Set "
+    "distill.endpoints=true, or export.enabled=false")
 
 
 class ExportError(RuntimeError):
@@ -73,7 +85,8 @@ def check_inputs(plan, state: TernaryState, small: dict) -> list[str]:
     if missing_ep:
         raise ExportError(f"the state has no ternary {' and '.join(missing_ep)}: Prism's PTQ1_0 layout stores the "
                           "LM head and the token embedding as PTQ1_0. Run the endpoints stage with "
-                          "endpoints.head: ternary and endpoints.embedding: ternary")
+                          "endpoints.head: ternary and endpoints.embedding: ternary, and keep "
+                          "distill.endpoints: true when the distilled state is exported")
     missing = sorted(keys - set(state.tensors))
     if missing:
         raise ExportError(f"the state lacks {len(missing)} ternary tensors of the layout, e.g. {missing[:4]}")
@@ -101,6 +114,18 @@ def check_inputs(plan, state: TernaryState, small: dict) -> list[str]:
     if state.block != 4096:
         notes.append(f"Hadamard block {state.block}: Prism's runtime was verified with block 4096 only")
     return notes
+
+
+def check_coverage(adapter, plan, ckpt) -> None:
+    """Every checkpoint tensor of the text model and the head has a slot in the layout (a bias, say,
+    would otherwise be dropped without a word). MTP and vision tensors are outside the text model."""
+    prefix = adapter.checkpoint_name("")
+    slots = {adapter.checkpoint_name(t.source + ".weight" if t.ternary else t.source) for t in plan}
+    extra = sorted(n for n in ckpt.map if (n.startswith(prefix) or n.split(".", 1)[0] == "lm_head")
+                   and n not in slots)
+    if extra:
+        raise ExportError(f"{len(extra)} checkpoint tensors have no slot in the {adapter.gguf_arch} GGUF layout "
+                          f"and would be dropped: {extra[:4]}")
 
 
 class _Producer:
@@ -188,16 +213,97 @@ def _kv_equal(typ, a, b) -> bool:
     return a == b
 
 
+def runtime_kv(key: str, arch: str) -> bool:
+    """KVs the runtime builds the model from (must equal the reference file's for its config). The rest
+    (general.name and other descriptive general.*, tokenizer.*, the chat template) may differ, e.g. in a
+    fine-tune with its own tokenizer settings."""
+    return (key.startswith(f"{arch}.") or key.startswith("prism.hadamard.")
+            or key in ("general.architecture", "general.file_type", "general.quantization_version"))
+
+
+def reference_kv_diff(kvs, reference: dict, arch: str) -> tuple[list[str], list[str]]:
+    """(runtime differences, other differences) of ``kvs`` [(key, type, value)] against a header dump,
+    compared by key. ``prism.hadamard.sign_values`` is compared by type only (the signs are the state's)."""
+    ours = {k: (t, v) for k, t, v in kvs}
+    theirs = {h["key"]: h for h in reference["kv"]}
+    hard, soft = [], []
+    for key in sorted(set(ours) | set(theirs)):
+        out = hard if runtime_kv(key, arch) else soft
+        if key not in ours:
+            out.append(f"{key} missing")
+            continue
+        if key not in theirs:
+            out.append(f"{key} not in the reference")
+            continue
+        typ, val = ours[key]
+        h = theirs[key]
+        if typ != h["type"]:
+            out.append(f"{key} type {typ} vs {h['type']}")
+        elif key != "prism.hadamard.sign_values" and ("value" in h or "sha256" in h):
+            ok, detail = reference_kv_equal(h, typ, val)
+            if not ok:
+                out.append(f"{key} ({detail})" if out is hard else key)
+    if not soft and [k for k, _, _ in kvs] != [h["key"] for h in reference["kv"]]:
+        soft.append("KV order")
+    return hard, soft
+
+
+def _f32_reference(op: str, x: torch.Tensor) -> np.ndarray:
+    """The F32 transforms written out again for verification (numpy FP32; -exp through torch.exp, the
+    converter's op), not ``formats.gguf.f32_forward``."""
+    a = x.to(torch.float32).numpy()
+    if op == "plus1":
+        return a + np.float32(1)
+    if op == "neg_exp":
+        return -torch.exp(x.to(torch.float32)).numpy()
+    if op == "squeeze":
+        return a.reshape(a.shape[0], -1)
+    if op == "copy":
+        return a
+    raise ExportError(f"unknown F32 op {op!r}")
+
+
 class Verifier:
     def __init__(self, reader, adapter, plan, kvs, state, producer, reference, log):
         self.r, self.adapter, self.plan, self.kvs, self.state = reader, adapter, plan, kvs, state
         self.producer, self.reference, self.log = producer, reference, log
         self.results = []
+        # Row maps and F32 transforms the content checks use: the adapter's independent statement when it
+        # has one (so a wrong permutation or transform in the layout fails), else the layout's own.
+        self.rows, self.ops, self.independent = {}, {}, True
+        for t in plan:
+            n = t.ne[1] if t.ternary else t.shape[0]
+            rows = adapter.gguf_source_rows(t.name, n)
+            if rows is None:
+                self.independent = False
+                rows = np.arange(n) if t.perm is None else np.asarray(t.perm)
+            self.rows[t.name] = np.asarray(rows, dtype=np.int64)
+            if not t.ternary:
+                op = adapter.gguf_f32_op(t.name)
+                if op is None:
+                    self.independent = False
+                    op = t.op
+                self.ops[t.name] = op
+        self.basis = ("the adapter's independent row and transform rule" if self.independent
+                      else "the layout's own permutation (no independent rule: checks the codec and I/O only)")
 
     def check(self, ok, what, detail=""):
         self.results.append({"ok": bool(ok), "check": what, "detail": detail})
         self.log(f"  {'PASS' if ok else 'FAIL'}  {what}" + (f": {detail}" if detail else ""))
         return ok
+
+    def layout_rule(self):
+        """The layout's permutations and F32 transforms against the adapter's independent statement."""
+        bad = []
+        for t in self.plan:
+            n = len(self.rows[t.name])
+            perm = np.arange(n) if t.perm is None else np.asarray(t.perm)
+            if perm.shape != (n,) or not np.array_equal(perm, self.rows[t.name]):
+                bad.append(f"{t.name} rows")
+            if not t.ternary and t.op != self.ops[t.name]:
+                bad.append(f"{t.name} op {t.op} (rule: {self.ops[t.name]})")
+        self.check(not bad, "layout permutations and F32 transforms == the adapter's independent rule",
+                   f"{len(self.plan)} tensors" + (f"; DIFFERENT: {bad[:4]}" if bad else ""))
 
     def structure(self, infos):
         r = self.r
@@ -229,30 +335,16 @@ class Verifier:
 
     def against_reference(self):
         ref, r = self.reference, self.r
-        keys, rkeys = [(k, t) for k, t, _ in r.kv], [(h["key"], h["type"]) for h in ref["kv"]]
-        self.check(keys == rkeys, "KV keys, order and types identical to the reference file")
         got = [(t.name, t.gtype, list(t.ne), t.offset) for t in r.tensors]
         want = [(h["name"], h["type"], list(h["ne"]), h["offset"]) for h in ref["tensors"]]
-        self.check(got == want, "tensor names, order, types, ne and offsets identical to the reference file")
-        self.check(r.data_start == ref["data_start"], "data section starts where the reference's does",
-                   f"header end {r.header_end} (reference {ref['header_end']}), data {r.data_start}")
-        differs, hard = [], []
-        for h in ref["kv"]:
-            if h["key"] not in r.kvd:
-                continue
-            typ, val = r.kvd[h["key"]]
-            if typ != h["type"] or "value" not in h and "sha256" not in h:
-                continue
-            ok, detail = reference_kv_equal(h, typ, val)
-            if not ok:
-                differs.append(h["key"])
-                structural = (h["key"].startswith("prism.hadamard.") and h["key"] != "prism.hadamard.sign_values") \
-                    or h["key"] in ("general.architecture", "general.file_type", "general.quantization_version")
-                if structural:
-                    hard.append(f"{h['key']} ({detail})")
-        self.check(not hard, "Prism runtime KVs equal the reference file's",
-                   f"differences (expected: name, sign values; a fine-tune may change tokenizer KVs): {differs}"
-                   + (f"; STRUCTURAL: {hard}" if hard else ""))
+        # Offsets are relative to the data section, whose start moves with the header (name, tokenizer).
+        self.check(got == want, "tensor names, order, types, ne and offsets identical to the reference file",
+                   f"data section at {r.data_start} (reference {ref['data_start']})")
+        hard, soft = reference_kv_diff(r.kv, ref, self.adapter.gguf_arch)
+        self.check(not hard, "runtime KVs (architecture, hyperparameters, prism.hadamard.*, file type) equal the "
+                             "reference file's, by key",
+                   f"other differences (expected: general.name; a fine-tune may change tokenizer KVs): {soft}"
+                   + (f"; RUNTIME: {hard}" if hard else ""))
 
     def ptq_content(self, chunk_rows=16384):
         t0 = time.time()
@@ -262,7 +354,7 @@ class Verifier:
                 continue
             in_f, out_f = t.ne
             tt = self.state.tensors[t.source]
-            idx = np.arange(out_f) if t.perm is None else np.asarray(t.perm)
+            idx = self.rows[t.name]
             for r0 in range(0, out_f, chunk_rows):
                 r1 = min(out_f, r0 + chunk_rows)
                 gc, gs = self.r.ptq1_0(t.name, r0, r1)
@@ -278,7 +370,8 @@ class Verifier:
                     break
                 n_w += gc.size
         self.check(not bad, "decoded PTQ1_0 codes and fp16 scale bits == permuted, canonical state (exact)",
-                   f"{n_w:,} weights in {time.time() - t0:.0f}s" + (f"; MISMATCH in {bad[:3]}" if bad else ""))
+                   f"{n_w:,} weights in {time.time() - t0:.0f}s, rows by {self.basis}"
+                   + (f"; MISMATCH in {bad[:3]}" if bad else ""))
 
     def f32_content(self):
         bad, n = [], 0
@@ -286,12 +379,13 @@ class Verifier:
             if t.ternary:
                 continue
             got = self.r.read(t.name).reshape(-1).view("<u4")
-            want = self.producer.float_array(t).reshape(-1).view("<u4")
+            a = _f32_reference(self.ops[t.name], self.producer.source_float(t))
+            want = np.ascontiguousarray(a[self.rows[t.name]], dtype="<f4").reshape(-1).view("<u4")
             if got.shape != want.shape or not np.array_equal(got, want):
                 bad.append(t.name)
             n += 1
         self.check(not bad, "F32 tensors bit-identical to the transformed sources",
-                   f"{n} tensors" + (f"; MISMATCH {bad[:4]}" if bad else ""))
+                   f"{n} tensors, rows and transforms by {self.basis}" + (f"; MISMATCH {bad[:4]}" if bad else ""))
 
     def functional(self, layers=None, rows=8, vecs=4):
         """FP64: the runtime's W_gguf @ H(s * x) (signs from the file, popcount Hadamard) against
@@ -316,7 +410,7 @@ class Verifier:
         worst = 0.0
         for t in names:
             in_f, out_f = t.ne
-            idx = np.arange(out_f) if t.perm is None else np.asarray(t.perm)
+            idx = self.rows[t.name]
             k = min(rows, out_f)
             moved = np.nonzero(idx != np.arange(out_f))[0]
             if len(moved) and k > 1:
@@ -361,6 +455,10 @@ def verify_gguf(path, adapter, plan, infos, kvs, state, producer, reference, *, 
             log("verify: against the reference file's header")
             v.against_reference()
         log("verify: content")
+        if v.independent:
+            v.layout_rule()
+        else:
+            log(f"  note: {adapter.name} states no independent row rule; content checks use {v.basis}")
         v.ptq_content(chunk_rows)
         v.f32_content()
         v.functional(func_layers)
@@ -400,22 +498,26 @@ def export_gguf(adapter, source, model_dir, out, *, name: str, small: dict | Non
             raise ExportError(f"the config is the reference model's but the tensor layout differs at {first}: "
                               f"{got[first] if first < len(got) else None} vs "
                               f"{want[first] if first < len(want) else None}")
-        keys, rkeys = [(k, t) for k, t, _ in kvs], [(h["key"], h["type"]) for h in reference["kv"]]
-        if keys != rkeys:
-            first = next((i for i, (a, b) in enumerate(zip(keys, rkeys)) if a != b), min(len(keys), len(rkeys)))
-            raise ExportError(f"KVs differ from the reference file's at {first}: "
-                              f"{keys[first] if first < len(keys) else None} vs "
-                              f"{rkeys[first] if first < len(rkeys) else None}")
-        notes.append("layout equals the reference file's (Ternary-Bonsai-2-9B): names, order, types, ne, "
-                     "offsets and KV keys")
+        hard, soft = reference_kv_diff(kvs, reference, adapter.gguf_arch)
+        if hard:
+            raise ExportError(f"the config is the reference model's but runtime KVs differ from the reference "
+                              f"file's: {hard[:4]}")
+        notes.append("layout equals the reference file's (Ternary-Bonsai-2-9B): tensor names, order, types, ne, "
+                     "offsets and the runtime KVs"
+                     + (f"; other KVs differ (tokenizer or descriptive metadata): {soft}" if soft else ""))
     for n in notes:
         log(f"note: {n}")
     tmp = out.with_name(out.name + ".tmp")
     report = {"output": str(out), "name": name, "notes": notes, "reference": reference is not None}
     with Checkpoint(model_dir) as ckpt:
+        check_coverage(adapter, plan, ckpt)
         producer = _Producer(adapter, plan, state, ckpt, small, chunk_rows)
         log(f"writing {tmp} ({len(infos)} tensors, {len(kvs)} KVs)")
-        info = write_gguf(tmp, kvs, infos, producer, log=log)
+        try:
+            info = write_gguf(tmp, kvs, infos, producer, log=log)
+        except BaseException:   # a refused tensor, a full disk, Ctrl-C: no partial file stays behind
+            tmp.unlink(missing_ok=True)
+            raise
         report["write"] = {**info, **producer.stats}
         log(f"wrote {info['file_size']:,} B in {info['seconds']:.0f}s; {producer.stats['ternary_weights']:,} ternary "
             f"weights, {producer.stats['neg_scale_groups']} negative-scale groups normalized, "
@@ -437,13 +539,15 @@ def export_gguf(adapter, source, model_dir, out, *, name: str, small: dict | Non
 
 
 def run(ctx) -> dict:
-    from ..config import ConfigError, upstream
+    from ..config import ConfigError, distill_uses_endpoints, upstream
     e = ctx.cfg["export"]
     if (e.get("format") or "ptq1_0-gguf") != "ptq1_0-gguf":
         raise ConfigError(f"export.format {e.get('format')!r}: only ptq1_0-gguf is supported")
     log = ctx.log("export")
     adapter = ctx.adapter()
     source = upstream(ctx.cfg, "export")[0]
+    if source == "distill" and not distill_uses_endpoints(ctx.cfg):
+        raise ConfigError(EXPORT_NEEDS_DISTILLED_ENDPOINTS)
     state = ctx.state_through(source)
     small = ctx.distill_small() if source == "distill" else {}
     name = e.get("name") or default_name(ctx.model_path())

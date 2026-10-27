@@ -165,6 +165,27 @@ def test_writer_checks_payload_sizes_and_reader_refuses_other_files(tmp_path):
         G.GGUFReader(tmp_path / "v2.gguf")
 
 
+def test_reader_refuses_unknown_value_types_and_rows_outside_a_tensor(tmp_path):
+    kvs = [("general.architecture", "str", "x"), ("a.list", "arr[i32]", [1, 2, 3])]
+    infos = [G.TensorInfo("w", G.GGML_F32, (4, 2)), G.TensorInfo("v", G.GGML_F32, (4, 2))]
+    G.layout(infos)
+    path = tmp_path / "t.gguf"
+    G.write_gguf(path, kvs, infos, lambda t: [np.arange(8, dtype="<f4")])
+    raw = path.read_bytes()
+    for key, at in (("general.architecture", 0), ("a.list", 4)):   # scalar type id, array element type id
+        bad = bytearray(raw)
+        i = raw.index(key.encode()) + len(key) + at
+        bad[i:i + 4] = struct.pack("<I", 13)
+        (tmp_path / "bad.gguf").write_bytes(bad)
+        with pytest.raises(G.GGUFError, match="unknown GGUF value type 13"):
+            G.GGUFReader(tmp_path / "bad.gguf")
+    with G.GGUFReader(path) as r:
+        assert r.read("w", 1, 2).shape == (1, 16) and r.read("w", 2, 2).shape == (0, 16)
+        for r0, r1 in ((0, 3), (-1, 1), (2, 1)):   # "w" is not last: rows 2.. would be "v"'s bytes
+            with pytest.raises(G.GGUFError, match="outside"):
+                r.read("w", r0, r1)
+
+
 def test_f32_transforms_invert():
     x = torch.randn(6, 1, 4)
     assert torch.equal(G.f32_inverse("squeeze", G.f32_forward("squeeze", x), (6, 1, 4)), x)

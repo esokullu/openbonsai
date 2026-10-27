@@ -51,7 +51,7 @@ def _overrides(args) -> list[tuple[tuple[str, ...], object]]:
     out = []
     if getattr(args, "stage", None) == "export":
         if args.out is not None:
-            out.append((("export", "out"), str(Path(args.out))))
+            out.append((("export", "out"), str(Path(args.out).resolve())))   # run.yaml outlives the cwd
         if args.name is not None:
             out.append((("export", "name"), args.name))
         if args.verify is not None:
@@ -110,11 +110,34 @@ def _prepare(ctx, stage: str, config_hash: str, force) -> None:
     atomic_write_json(marker, {"config_hash": config_hash})
 
 
+def _output_of(ctx, stage: str) -> Path | None:
+    """The file a completed stage produced (``OUTPUTS``, or the path its result names, e.g. the GGUF)."""
+    output = ctx.run.output_path(stage)
+    if output is None:
+        result = (ctx.run.done_info(stage) or {}).get("result")
+        if isinstance(result, dict) and result.get("output"):
+            output = Path(result["output"])
+    return output
+
+
+def _output_problem(ctx, stage: str) -> str | None:
+    """Why a completed stage's recorded output can no longer be used (None if it is there, unchanged)."""
+    output = _output_of(ctx, stage)
+    if output is None:
+        return None
+    if not output.is_file():
+        return f"its output {output} is missing"
+    want = (ctx.run.done_info(stage) or {}).get("output_sha256")
+    if want and ctx.digests().file(output) != want:
+        return f"its output {output} changed after it ran"
+    return None
+
+
 def execute(ctx, stage: str, *, force=False, **kwargs) -> str:
-    """Run one stage unless it is complete with the same config hash. Returns a status word.
+    """Run one stage unless it is complete with the same config hash and its output is still there,
+    unchanged. Returns a status word.
 
     ``force``: False, True (rerun from scratch) or "downstream" (see ``_prepare``)."""
-    from .digest import file_sha256
     from .stages.common import free
     log = ctx.log(stage)
     if not stage_enabled(ctx.cfg, stage):
@@ -124,8 +147,11 @@ def execute(ctx, stage: str, *, force=False, **kwargs) -> str:
     ctx.require_inputs(stage)
     config_hash = ctx.stage_hash(stage)
     if stage != "eval" and not force and ctx.run.is_done(stage, config_hash):
-        log(f"up to date ({config_hash[:12]}); skipped")
-        return "skipped"
+        problem = _output_problem(ctx, stage)
+        if problem is None:
+            log(f"up to date ({config_hash[:12]}); skipped")
+            return "skipped"
+        log(f"complete with this config, but {problem}; rerunning")
     _prepare(ctx, stage, config_hash, force)
     ctx.run.clear_done(stage)
     try:
@@ -137,18 +163,21 @@ def execute(ctx, stage: str, *, force=False, **kwargs) -> str:
         if output is None and isinstance(result, dict) and result.get("output"):
             output = Path(result["output"])
         ctx.run.mark_done(stage, config_hash, result=result,
-                          output_sha256=file_sha256(output) if output is not None and output.exists() else None)
+                          output_sha256=ctx.digests().file(output) if output is not None and output.is_file()
+                          else None)
     return "ran"
 
 
-def preflight(ctx) -> None:
-    """Fail before any work on settings a later stage would refuse."""
+def preflight(ctx, stages=STAGES) -> None:
+    """Fail before any work on settings a later stage of ``stages`` (those this command runs) would refuse."""
+    from .config import distill_uses_endpoints, upstream
+    from .stages.export import EXPORT_NEEDS_DISTILLED_ENDPOINTS
     e = ctx.cfg["endpoints"]
     if stage_enabled(ctx.cfg, "endpoints") and "ternary" in (e.get("head"), e.get("embedding")) \
-            and ctx.adapter().tied:
+            and ctx.adapter().tied and "endpoints" in stages:
         raise ConfigError("this model ties its embedding and head; ternary endpoints are not supported yet. "
                           "Set endpoints.head and endpoints.embedding to bf16 (or endpoints.enabled=false)")
-    if stage_enabled(ctx.cfg, "export"):
+    if stage_enabled(ctx.cfg, "export") and "export" in stages:
         ternary_ends = stage_enabled(ctx.cfg, "endpoints") and e.get("head") == "ternary" \
             and e.get("embedding") == "ternary"
         if ctx.adapter().gguf_arch is None:
@@ -156,14 +185,16 @@ def preflight(ctx) -> None:
         if not ternary_ends:
             raise ConfigError("the PTQ1_0 GGUF stores the LM head and the token embedding as ternary: enable the "
                               "endpoints stage with head and embedding ternary, or set export.enabled=false")
+        if upstream(ctx.cfg, "export")[0] == "distill" and not distill_uses_endpoints(ctx.cfg):
+            raise ConfigError(EXPORT_NEEDS_DISTILLED_ENDPOINTS)
 
 
 def cmd_run(args) -> int:
     from .stages.common import StageContext
     run = RunDir(args.out)
     ctx = StageContext(resolve_config(args, run), run)
-    preflight(ctx)
     stop = STAGES.index(args.until) if args.until else len(STAGES) - 1
+    preflight(ctx, [s for s in STAGES[:stop + 1] if s not in (args.skip or ())])
     forced = set(args.force or ())
     statuses = {}
     for i, stage in enumerate(STAGES[:stop + 1]):

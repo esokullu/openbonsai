@@ -269,12 +269,17 @@ class GGUFReader:
         self.pos += n
         return b.decode("utf-8")
 
+    def _type(self, vt) -> str:
+        if vt not in VT_NAME:
+            raise GGUFError(f"{self.path}: unknown GGUF value type {vt} at byte {self.pos}")
+        return VT_NAME[vt]
+
     def _val(self, vt):
         if vt == VT["str"]:
             return "str", self._s()
         if vt == VT["arr"]:
             et, n = self._u("<I"), self._u("<Q")
-            name = VT_NAME[et]
+            name = self._type(et)
             if name == "str":
                 return "arr[str]", [self._s() for _ in range(n)]
             if name == "arr":
@@ -285,7 +290,7 @@ class GGUFReader:
             a = np.frombuffer(self.buf, dtype=dt, count=n, offset=self.pos)
             self.pos += n * dt.itemsize
             return f"arr[{name}]", (a.astype(bool) if name == "bool" else a).tolist()
-        name = VT_NAME[vt]
+        name = self._type(vt)
         return name, self._u(SCALAR_FMT[name])
 
     def _parse(self):
@@ -325,6 +330,8 @@ class GGUFReader:
         """Raw payload rows r0..r1 as uint8 [rows, row_bytes]."""
         t = self.info(name)
         r1 = t.rows if r1 is None else r1
+        if not 0 <= r0 <= r1 <= t.rows:
+            raise GGUFError(f"{name}: rows {r0}..{r1} outside 0..{t.rows}")
         rb = t.row_bytes
         start = self.data_start + t.offset + r0 * rb
         n = (r1 - r0) * rb
@@ -350,6 +357,8 @@ class GGUFReader:
         if t.gtype != GGML_PTQ1_0:
             raise GGUFError(f"{name}: type {t.gtype} is not PTQ1_0")
         r1 = t.rows if r1 is None else r1
+        if not 0 <= r0 <= r1 <= t.rows:
+            raise GGUFError(f"{name}: rows {r0}..{r1} outside 0..{t.rows}")
         codes = np.empty((r1 - r0, t.ne[0]), np.int8)
         scales = np.empty((r1 - r0, t.ne[0] // ptq1_0.QK), np.float16)
         for a in range(r0, r1, chunk_rows):
