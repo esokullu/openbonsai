@@ -1,0 +1,1 @@
+{"n_wiki": 128, "n_chat": 96, "n_ayot": 32, "seq_len": 2048, "batch": 4, "group": 128, "block": 4096, "damp": 0.01, "refit": true, "out": "D:/openbonsai/runs/2026-10-27-gptq-ternary-256"}

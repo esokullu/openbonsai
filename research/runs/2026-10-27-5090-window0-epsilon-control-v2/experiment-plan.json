@@ -1,0 +1,137 @@
+{
+  "scope": "One window-zero C512 epsilon1e-9 versus authenticated parent B512 epsilon1e-8",
+  "execution_lineage": {
+    "attempt": "v2: one explicitly authorized correction after sealed zero-work v1",
+    "authorization": "analysis/request.txt",
+    "original_scientific_request": "analysis/v1-evidence/request.txt",
+    "original_accounting_clarification": "analysis/v1-evidence/request-budget-clarification.txt",
+    "failed_ancestor": "2026-10-27-5090-window0-epsilon-control-v1",
+    "failed_ancestor_seal_sha256": "38b522a6900e532c27ae84328c922bbd0c3660bbf1940401ae2a48f80e777f5c",
+    "failed_ancestor_freeze_sha256": "94f08b87ab71faca2ed8fd9ff19be38ae66776e297801650495696d15cb9dc20",
+    "scientific_parent": "2026-10-27-5090-window0-budget-control-v1",
+    "prior_family_model_process_seconds": 0,
+    "prior_family_scientific_updates": 0,
+    "prior_family_discarded_updates": 0,
+    "scientific_changes_from_v1": false,
+    "historical_rejected_pid": "Not recorded; unknown",
+    "additional_attempt_authorized": false
+  },
+  "model": "Qwen/Qwen3.5-9B",
+  "revision": "c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+  "source": "Actual sealed window0-budget-control executed source, historical BF16 native loading",
+  "dtype": "bfloat16",
+  "window": [
+    0,
+    1
+  ],
+  "selected_projections": 6,
+  "initialization": "All 200 wrappers constructed in historical order; every initialized tensor and CPU/CUDA RNG authenticated",
+  "group_size": 128,
+  "rotation_block_size": 4096,
+  "seed": 5090,
+  "lora_rank": 64,
+  "factor_mapping": "sigmoid",
+  "hard_phase": "frozen_jacobian",
+  "reconstruction_loss": "huber",
+  "huber_delta": 1.0,
+  "reduction": "valid hidden elements",
+  "factor_learning_rate": 0.005,
+  "lora_learning_rate": 0.001,
+  "weight_decay": 0.0,
+  "gradient_clip": 1.0,
+  "batch_size": 1,
+  "sequence_length": 512,
+  "gradient_checkpointing": true,
+  "optimizer": "Inherited AdamW settings with explicit configurable epsilon; baseline default1e-8; C1e-9 in defaults/allgroups",
+  "progress": "one-based s/T",
+  "lr_multiplier": "1-(s-1)/T",
+  "order": "Fresh Random(5090) per arm; fresh index list per epoch and evolving RNG",
+  "search": {
+    "samples": 16,
+    "active_positions": 7203,
+    "fit": false
+  },
+  "fixed_boundary_probe": {
+    "role": "calibration",
+    "index": 0
+  },
+  "observer": {
+    "commit": "eab219ebfd0227a6069dca9e01c6ed996da7edc9",
+    "sha256": "eb2821b0ebc39e24ce211362c724cfe87d4a8834eb1e48c8f2b110552de3e942",
+    "chunk_elements": 65536,
+    "C_after_steps": [
+      1,
+      409,
+      410,
+      512
+    ],
+    "B_authenticated_steps_reused": [
+      1,
+      409,
+      410,
+      512
+    ],
+    "new_scientific_calls": 4,
+    "direction_ratio_definition": "Square-root energy ratio; direction-norm retention on r>0 domain, excluding LR/decay/native rounding"
+  },
+  "maximum_aggregate_model_process_seconds": 1800,
+  "variable_margin": 1.25,
+  "separate_final_reserve_seconds": 300,
+  "minimum_headroom_bytes": 4294967296,
+  "maximum_optimizer_updates": 514,
+  "no_retry": true,
+  "no_successor": true,
+  "full_model_language_evaluation": false,
+  "full_deployable_export": false,
+  "parent_seal_sha256": "466a13bbb67aabede63b97019b014ffc639b4e4519a0bf28f3cdc206a5f5f1cf",
+  "parent_source_freeze_sha256": "5f40a5af2f441c4813d7d99f5e776f1b37fd13adab3b8c44895b1f0320df2604",
+  "C": {
+    "samples": 128,
+    "epochs": 4,
+    "updates": 512,
+    "soft_updates": 409,
+    "hard_updates": 103,
+    "position_presentations": 239420,
+    "epsilon": 1e-09
+  },
+  "baseline_B": {
+    "epsilon": 1e-08,
+    "updates_reused": 512,
+    "updates_rerun": 0,
+    "native_saved_state_output_replay": true
+  },
+  "discarded_preflight_schedule_steps": {
+    "C": [
+      409,
+      410
+    ]
+  },
+  "discarded_actual_optimizer_steps": {
+    "C": [
+      1,
+      2
+    ]
+  },
+  "remaining_preservation_calls_at_admission": [
+    "fit-final-source-preservation",
+    "reload-fresh-source-preservation"
+  ],
+  "completed_preflight_preservation_calls": [
+    "B-control-source-preservation",
+    "source-preservation-after-rollback"
+  ],
+  "parent_preservation_accounting_correction_applied_before_freeze": true,
+  "prelaunch_duration_estimate": {
+    "total_seconds_range": [
+      480,
+      720
+    ],
+    "basis": "Parent measured614s A+B; C alone omits A optimization/metrics plus one preservation pass and2 timingupdates; allowance for new checks",
+    "calibration_generation_seconds": 0,
+    "cache_scope": "Read-only parent144cache reuse and fresh native verification; no generation",
+    "training_reference_B_seconds": 124.5569,
+    "reference_training_includes_callbacks": true,
+    "stages": "Preflight including load/Bgate/timing; fit including fresh load/512updates/finalmetrics; independent reload/sourceaudit",
+    "formal_admission": "Measured actual C preflight costs with1.25margin plus separate300reserve; hardcap1800 unchanged"
+  }
+}

@@ -1,0 +1,894 @@
+{
+  "schema": "synthetic-workspace-diagnostic.v1",
+  "status": "passed",
+  "started_utc": "2026-10-26T23:45:01.608741+00:00",
+  "checkpoints": [
+    {
+      "name": "initial_empty",
+      "utc": "2026-10-26T23:45:03.436445+00:00",
+      "current_allocated_bytes": 0,
+      "current_reserved_bytes": 0,
+      "peak_allocated_bytes": 0,
+      "peak_reserved_bytes": 0,
+      "device_free_bytes": 32496418816,
+      "device_total_bytes": 34190458880,
+      "synthetic_reference_dead": {},
+      "predicates": {
+        "source_reference_dead": false,
+        "allocated_strictly_below_16_MiB": true,
+        "original_conjunction": false,
+        "all_synthetic_references_dead": false
+      },
+      "conservative_free_bytes": 32496418816
+    },
+    {
+      "name": "sentinel_created",
+      "utc": "2026-10-26T23:45:03.453358+00:00",
+      "current_allocated_bytes": 33554432,
+      "current_reserved_bytes": 33554432,
+      "peak_allocated_bytes": 33554432,
+      "peak_reserved_bytes": 33554432,
+      "device_free_bytes": 32343326720,
+      "device_total_bytes": 34190458880,
+      "synthetic_reference_dead": {},
+      "predicates": {
+        "source_reference_dead": false,
+        "allocated_strictly_below_16_MiB": false,
+        "original_conjunction": false,
+        "all_synthetic_references_dead": false
+      },
+      "sentinel_reference_dead": false,
+      "sentinel": {
+        "identity": 2183770204560,
+        "storage_bytes": 33554432,
+        "values": [
+          17,
+          17,
+          17
+        ]
+      },
+      "conservative_free_bytes": 32343326720
+    },
+    {
+      "name": "sentinel_after_first_clear",
+      "utc": "2026-10-26T23:45:03.456461+00:00",
+      "current_allocated_bytes": 33554432,
+      "current_reserved_bytes": 33554432,
+      "peak_allocated_bytes": 33554432,
+      "peak_reserved_bytes": 33554432,
+      "device_free_bytes": 32343326720,
+      "device_total_bytes": 34190458880,
+      "synthetic_reference_dead": {},
+      "predicates": {
+        "source_reference_dead": false,
+        "allocated_strictly_below_16_MiB": false,
+        "original_conjunction": false,
+        "all_synthetic_references_dead": false
+      },
+      "sentinel_reference_dead": false,
+      "sentinel": {
+        "identity": 2183770204560,
+        "storage_bytes": 33554432,
+        "values": [
+          17,
+          17,
+          17
+        ]
+      },
+      "conservative_free_bytes": 32343326720
+    },
+    {
+      "name": "synthetic_refs_released_before_second_clear",
+      "utc": "2026-10-26T23:45:03.606074+00:00",
+      "current_allocated_bytes": 100663296,
+      "current_reserved_bytes": 100663296,
+      "peak_allocated_bytes": 257950208,
+      "peak_reserved_bytes": 276824064,
+      "device_free_bytes": 32257343488,
+      "device_total_bytes": 34190458880,
+      "synthetic_reference_dead": {
+        "input": true,
+        "source_weight": true,
+        "output": true,
+        "loss": true,
+        "input_gradient": true,
+        "source_weight_gradient": true
+      },
+      "predicates": {
+        "source_reference_dead": true,
+        "allocated_strictly_below_16_MiB": false,
+        "original_conjunction": false,
+        "all_synthetic_references_dead": true
+      },
+      "sentinel_reference_dead": false,
+      "sentinel": {
+        "identity": 2183770204560,
+        "storage_bytes": 33554432,
+        "values": [
+          17,
+          17,
+          17
+        ]
+      },
+      "conservative_free_bytes": 32100057088
+    },
+    {
+      "name": "after_second_workspace_clear",
+      "utc": "2026-10-26T23:45:03.608832+00:00",
+      "current_allocated_bytes": 33554432,
+      "current_reserved_bytes": 33554432,
+      "peak_allocated_bytes": 257950208,
+      "peak_reserved_bytes": 276824064,
+      "device_free_bytes": 32324452352,
+      "device_total_bytes": 34190458880,
+      "synthetic_reference_dead": {
+        "input": true,
+        "source_weight": true,
+        "output": true,
+        "loss": true,
+        "input_gradient": true,
+        "source_weight_gradient": true
+      },
+      "predicates": {
+        "source_reference_dead": true,
+        "allocated_strictly_below_16_MiB": false,
+        "original_conjunction": false,
+        "all_synthetic_references_dead": true
+      },
+      "sentinel_reference_dead": false,
+      "sentinel": {
+        "identity": 2183770204560,
+        "storage_bytes": 33554432,
+        "values": [
+          17,
+          17,
+          17
+        ]
+      },
+      "conservative_free_bytes": 32081182720
+    },
+    {
+      "name": "after_sentinel_deleted",
+      "utc": "2026-10-26T23:45:03.639559+00:00",
+      "current_allocated_bytes": 0,
+      "current_reserved_bytes": 0,
+      "peak_allocated_bytes": 257950208,
+      "peak_reserved_bytes": 276824064,
+      "device_free_bytes": 32358006784,
+      "device_total_bytes": 34190458880,
+      "synthetic_reference_dead": {
+        "input": true,
+        "source_weight": true,
+        "output": true,
+        "loss": true,
+        "input_gradient": true,
+        "source_weight_gradient": true
+      },
+      "predicates": {
+        "source_reference_dead": true,
+        "allocated_strictly_below_16_MiB": true,
+        "original_conjunction": true,
+        "all_synthetic_references_dead": true
+      },
+      "sentinel_reference_dead": true,
+      "conservative_free_bytes": 32081182720
+    }
+  ],
+  "counts": {
+    "forward_started": 1,
+    "forward_completed": 1,
+    "backward_started": 1,
+    "backward_completed": 1,
+    "clear_started": 2,
+    "clear_completed": 2,
+    "checkpoints": 6
+  },
+  "model_loads": 0,
+  "optimizer_updates": 0,
+  "no_retry": true,
+  "no_successor": true,
+  "interpretation_limit": "This fixture cannot retrospectively establish the failed parent cause.",
+  "runtime_before": {
+    "schema": "workspace-runtime-inspection.v1",
+    "status": "passed",
+    "mismatches": [],
+    "expected": {
+      "torch_version": "2.14.1+cu130",
+      "cuda_version": "13.0",
+      "torch_git_version": "5c4886908584029761b579af026dcfb627c84070"
+    },
+    "torch_imported_before_inspection": false,
+    "cuda_initialized_before": false,
+    "cuda_initialized_after": false,
+    "initialization_unchanged": true,
+    "environment_unchanged": true,
+    "identity": {
+      "torch_version": "2.14.1+cu130",
+      "cuda_version": "13.0",
+      "torch_git_version": "5c4886908584029761b579af026dcfb627c84070",
+      "python_version": "3.12.11 (main, Aug 18 2025, 19:17:54) [MSC v.1944 64 bit (AMD64)]",
+      "python_executable": "D:\\openbonsai\\.venv\\Scripts\\python.exe",
+      "python_base_executable": "C:\\Users\\esoku\\AppData\\Roaming\\uv\\python\\cpython-3.12.11-windows-x86_64-none\\python.exe",
+      "python_prefix": "D:\\openbonsai\\.venv",
+      "python_base_prefix": "C:\\Users\\esoku\\AppData\\Roaming\\uv\\python\\cpython-3.12.11-windows-x86_64-none",
+      "torch_package_file": "D:\\openbonsai\\.venv\\Lib\\site-packages\\torch\\__init__.py",
+      "torch_extension_file": "D:\\openbonsai\\.venv\\Lib\\site-packages\\torch\\_C.cp312-win_amd64.pyd",
+      "distribution_version": "2.14.1+cu130",
+      "distribution_root": "D:\\openbonsai\\.venv\\Lib\\site-packages"
+    },
+    "environment": {
+      "CUBLASLT_WORKSPACE_SIZE": null,
+      "CUBLAS_WORKSPACE_CONFIG": null,
+      "CUDA_DEVICE_ORDER": "PCI_BUS_ID",
+      "CUDA_LAUNCH_BLOCKING": null,
+      "CUDA_MODULE_LOADING": null,
+      "CUDA_VISIBLE_DEVICES": "GPU-6d908ed7-d2e6-1c70-8a1e-28754a8cbfae",
+      "CUDNN_CONV_WSCAP_DBG": null,
+      "MKL_NUM_THREADS": null,
+      "NVIDIA_TF32_OVERRIDE": null,
+      "OMP_NUM_THREADS": null,
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "PYTORCH_ALLOC_CONF": null,
+      "PYTORCH_CUDA_ALLOC_CONF": null,
+      "PYTORCH_NO_CUDA_MEMORY_CACHING": null,
+      "TORCH_ALLOW_TF32_CUBLAS_OVERRIDE": null,
+      "TORCH_BLAS_PREFER_CUBLASLT": null,
+      "TORCH_CUBLASLT_UNIFIED_WORKSPACE": null,
+      "TORCH_CUDNN_V8_API_DISABLED": null,
+      "TORCH_CUDNN_V8_API_LRU_CACHE_LIMIT": null
+    },
+    "settings": {
+      "float32_matmul_precision": "highest",
+      "matmul_allow_tf32": false,
+      "matmul_fp32_precision": "none",
+      "allow_fp16_reduced_precision_reduction": true,
+      "allow_fp16_reduced_precision_reduction_split_k": true,
+      "allow_bf16_reduced_precision_reduction": true,
+      "allow_bf16_reduced_precision_reduction_split_k": true,
+      "allow_fp16_accumulation": false,
+      "preferred_blas_library": "_BlasBackend.Cublas",
+      "deterministic_algorithms": false,
+      "deterministic_warn_only": false,
+      "cudnn_allow_tf32": true,
+      "cudnn_deterministic": false,
+      "cudnn_benchmark": false,
+      "cudnn_enabled": true
+    },
+    "allocator_backend": "native",
+    "clear_workspace_callable": true,
+    "source_bindings": {
+      "pinned_CublasHandlePool": {
+        "path": "D:\\openbonsai\\runs\\2026-10-27-5090-head-rotation-preflight-v1\\analysis\\source-evidence\\CublasHandlePool.cpp",
+        "bytes": 18293,
+        "sha256": "2dfaea7f42cb654bf4db6bddedbfd5f2661d92c6d96f2c90652f3d9c162baf2c"
+      },
+      "installed/version.py": {
+        "path": "D:\\openbonsai\\.venv\\Lib\\site-packages\\torch\\version.py",
+        "bytes": 327,
+        "sha256": "84e179afbd773ecf41d671a2fa0dd643758f8830f247d563affe419b52ae7e06"
+      },
+      "installed/cuda/__init__.py": {
+        "path": "D:\\openbonsai\\.venv\\Lib\\site-packages\\torch\\cuda\\__init__.py",
+        "bytes": 77218,
+        "sha256": "1959b5ddd56f95321e0a4b6ad5e2c39f2cbffa7a24d4ca0cf896daf707113f06"
+      },
+      "installed/cuda/memory.py": {
+        "path": "D:\\openbonsai\\.venv\\Lib\\site-packages\\torch\\cuda\\memory.py",
+        "bytes": 67214,
+        "sha256": "803e9d7a55a767cb5d4d12d6fab2ffcf5e9f08ce2e93b698115d6b929bf8fb17"
+      },
+      "installed/backends/cuda/__init__.py": {
+        "path": "D:\\openbonsai\\.venv\\Lib\\site-packages\\torch\\backends\\cuda\\__init__.py",
+        "bytes": 27062,
+        "sha256": "e3d54b9ddfdfab8c4d49246fd20511386e0e18a494a8e6d93a09ebef69a13427"
+      },
+      "installed/include/c10/cuda/CUDACachingAllocator.h": {
+        "path": "D:\\openbonsai\\.venv\\Lib\\site-packages\\torch\\include\\c10\\cuda\\CUDACachingAllocator.h",
+        "bytes": 19698,
+        "sha256": "ad919fe57b6c1d470e267a24d070c79cc270fc352cd150ccdc0035d57374526b"
+      }
+    },
+    "workspace_sizes": {
+      "status": "skipped_before_cuda_initialization",
+      "cublas_bytes": null,
+      "cublaslt_bytes": null
+    },
+    "consistency_fields": {
+      "identity": {
+        "torch_version": "2.14.1+cu130",
+        "cuda_version": "13.0",
+        "torch_git_version": "5c4886908584029761b579af026dcfb627c84070",
+        "python_version": "3.12.11 (main, Aug 18 2025, 19:17:54) [MSC v.1944 64 bit (AMD64)]",
+        "python_executable": "D:\\openbonsai\\.venv\\Scripts\\python.exe",
+        "python_base_executable": "C:\\Users\\esoku\\AppData\\Roaming\\uv\\python\\cpython-3.12.11-windows-x86_64-none\\python.exe",
+        "python_prefix": "D:\\openbonsai\\.venv",
+        "python_base_prefix": "C:\\Users\\esoku\\AppData\\Roaming\\uv\\python\\cpython-3.12.11-windows-x86_64-none",
+        "torch_package_file": "D:\\openbonsai\\.venv\\Lib\\site-packages\\torch\\__init__.py",
+        "torch_extension_file": "D:\\openbonsai\\.venv\\Lib\\site-packages\\torch\\_C.cp312-win_amd64.pyd",
+        "distribution_version": "2.14.1+cu130",
+        "distribution_root": "D:\\openbonsai\\.venv\\Lib\\site-packages"
+      },
+      "environment": {
+        "CUBLASLT_WORKSPACE_SIZE": null,
+        "CUBLAS_WORKSPACE_CONFIG": null,
+        "CUDA_DEVICE_ORDER": "PCI_BUS_ID",
+        "CUDA_LAUNCH_BLOCKING": null,
+        "CUDA_MODULE_LOADING": null,
+        "CUDA_VISIBLE_DEVICES": "GPU-6d908ed7-d2e6-1c70-8a1e-28754a8cbfae",
+        "CUDNN_CONV_WSCAP_DBG": null,
+        "MKL_NUM_THREADS": null,
+        "NVIDIA_TF32_OVERRIDE": null,
+        "OMP_NUM_THREADS": null,
+        "PYTHONDONTWRITEBYTECODE": "1",
+        "PYTORCH_ALLOC_CONF": null,
+        "PYTORCH_CUDA_ALLOC_CONF": null,
+        "PYTORCH_NO_CUDA_MEMORY_CACHING": null,
+        "TORCH_ALLOW_TF32_CUBLAS_OVERRIDE": null,
+        "TORCH_BLAS_PREFER_CUBLASLT": null,
+        "TORCH_CUBLASLT_UNIFIED_WORKSPACE": null,
+        "TORCH_CUDNN_V8_API_DISABLED": null,
+        "TORCH_CUDNN_V8_API_LRU_CACHE_LIMIT": null
+      },
+      "settings": {
+        "float32_matmul_precision": "highest",
+        "matmul_allow_tf32": false,
+        "matmul_fp32_precision": "none",
+        "allow_fp16_reduced_precision_reduction": true,
+        "allow_fp16_reduced_precision_reduction_split_k": true,
+        "allow_bf16_reduced_precision_reduction": true,
+        "allow_bf16_reduced_precision_reduction_split_k": true,
+        "allow_fp16_accumulation": false,
+        "preferred_blas_library": "_BlasBackend.Cublas",
+        "deterministic_algorithms": false,
+        "deterministic_warn_only": false,
+        "cudnn_allow_tf32": true,
+        "cudnn_deterministic": false,
+        "cudnn_benchmark": false,
+        "cudnn_enabled": true
+      },
+      "allocator_backend": "native",
+      "clear_workspace_callable": true,
+      "source_bindings": {
+        "pinned_CublasHandlePool": {
+          "path": "D:\\openbonsai\\runs\\2026-10-27-5090-head-rotation-preflight-v1\\analysis\\source-evidence\\CublasHandlePool.cpp",
+          "bytes": 18293,
+          "sha256": "2dfaea7f42cb654bf4db6bddedbfd5f2661d92c6d96f2c90652f3d9c162baf2c"
+        },
+        "installed/version.py": {
+          "path": "D:\\openbonsai\\.venv\\Lib\\site-packages\\torch\\version.py",
+          "bytes": 327,
+          "sha256": "84e179afbd773ecf41d671a2fa0dd643758f8830f247d563affe419b52ae7e06"
+        },
+        "installed/cuda/__init__.py": {
+          "path": "D:\\openbonsai\\.venv\\Lib\\site-packages\\torch\\cuda\\__init__.py",
+          "bytes": 77218,
+          "sha256": "1959b5ddd56f95321e0a4b6ad5e2c39f2cbffa7a24d4ca0cf896daf707113f06"
+        },
+        "installed/cuda/memory.py": {
+          "path": "D:\\openbonsai\\.venv\\Lib\\site-packages\\torch\\cuda\\memory.py",
+          "bytes": 67214,
+          "sha256": "803e9d7a55a767cb5d4d12d6fab2ffcf5e9f08ce2e93b698115d6b929bf8fb17"
+        },
+        "installed/backends/cuda/__init__.py": {
+          "path": "D:\\openbonsai\\.venv\\Lib\\site-packages\\torch\\backends\\cuda\\__init__.py",
+          "bytes": 27062,
+          "sha256": "e3d54b9ddfdfab8c4d49246fd20511386e0e18a494a8e6d93a09ebef69a13427"
+        },
+        "installed/include/c10/cuda/CUDACachingAllocator.h": {
+          "path": "D:\\openbonsai\\.venv\\Lib\\site-packages\\torch\\include\\c10\\cuda\\CUDACachingAllocator.h",
+          "bytes": 19698,
+          "sha256": "ad919fe57b6c1d470e267a24d070c79cc270fc352cd150ccdc0035d57374526b"
+        }
+      }
+    },
+    "source_policy": {
+      "workspace_sizes_before_init": "Not called: pinned CublasHandlePool.cpp lines165-184 and256-263 query current-device properties; cuBLASLt unified getter lines281-303 can follow the same path.",
+      "workspace_sizes_after_init": "Read-only getter paths parse/cache configured size; no handle getter, allocator allocation, clear or setter. Not a measurement of retained workspace ownership/count.",
+      "allocator_backend": "Installed cuda/memory.py get_allocator_backend calls _cuda_getAllocatorBackend; pinned Module.cpp lines447-450 only return CUDACachingAllocator::name(). Installed header lines534-536 dispatch to allocator name.",
+      "pinned_module_cpp_url": "https://raw.githubusercontent.com/pytorch/pytorch/5c4886908584029761b579af026dcfb627c84070/torch/csrc/cuda/Module.cpp",
+      "pinned_cublas_cpp_url": "https://raw.githubusercontent.com/pytorch/pytorch/5c4886908584029761b579af026dcfb627c84070/aten/src/ATen/cuda/CublasHandlePool.cpp",
+      "backend_settings": "Read-only global-context getters in installed backends/cuda/__init__.py and torch getters; no setter arguments.",
+      "clear_call_count": 0,
+      "current_blas_handle_getter_call_count": 0
+    }
+  },
+  "device": {
+    "name": "NVIDIA GeForce RTX 5090",
+    "capability": [
+      12,
+      0
+    ],
+    "uuid": "6d908ed7-d2e6-1c70-8a1e-28754a8cbfae",
+    "total_memory": 34190458880
+  },
+  "maximum_peak_allocated_bytes": 257950208,
+  "maximum_peak_reserved_bytes": 276824064,
+  "minimum_conservative_free_bytes": 32081182720,
+  "runtime_initialized": {
+    "schema": "workspace-runtime-inspection.v1",
+    "status": "passed",
+    "mismatches": [],
+    "expected": {
+      "torch_version": "2.14.1+cu130",
+      "cuda_version": "13.0",
+      "torch_git_version": "5c4886908584029761b579af026dcfb627c84070"
+    },
+    "torch_imported_before_inspection": true,
+    "cuda_initialized_before": true,
+    "cuda_initialized_after": true,
+    "initialization_unchanged": true,
+    "environment_unchanged": true,
+    "identity": {
+      "torch_version": "2.14.1+cu130",
+      "cuda_version": "13.0",
+      "torch_git_version": "5c4886908584029761b579af026dcfb627c84070",
+      "python_version": "3.12.11 (main, Aug 18 2025, 19:17:54) [MSC v.1944 64 bit (AMD64)]",
+      "python_executable": "D:\\openbonsai\\.venv\\Scripts\\python.exe",
+      "python_base_executable": "C:\\Users\\esoku\\AppData\\Roaming\\uv\\python\\cpython-3.12.11-windows-x86_64-none\\python.exe",
+      "python_prefix": "D:\\openbonsai\\.venv",
+      "python_base_prefix": "C:\\Users\\esoku\\AppData\\Roaming\\uv\\python\\cpython-3.12.11-windows-x86_64-none",
+      "torch_package_file": "D:\\openbonsai\\.venv\\Lib\\site-packages\\torch\\__init__.py",
+      "torch_extension_file": "D:\\openbonsai\\.venv\\Lib\\site-packages\\torch\\_C.cp312-win_amd64.pyd",
+      "distribution_version": "2.14.1+cu130",
+      "distribution_root": "D:\\openbonsai\\.venv\\Lib\\site-packages"
+    },
+    "environment": {
+      "CUBLASLT_WORKSPACE_SIZE": null,
+      "CUBLAS_WORKSPACE_CONFIG": null,
+      "CUDA_DEVICE_ORDER": "PCI_BUS_ID",
+      "CUDA_LAUNCH_BLOCKING": null,
+      "CUDA_MODULE_LOADING": null,
+      "CUDA_VISIBLE_DEVICES": "GPU-6d908ed7-d2e6-1c70-8a1e-28754a8cbfae",
+      "CUDNN_CONV_WSCAP_DBG": null,
+      "MKL_NUM_THREADS": null,
+      "NVIDIA_TF32_OVERRIDE": null,
+      "OMP_NUM_THREADS": null,
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "PYTORCH_ALLOC_CONF": null,
+      "PYTORCH_CUDA_ALLOC_CONF": null,
+      "PYTORCH_NO_CUDA_MEMORY_CACHING": null,
+      "TORCH_ALLOW_TF32_CUBLAS_OVERRIDE": null,
+      "TORCH_BLAS_PREFER_CUBLASLT": null,
+      "TORCH_CUBLASLT_UNIFIED_WORKSPACE": null,
+      "TORCH_CUDNN_V8_API_DISABLED": null,
+      "TORCH_CUDNN_V8_API_LRU_CACHE_LIMIT": null
+    },
+    "settings": {
+      "float32_matmul_precision": "highest",
+      "matmul_allow_tf32": false,
+      "matmul_fp32_precision": "none",
+      "allow_fp16_reduced_precision_reduction": true,
+      "allow_fp16_reduced_precision_reduction_split_k": true,
+      "allow_bf16_reduced_precision_reduction": true,
+      "allow_bf16_reduced_precision_reduction_split_k": true,
+      "allow_fp16_accumulation": false,
+      "preferred_blas_library": "_BlasBackend.Cublas",
+      "deterministic_algorithms": false,
+      "deterministic_warn_only": false,
+      "cudnn_allow_tf32": true,
+      "cudnn_deterministic": false,
+      "cudnn_benchmark": false,
+      "cudnn_enabled": true
+    },
+    "allocator_backend": "native",
+    "clear_workspace_callable": true,
+    "source_bindings": {
+      "pinned_CublasHandlePool": {
+        "path": "D:\\openbonsai\\runs\\2026-10-27-5090-head-rotation-preflight-v1\\analysis\\source-evidence\\CublasHandlePool.cpp",
+        "bytes": 18293,
+        "sha256": "2dfaea7f42cb654bf4db6bddedbfd5f2661d92c6d96f2c90652f3d9c162baf2c"
+      },
+      "installed/version.py": {
+        "path": "D:\\openbonsai\\.venv\\Lib\\site-packages\\torch\\version.py",
+        "bytes": 327,
+        "sha256": "84e179afbd773ecf41d671a2fa0dd643758f8830f247d563affe419b52ae7e06"
+      },
+      "installed/cuda/__init__.py": {
+        "path": "D:\\openbonsai\\.venv\\Lib\\site-packages\\torch\\cuda\\__init__.py",
+        "bytes": 77218,
+        "sha256": "1959b5ddd56f95321e0a4b6ad5e2c39f2cbffa7a24d4ca0cf896daf707113f06"
+      },
+      "installed/cuda/memory.py": {
+        "path": "D:\\openbonsai\\.venv\\Lib\\site-packages\\torch\\cuda\\memory.py",
+        "bytes": 67214,
+        "sha256": "803e9d7a55a767cb5d4d12d6fab2ffcf5e9f08ce2e93b698115d6b929bf8fb17"
+      },
+      "installed/backends/cuda/__init__.py": {
+        "path": "D:\\openbonsai\\.venv\\Lib\\site-packages\\torch\\backends\\cuda\\__init__.py",
+        "bytes": 27062,
+        "sha256": "e3d54b9ddfdfab8c4d49246fd20511386e0e18a494a8e6d93a09ebef69a13427"
+      },
+      "installed/include/c10/cuda/CUDACachingAllocator.h": {
+        "path": "D:\\openbonsai\\.venv\\Lib\\site-packages\\torch\\include\\c10\\cuda\\CUDACachingAllocator.h",
+        "bytes": 19698,
+        "sha256": "ad919fe57b6c1d470e267a24d070c79cc270fc352cd150ccdc0035d57374526b"
+      }
+    },
+    "workspace_sizes": {
+      "status": "queried_after_existing_cuda_initialization",
+      "cublas_bytes": 33554432,
+      "cublaslt_bytes": 1048576
+    },
+    "consistency_fields": {
+      "identity": {
+        "torch_version": "2.14.1+cu130",
+        "cuda_version": "13.0",
+        "torch_git_version": "5c4886908584029761b579af026dcfb627c84070",
+        "python_version": "3.12.11 (main, Aug 18 2025, 19:17:54) [MSC v.1944 64 bit (AMD64)]",
+        "python_executable": "D:\\openbonsai\\.venv\\Scripts\\python.exe",
+        "python_base_executable": "C:\\Users\\esoku\\AppData\\Roaming\\uv\\python\\cpython-3.12.11-windows-x86_64-none\\python.exe",
+        "python_prefix": "D:\\openbonsai\\.venv",
+        "python_base_prefix": "C:\\Users\\esoku\\AppData\\Roaming\\uv\\python\\cpython-3.12.11-windows-x86_64-none",
+        "torch_package_file": "D:\\openbonsai\\.venv\\Lib\\site-packages\\torch\\__init__.py",
+        "torch_extension_file": "D:\\openbonsai\\.venv\\Lib\\site-packages\\torch\\_C.cp312-win_amd64.pyd",
+        "distribution_version": "2.14.1+cu130",
+        "distribution_root": "D:\\openbonsai\\.venv\\Lib\\site-packages"
+      },
+      "environment": {
+        "CUBLASLT_WORKSPACE_SIZE": null,
+        "CUBLAS_WORKSPACE_CONFIG": null,
+        "CUDA_DEVICE_ORDER": "PCI_BUS_ID",
+        "CUDA_LAUNCH_BLOCKING": null,
+        "CUDA_MODULE_LOADING": null,
+        "CUDA_VISIBLE_DEVICES": "GPU-6d908ed7-d2e6-1c70-8a1e-28754a8cbfae",
+        "CUDNN_CONV_WSCAP_DBG": null,
+        "MKL_NUM_THREADS": null,
+        "NVIDIA_TF32_OVERRIDE": null,
+        "OMP_NUM_THREADS": null,
+        "PYTHONDONTWRITEBYTECODE": "1",
+        "PYTORCH_ALLOC_CONF": null,
+        "PYTORCH_CUDA_ALLOC_CONF": null,
+        "PYTORCH_NO_CUDA_MEMORY_CACHING": null,
+        "TORCH_ALLOW_TF32_CUBLAS_OVERRIDE": null,
+        "TORCH_BLAS_PREFER_CUBLASLT": null,
+        "TORCH_CUBLASLT_UNIFIED_WORKSPACE": null,
+        "TORCH_CUDNN_V8_API_DISABLED": null,
+        "TORCH_CUDNN_V8_API_LRU_CACHE_LIMIT": null
+      },
+      "settings": {
+        "float32_matmul_precision": "highest",
+        "matmul_allow_tf32": false,
+        "matmul_fp32_precision": "none",
+        "allow_fp16_reduced_precision_reduction": true,
+        "allow_fp16_reduced_precision_reduction_split_k": true,
+        "allow_bf16_reduced_precision_reduction": true,
+        "allow_bf16_reduced_precision_reduction_split_k": true,
+        "allow_fp16_accumulation": false,
+        "preferred_blas_library": "_BlasBackend.Cublas",
+        "deterministic_algorithms": false,
+        "deterministic_warn_only": false,
+        "cudnn_allow_tf32": true,
+        "cudnn_deterministic": false,
+        "cudnn_benchmark": false,
+        "cudnn_enabled": true
+      },
+      "allocator_backend": "native",
+      "clear_workspace_callable": true,
+      "source_bindings": {
+        "pinned_CublasHandlePool": {
+          "path": "D:\\openbonsai\\runs\\2026-10-27-5090-head-rotation-preflight-v1\\analysis\\source-evidence\\CublasHandlePool.cpp",
+          "bytes": 18293,
+          "sha256": "2dfaea7f42cb654bf4db6bddedbfd5f2661d92c6d96f2c90652f3d9c162baf2c"
+        },
+        "installed/version.py": {
+          "path": "D:\\openbonsai\\.venv\\Lib\\site-packages\\torch\\version.py",
+          "bytes": 327,
+          "sha256": "84e179afbd773ecf41d671a2fa0dd643758f8830f247d563affe419b52ae7e06"
+        },
+        "installed/cuda/__init__.py": {
+          "path": "D:\\openbonsai\\.venv\\Lib\\site-packages\\torch\\cuda\\__init__.py",
+          "bytes": 77218,
+          "sha256": "1959b5ddd56f95321e0a4b6ad5e2c39f2cbffa7a24d4ca0cf896daf707113f06"
+        },
+        "installed/cuda/memory.py": {
+          "path": "D:\\openbonsai\\.venv\\Lib\\site-packages\\torch\\cuda\\memory.py",
+          "bytes": 67214,
+          "sha256": "803e9d7a55a767cb5d4d12d6fab2ffcf5e9f08ce2e93b698115d6b929bf8fb17"
+        },
+        "installed/backends/cuda/__init__.py": {
+          "path": "D:\\openbonsai\\.venv\\Lib\\site-packages\\torch\\backends\\cuda\\__init__.py",
+          "bytes": 27062,
+          "sha256": "e3d54b9ddfdfab8c4d49246fd20511386e0e18a494a8e6d93a09ebef69a13427"
+        },
+        "installed/include/c10/cuda/CUDACachingAllocator.h": {
+          "path": "D:\\openbonsai\\.venv\\Lib\\site-packages\\torch\\include\\c10\\cuda\\CUDACachingAllocator.h",
+          "bytes": 19698,
+          "sha256": "ad919fe57b6c1d470e267a24d070c79cc270fc352cd150ccdc0035d57374526b"
+        }
+      }
+    },
+    "source_policy": {
+      "workspace_sizes_before_init": "Not called: pinned CublasHandlePool.cpp lines165-184 and256-263 query current-device properties; cuBLASLt unified getter lines281-303 can follow the same path.",
+      "workspace_sizes_after_init": "Read-only getter paths parse/cache configured size; no handle getter, allocator allocation, clear or setter. Not a measurement of retained workspace ownership/count.",
+      "allocator_backend": "Installed cuda/memory.py get_allocator_backend calls _cuda_getAllocatorBackend; pinned Module.cpp lines447-450 only return CUDACachingAllocator::name(). Installed header lines534-536 dispatch to allocator name.",
+      "pinned_module_cpp_url": "https://raw.githubusercontent.com/pytorch/pytorch/5c4886908584029761b579af026dcfb627c84070/torch/csrc/cuda/Module.cpp",
+      "pinned_cublas_cpp_url": "https://raw.githubusercontent.com/pytorch/pytorch/5c4886908584029761b579af026dcfb627c84070/aten/src/ATen/cuda/CublasHandlePool.cpp",
+      "backend_settings": "Read-only global-context getters in installed backends/cuda/__init__.py and torch getters; no setter arguments.",
+      "clear_call_count": 0,
+      "current_blas_handle_getter_call_count": 0
+    }
+  },
+  "synthetic_cpu_metadata": {
+    "input": {
+      "shape": [
+        256,
+        4096
+      ],
+      "dtype": "torch.bfloat16",
+      "storage_bytes": 2097152,
+      "identity": 2182621233088,
+      "requires_grad": true,
+      "is_leaf": true
+    },
+    "source_weight": {
+      "shape": [
+        4096,
+        4096
+      ],
+      "dtype": "torch.bfloat16",
+      "storage_bytes": 33554432,
+      "identity": 2183737823856,
+      "requires_grad": true,
+      "is_leaf": true
+    },
+    "output": {
+      "shape": [
+        256,
+        4096
+      ],
+      "dtype": "torch.bfloat16",
+      "storage_bytes": 2097152,
+      "identity": 2183770383664,
+      "requires_grad": true,
+      "is_leaf": false
+    },
+    "loss": {
+      "shape": [],
+      "dtype": "torch.float32",
+      "storage_bytes": 4,
+      "identity": 2183770380464,
+      "requires_grad": true,
+      "is_leaf": false
+    },
+    "input_gradient": {
+      "shape": [
+        256,
+        4096
+      ],
+      "dtype": "torch.bfloat16",
+      "storage_bytes": 2097152,
+      "identity": 2183770382064,
+      "requires_grad": false,
+      "is_leaf": true
+    },
+    "source_weight_gradient": {
+      "shape": [
+        4096,
+        4096
+      ],
+      "dtype": "torch.bfloat16",
+      "storage_bytes": 33554432,
+      "identity": 2183770387744,
+      "requires_grad": false,
+      "is_leaf": true
+    },
+    "checks": {
+      "loss": 1.0,
+      "output_first": 1.0,
+      "input_grad_first": 1.52587890625e-05,
+      "weight_grad_first": 1.52587890625e-05,
+      "input_gradient_finite": true,
+      "weight_gradient_finite": true
+    }
+  },
+  "second_clear_current_allocation_delta_bytes": 67108864,
+  "final_all_registered_references_dead": true,
+  "final_exact_empty_baseline": true,
+  "runtime_after": {
+    "schema": "workspace-runtime-inspection.v1",
+    "status": "passed",
+    "mismatches": [],
+    "expected": {
+      "torch_version": "2.14.1+cu130",
+      "cuda_version": "13.0",
+      "torch_git_version": "5c4886908584029761b579af026dcfb627c84070"
+    },
+    "torch_imported_before_inspection": true,
+    "cuda_initialized_before": true,
+    "cuda_initialized_after": true,
+    "initialization_unchanged": true,
+    "environment_unchanged": true,
+    "identity": {
+      "torch_version": "2.14.1+cu130",
+      "cuda_version": "13.0",
+      "torch_git_version": "5c4886908584029761b579af026dcfb627c84070",
+      "python_version": "3.12.11 (main, Aug 18 2025, 19:17:54) [MSC v.1944 64 bit (AMD64)]",
+      "python_executable": "D:\\openbonsai\\.venv\\Scripts\\python.exe",
+      "python_base_executable": "C:\\Users\\esoku\\AppData\\Roaming\\uv\\python\\cpython-3.12.11-windows-x86_64-none\\python.exe",
+      "python_prefix": "D:\\openbonsai\\.venv",
+      "python_base_prefix": "C:\\Users\\esoku\\AppData\\Roaming\\uv\\python\\cpython-3.12.11-windows-x86_64-none",
+      "torch_package_file": "D:\\openbonsai\\.venv\\Lib\\site-packages\\torch\\__init__.py",
+      "torch_extension_file": "D:\\openbonsai\\.venv\\Lib\\site-packages\\torch\\_C.cp312-win_amd64.pyd",
+      "distribution_version": "2.14.1+cu130",
+      "distribution_root": "D:\\openbonsai\\.venv\\Lib\\site-packages"
+    },
+    "environment": {
+      "CUBLASLT_WORKSPACE_SIZE": null,
+      "CUBLAS_WORKSPACE_CONFIG": null,
+      "CUDA_DEVICE_ORDER": "PCI_BUS_ID",
+      "CUDA_LAUNCH_BLOCKING": null,
+      "CUDA_MODULE_LOADING": null,
+      "CUDA_VISIBLE_DEVICES": "GPU-6d908ed7-d2e6-1c70-8a1e-28754a8cbfae",
+      "CUDNN_CONV_WSCAP_DBG": null,
+      "MKL_NUM_THREADS": null,
+      "NVIDIA_TF32_OVERRIDE": null,
+      "OMP_NUM_THREADS": null,
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "PYTORCH_ALLOC_CONF": null,
+      "PYTORCH_CUDA_ALLOC_CONF": null,
+      "PYTORCH_NO_CUDA_MEMORY_CACHING": null,
+      "TORCH_ALLOW_TF32_CUBLAS_OVERRIDE": null,
+      "TORCH_BLAS_PREFER_CUBLASLT": null,
+      "TORCH_CUBLASLT_UNIFIED_WORKSPACE": null,
+      "TORCH_CUDNN_V8_API_DISABLED": null,
+      "TORCH_CUDNN_V8_API_LRU_CACHE_LIMIT": null
+    },
+    "settings": {
+      "float32_matmul_precision": "highest",
+      "matmul_allow_tf32": false,
+      "matmul_fp32_precision": "none",
+      "allow_fp16_reduced_precision_reduction": true,
+      "allow_fp16_reduced_precision_reduction_split_k": true,
+      "allow_bf16_reduced_precision_reduction": true,
+      "allow_bf16_reduced_precision_reduction_split_k": true,
+      "allow_fp16_accumulation": false,
+      "preferred_blas_library": "_BlasBackend.Cublas",
+      "deterministic_algorithms": false,
+      "deterministic_warn_only": false,
+      "cudnn_allow_tf32": true,
+      "cudnn_deterministic": false,
+      "cudnn_benchmark": false,
+      "cudnn_enabled": true
+    },
+    "allocator_backend": "native",
+    "clear_workspace_callable": true,
+    "source_bindings": {
+      "pinned_CublasHandlePool": {
+        "path": "D:\\openbonsai\\runs\\2026-10-27-5090-head-rotation-preflight-v1\\analysis\\source-evidence\\CublasHandlePool.cpp",
+        "bytes": 18293,
+        "sha256": "2dfaea7f42cb654bf4db6bddedbfd5f2661d92c6d96f2c90652f3d9c162baf2c"
+      },
+      "installed/version.py": {
+        "path": "D:\\openbonsai\\.venv\\Lib\\site-packages\\torch\\version.py",
+        "bytes": 327,
+        "sha256": "84e179afbd773ecf41d671a2fa0dd643758f8830f247d563affe419b52ae7e06"
+      },
+      "installed/cuda/__init__.py": {
+        "path": "D:\\openbonsai\\.venv\\Lib\\site-packages\\torch\\cuda\\__init__.py",
+        "bytes": 77218,
+        "sha256": "1959b5ddd56f95321e0a4b6ad5e2c39f2cbffa7a24d4ca0cf896daf707113f06"
+      },
+      "installed/cuda/memory.py": {
+        "path": "D:\\openbonsai\\.venv\\Lib\\site-packages\\torch\\cuda\\memory.py",
+        "bytes": 67214,
+        "sha256": "803e9d7a55a767cb5d4d12d6fab2ffcf5e9f08ce2e93b698115d6b929bf8fb17"
+      },
+      "installed/backends/cuda/__init__.py": {
+        "path": "D:\\openbonsai\\.venv\\Lib\\site-packages\\torch\\backends\\cuda\\__init__.py",
+        "bytes": 27062,
+        "sha256": "e3d54b9ddfdfab8c4d49246fd20511386e0e18a494a8e6d93a09ebef69a13427"
+      },
+      "installed/include/c10/cuda/CUDACachingAllocator.h": {
+        "path": "D:\\openbonsai\\.venv\\Lib\\site-packages\\torch\\include\\c10\\cuda\\CUDACachingAllocator.h",
+        "bytes": 19698,
+        "sha256": "ad919fe57b6c1d470e267a24d070c79cc270fc352cd150ccdc0035d57374526b"
+      }
+    },
+    "workspace_sizes": {
+      "status": "queried_after_existing_cuda_initialization",
+      "cublas_bytes": 33554432,
+      "cublaslt_bytes": 1048576
+    },
+    "consistency_fields": {
+      "identity": {
+        "torch_version": "2.14.1+cu130",
+        "cuda_version": "13.0",
+        "torch_git_version": "5c4886908584029761b579af026dcfb627c84070",
+        "python_version": "3.12.11 (main, Aug 18 2025, 19:17:54) [MSC v.1944 64 bit (AMD64)]",
+        "python_executable": "D:\\openbonsai\\.venv\\Scripts\\python.exe",
+        "python_base_executable": "C:\\Users\\esoku\\AppData\\Roaming\\uv\\python\\cpython-3.12.11-windows-x86_64-none\\python.exe",
+        "python_prefix": "D:\\openbonsai\\.venv",
+        "python_base_prefix": "C:\\Users\\esoku\\AppData\\Roaming\\uv\\python\\cpython-3.12.11-windows-x86_64-none",
+        "torch_package_file": "D:\\openbonsai\\.venv\\Lib\\site-packages\\torch\\__init__.py",
+        "torch_extension_file": "D:\\openbonsai\\.venv\\Lib\\site-packages\\torch\\_C.cp312-win_amd64.pyd",
+        "distribution_version": "2.14.1+cu130",
+        "distribution_root": "D:\\openbonsai\\.venv\\Lib\\site-packages"
+      },
+      "environment": {
+        "CUBLASLT_WORKSPACE_SIZE": null,
+        "CUBLAS_WORKSPACE_CONFIG": null,
+        "CUDA_DEVICE_ORDER": "PCI_BUS_ID",
+        "CUDA_LAUNCH_BLOCKING": null,
+        "CUDA_MODULE_LOADING": null,
+        "CUDA_VISIBLE_DEVICES": "GPU-6d908ed7-d2e6-1c70-8a1e-28754a8cbfae",
+        "CUDNN_CONV_WSCAP_DBG": null,
+        "MKL_NUM_THREADS": null,
+        "NVIDIA_TF32_OVERRIDE": null,
+        "OMP_NUM_THREADS": null,
+        "PYTHONDONTWRITEBYTECODE": "1",
+        "PYTORCH_ALLOC_CONF": null,
+        "PYTORCH_CUDA_ALLOC_CONF": null,
+        "PYTORCH_NO_CUDA_MEMORY_CACHING": null,
+        "TORCH_ALLOW_TF32_CUBLAS_OVERRIDE": null,
+        "TORCH_BLAS_PREFER_CUBLASLT": null,
+        "TORCH_CUBLASLT_UNIFIED_WORKSPACE": null,
+        "TORCH_CUDNN_V8_API_DISABLED": null,
+        "TORCH_CUDNN_V8_API_LRU_CACHE_LIMIT": null
+      },
+      "settings": {
+        "float32_matmul_precision": "highest",
+        "matmul_allow_tf32": false,
+        "matmul_fp32_precision": "none",
+        "allow_fp16_reduced_precision_reduction": true,
+        "allow_fp16_reduced_precision_reduction_split_k": true,
+        "allow_bf16_reduced_precision_reduction": true,
+        "allow_bf16_reduced_precision_reduction_split_k": true,
+        "allow_fp16_accumulation": false,
+        "preferred_blas_library": "_BlasBackend.Cublas",
+        "deterministic_algorithms": false,
+        "deterministic_warn_only": false,
+        "cudnn_allow_tf32": true,
+        "cudnn_deterministic": false,
+        "cudnn_benchmark": false,
+        "cudnn_enabled": true
+      },
+      "allocator_backend": "native",
+      "clear_workspace_callable": true,
+      "source_bindings": {
+        "pinned_CublasHandlePool": {
+          "path": "D:\\openbonsai\\runs\\2026-10-27-5090-head-rotation-preflight-v1\\analysis\\source-evidence\\CublasHandlePool.cpp",
+          "bytes": 18293,
+          "sha256": "2dfaea7f42cb654bf4db6bddedbfd5f2661d92c6d96f2c90652f3d9c162baf2c"
+        },
+        "installed/version.py": {
+          "path": "D:\\openbonsai\\.venv\\Lib\\site-packages\\torch\\version.py",
+          "bytes": 327,
+          "sha256": "84e179afbd773ecf41d671a2fa0dd643758f8830f247d563affe419b52ae7e06"
+        },
+        "installed/cuda/__init__.py": {
+          "path": "D:\\openbonsai\\.venv\\Lib\\site-packages\\torch\\cuda\\__init__.py",
+          "bytes": 77218,
+          "sha256": "1959b5ddd56f95321e0a4b6ad5e2c39f2cbffa7a24d4ca0cf896daf707113f06"
+        },
+        "installed/cuda/memory.py": {
+          "path": "D:\\openbonsai\\.venv\\Lib\\site-packages\\torch\\cuda\\memory.py",
+          "bytes": 67214,
+          "sha256": "803e9d7a55a767cb5d4d12d6fab2ffcf5e9f08ce2e93b698115d6b929bf8fb17"
+        },
+        "installed/backends/cuda/__init__.py": {
+          "path": "D:\\openbonsai\\.venv\\Lib\\site-packages\\torch\\backends\\cuda\\__init__.py",
+          "bytes": 27062,
+          "sha256": "e3d54b9ddfdfab8c4d49246fd20511386e0e18a494a8e6d93a09ebef69a13427"
+        },
+        "installed/include/c10/cuda/CUDACachingAllocator.h": {
+          "path": "D:\\openbonsai\\.venv\\Lib\\site-packages\\torch\\include\\c10\\cuda\\CUDACachingAllocator.h",
+          "bytes": 19698,
+          "sha256": "ad919fe57b6c1d470e267a24d070c79cc270fc352cd150ccdc0035d57374526b"
+        }
+      }
+    },
+    "source_policy": {
+      "workspace_sizes_before_init": "Not called: pinned CublasHandlePool.cpp lines165-184 and256-263 query current-device properties; cuBLASLt unified getter lines281-303 can follow the same path.",
+      "workspace_sizes_after_init": "Read-only getter paths parse/cache configured size; no handle getter, allocator allocation, clear or setter. Not a measurement of retained workspace ownership/count.",
+      "allocator_backend": "Installed cuda/memory.py get_allocator_backend calls _cuda_getAllocatorBackend; pinned Module.cpp lines447-450 only return CUDACachingAllocator::name(). Installed header lines534-536 dispatch to allocator name.",
+      "pinned_module_cpp_url": "https://raw.githubusercontent.com/pytorch/pytorch/5c4886908584029761b579af026dcfb627c84070/torch/csrc/cuda/Module.cpp",
+      "pinned_cublas_cpp_url": "https://raw.githubusercontent.com/pytorch/pytorch/5c4886908584029761b579af026dcfb627c84070/aten/src/ATen/cuda/CublasHandlePool.cpp",
+      "backend_settings": "Read-only global-context getters in installed backends/cuda/__init__.py and torch getters; no setter arguments.",
+      "clear_call_count": 0,
+      "current_blas_handle_getter_call_count": 0
+    }
+  },
+  "runtime_settings_unchanged": true,
+  "reason": "Retained library workspace supported for this synthetic fixture only",
+  "completed_utc": "2026-10-26T23:45:03.645773+00:00"
+}
