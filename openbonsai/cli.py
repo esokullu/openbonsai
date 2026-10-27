@@ -1,13 +1,16 @@
 """``openbonsai`` command line.
 
     openbonsai run --model Qwen/Qwen3.5-9B --config examples/qwen3_5-9b.yaml --out runs/my-model
-        = traces -> calibrate -> quantize -> endpoints -> distill -> (export, P2) -> eval
+        = traces -> calibrate -> quantize -> endpoints -> distill -> export -> eval
 
     openbonsai <stage> --run runs/my-model [--set section.key=value ...] [--force]
         stages: traces calibrate quantize endpoints distill export eval
 
+    openbonsai export --run runs/my-model [--out X.gguf] [--name NAME] [--verify | --no-verify]
     openbonsai eval --run runs/my-model --from bf16|quantize|endpoints|distill|PATH --suite dev,extended,compare
-    openbonsai inspect PATH            summary of a state file or run directory
+        PATH: state.safetensors, legacy .pt[,.pt], or a PTQ1_0 .gguf (ours or the official
+        Ternary Bonsai; --run defaults to <gguf>.eval and --model gives the config and tokenizer)
+    openbonsai inspect PATH            summary of a state file, GGUF or run directory
 
 A stage whose output exists with the same config hash is skipped; ``--force``
 reruns it from scratch, discarding its resumable work (with ``run``, also every
@@ -43,6 +46,19 @@ def _stage_module(stage: str):
             "distill": distill, "export": export, "eval": evaluate}[stage]
 
 
+def _overrides(args) -> list[tuple[tuple[str, ...], object]]:
+    """Stage options given as flags (persisted in run.yaml like --set, so they enter the stage hash)."""
+    out = []
+    if getattr(args, "stage", None) == "export":
+        if args.out is not None:
+            out.append((("export", "out"), str(Path(args.out))))
+        if args.name is not None:
+            out.append((("export", "name"), args.name))
+        if args.verify is not None:
+            out.append((("export", "verify"), bool(args.verify)))
+    return out
+
+
 def resolve_config(args, run: RunDir) -> dict:
     saved = run.load_config()
     if args.config is not None:
@@ -56,6 +72,11 @@ def resolve_config(args, run: RunDir) -> dict:
             cfg["model"]["path"] = args.model
     else:
         cfg = load_config(None, args.set or (), model=args.model)
+    for path, value in _overrides(args):
+        node = cfg
+        for part in path[:-1]:
+            node = node[part]
+        node[path[-1]] = value
     if not cfg["model"].get("path"):
         raise ConfigError("no model: pass --model or set model.path in the config")
     run.root.mkdir(parents=True, exist_ok=True)
@@ -113,6 +134,8 @@ def execute(ctx, stage: str, *, force=False, **kwargs) -> str:
         free(ctx.device)
     if stage != "eval":
         output = ctx.run.output_path(stage)
+        if output is None and isinstance(result, dict) and result.get("output"):
+            output = Path(result["output"])
         ctx.run.mark_done(stage, config_hash, result=result,
                           output_sha256=file_sha256(output) if output is not None and output.exists() else None)
     return "ran"
@@ -125,11 +148,18 @@ def preflight(ctx) -> None:
             and ctx.adapter().tied:
         raise ConfigError("this model ties its embedding and head; ternary endpoints are not supported yet. "
                           "Set endpoints.head and endpoints.embedding to bf16 (or endpoints.enabled=false)")
+    if stage_enabled(ctx.cfg, "export"):
+        ternary_ends = stage_enabled(ctx.cfg, "endpoints") and e.get("head") == "ternary" \
+            and e.get("embedding") == "ternary"
+        if ctx.adapter().gguf_arch is None:
+            raise ConfigError(f"the {ctx.adapter().name} adapter has no PTQ1_0 GGUF layout; set export.enabled=false")
+        if not ternary_ends:
+            raise ConfigError("the PTQ1_0 GGUF stores the LM head and the token embedding as ternary: enable the "
+                              "endpoints stage with head and embedding ternary, or set export.enabled=false")
 
 
 def cmd_run(args) -> int:
     from .stages.common import StageContext
-    from .stages.export import ExportNotAvailable
     run = RunDir(args.out)
     ctx = StageContext(resolve_config(args, run), run)
     preflight(ctx)
@@ -141,23 +171,25 @@ def cmd_run(args) -> int:
             statuses[stage] = "skipped by --skip"
             continue
         force = True if stage in forced else ("downstream" if any(STAGES.index(f) < i for f in forced) else False)
-        try:
-            statuses[stage] = execute(ctx, stage, force=force)
-        except ExportNotAvailable:
-            ctx.log(stage)("not available until P2; skipped")
-            statuses[stage] = "not available (P2)"
+        statuses[stage] = execute(ctx, stage, force=force)
     print(json.dumps({"run": str(run.root), "stages": statuses}, indent=1))
     return 0
 
 
 def cmd_stage(args) -> int:
     from .stages.common import StageContext
+    from .stages.evaluate import is_gguf
+    if args.run is None:
+        if args.stage == "eval" and is_gguf(args.source):
+            args.run = str(args.source) + ".eval"
+        else:
+            raise ConfigError("--run is required (it may be omitted only for eval --from model.gguf)")
     run = RunDir(args.run)
     ctx = StageContext(resolve_config(args, run), run)
     kwargs = {}
     if args.stage == "eval":
         kwargs = {"source": args.source, "suites": args.suite.split(",") if args.suite else None,
-                  "install_mode": args.install}
+                  "install_mode": args.install, "gguf_small_fp32": args.gguf_small_fp32}
     status = execute(ctx, args.stage, force=args.force, **kwargs)
     print(json.dumps({"run": str(run.root), "stage": args.stage, "status": status}))
     return 0
@@ -166,6 +198,17 @@ def cmd_stage(args) -> int:
 def cmd_inspect(args) -> int:
     from .formats.state import load_state
     path = Path(args.path)
+    if path.suffix.lower() == ".gguf":
+        from .formats.gguf import GGUFReader
+        with GGUFReader(path) as r:
+            types = {}
+            for t in r.tensors:
+                types[t.gtype] = types.get(t.gtype, 0) + 1
+            kv = {k: (v if not isinstance(v, (list, str)) or len(v) <= 64 else f"<{type(v).__name__} of {len(v)}>")
+                  for k, _, v in r.kv}
+            print(json.dumps({"path": str(path), "bytes": r.size, "tensors": len(r.tensors),
+                              "tensor_types": {str(k): v for k, v in sorted(types.items())}, "kv": kv}, indent=1))
+        return 0
     if path.is_dir():
         run = RunDir(path)
         info = {"run": str(path), "stages": {s: run.done_info(s) for s in STAGES if run.done_info(s)}}
@@ -202,17 +245,26 @@ def build_parser() -> argparse.ArgumentParser:
     r.set_defaults(func=cmd_run)
     for stage in STAGES:
         s = sub.add_parser(stage, help=f"run the {stage} stage")
-        s.add_argument("--run", required=True, help="run directory")
+        s.add_argument("--run", required=stage != "eval", default=None, help="run directory")
         _common(s)
         s.add_argument("--force", action="store_true", help="rerun even if up to date")
         if stage == "eval":
             s.add_argument("--from", dest="source", default=None,
-                           help="bf16 | quantize | endpoints | distill | state.safetensors | legacy.pt[,more.pt]")
+                           help="bf16 | quantize | endpoints | distill | state.safetensors | legacy.pt[,more.pt] "
+                                "| model.gguf")
             s.add_argument("--suite", default=None, help="comma-separated: dev, extended, compare")
             s.add_argument("--install", choices=("auto", "dense", "ternary"), default="auto",
-                           help="dense weights or ternary modules (auto: ternary for distill)")
+                           help="dense weights or ternary modules (auto: ternary for distill and GGUF)")
+            s.add_argument("--gguf-small-fp32", action="store_true",
+                           help="GGUF source: keep 1-D F32 tensors (norms, A_log, dt_bias) in FP32 as Prism does")
+        if stage == "export":
+            s.add_argument("--out", default=None, help="output .gguf (default: <run>/export/<name>.gguf)")
+            s.add_argument("--name", default=None, help="general.name (default: OpenBonsai-<model>-PTQ1_0)")
+            s.add_argument("--verify", dest="verify", action="store_true", default=None,
+                           help="verify the written file (the default)")
+            s.add_argument("--no-verify", dest="verify", action="store_false", help="skip verification")
         s.set_defaults(func=cmd_stage, stage=stage)
-    i = sub.add_parser("inspect", help="summarize a state file or run directory")
+    i = sub.add_parser("inspect", help="summarize a state file, GGUF or run directory")
     i.add_argument("path")
     i.set_defaults(func=cmd_inspect)
     return ap
@@ -220,17 +272,13 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv=None) -> int:
     args = build_parser().parse_args(argv)
+    from .formats.gguf import GGUFError
+    from .stages.export import ExportError
     try:
         return args.func(args)
-    except (ConfigError, FileNotFoundError, NotImplementedError, StageNotReady) as error:
+    except (ConfigError, FileNotFoundError, NotImplementedError, StageNotReady, ExportError, GGUFError) as error:
         print(f"openbonsai: error: {error}", file=sys.stderr)
         return 2
-    except RuntimeError as error:
-        from .stages.export import ExportNotAvailable
-        if isinstance(error, ExportNotAvailable):
-            print(f"openbonsai: {error}", file=sys.stderr)
-            return 2
-        raise
 
 
 if __name__ == "__main__":

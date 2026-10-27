@@ -92,8 +92,10 @@ def test_end_to_end_run_on_cpu_then_skip_and_rerun(tiny_dir, tmp_path, monkeypat
     elapsed = time.time() - t0
     assert elapsed < 60, f"tiny end-to-end run took {elapsed:.1f}s"
     for f in ("run.yaml", "signs.safetensors", "traces/traces.jsonl", "calib/tokens.npy", "quantize/state.safetensors",
-              "endpoints/state.safetensors", "distill/scales.safetensors", "eval/distill.compare.json"):
+              "endpoints/state.safetensors", "distill/scales.safetensors", "eval/distill.compare.json",
+              f"export/OpenBonsai-{tiny_dir.name}-PTQ1_0.gguf"):
         assert (out / f).exists(), f
+    assert json.loads((out / "export" / "DONE.json").read_text())["result"]["verified"] is True
     result = json.loads((out / "eval" / "distill.compare.json").read_text())
     assert result["tokens"] == 126 and 0 <= result["top1_agreement"] <= 1
     saved = yaml.safe_load((out / "run.yaml").read_text())
@@ -110,12 +112,13 @@ def test_end_to_end_run_on_cpu_then_skip_and_rerun(tiny_dir, tmp_path, monkeypat
     assert (out / "quantize" / "state.safetensors").read_bytes() != before
     assert (out / "calib" / "DONE.json").exists()
     assert "skipped" in (out / "logs" / "calibrate.log").read_text().splitlines()[-1]
-    # Per-stage commands, inspect and the P2 export placeholder.
+    # Per-stage commands and inspect.
     assert cli.main(["eval", "--run", str(out), "--from", "quantize", "--suite", "compare"]) == 0
     assert (out / "eval" / "quantize.compare.json").exists()
     assert cli.main(["inspect", str(out / "quantize" / "state.safetensors")]) == 0
     assert '"block": 128' in capsys.readouterr().out
-    assert cli.main(["export", "--run", str(out)]) == 2
+    assert cli.main(["export", "--run", str(out)]) == 2      # distill is stale after the quantize rerun
+    assert "distill output is stale" in capsys.readouterr().err
 
 
 # -- staleness, --force, disabled stages, sign specs and input files ----------

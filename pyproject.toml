@@ -32,3 +32,4 @@ include = ["openbonsai*"]
 # research/ keeps legacy tests for reading only; CI never collects or imports it.
 testpaths = ["tests"]
 norecursedirs = ["research", "runs", ".*", "build", "dist", "*.egg-info"]
+markers = ["slow: needs local 9B data and minutes of CPU; runs only with OPENBONSAI_SLOW=1"]
