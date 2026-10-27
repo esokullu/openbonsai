@@ -8,8 +8,10 @@ Hadamard block) is derived by the core from the planned linears
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import ClassVar
 
+import numpy as np
 import torch
 from torch import nn
 
@@ -141,3 +143,110 @@ class ModelAdapter:
         for i in range(self.n_layers):
             widths.update(m.in_features for m in self.planned_linears(model, i).values())
         return widths
+
+    # -- checkpoint names --------------------------------------------------
+    def checkpoint_name(self, key: str) -> str:
+        """Checkpoint tensor name of a parameter named relative to the text model
+        (``layers.0.input_layernorm.weight``, ``norm.weight``) or ``lm_head.weight``."""
+        raise NotImplementedError
+
+    # -- Prism PTQ1_0 GGUF -------------------------------------------------
+    # An exportable adapter sets ``gguf_arch`` and describes its file layout;
+    # writing, reading and verifying are architecture-agnostic
+    # (openbonsai.stages.export, openbonsai.formats.gguf).
+    def gguf_tensors(self) -> list:
+        """The file's tensors in file order (``formats.gguf.TensorMap``), derived from the config."""
+        raise NotImplementedError(f"{self.name}: no PTQ1_0 GGUF layout")
+
+    def gguf_kvs(self, model_dir, *, name: str, signs: dict, block: int, tensors: list,
+                 size_label: str | None = None) -> tuple[list[tuple[str, str, object]], list[str]]:
+        """(every KV in file order as (key, type, value), notes); ``signs``: int8 vector per width;
+        ``model_dir`` holds the tokenizer and config files."""
+        raise NotImplementedError(f"{self.name}: no PTQ1_0 GGUF layout")
+
+    def gguf_reference(self) -> dict | None:
+        """A published file's header dump when this config is that model's (the export then asserts
+        an identical tensor layout and KV key list; verification only)."""
+        return None
+
+    def gguf_check(self, kvd: dict) -> None:
+        """Refuse a GGUF whose metadata this adapter cannot map back (reading)."""
+
+    def empty_model(self, *, dtype=torch.bfloat16, attn: str = "sdpa"):
+        """The native text model with parameters on the meta device (buffers real), for ``from_gguf``."""
+        raise NotImplementedError(f"{self.name}: cannot build a model from a GGUF")
+
+    def read_gguf(self, path, *, log=None):
+        """(TernaryState, {text-model tensor name: FP32 tensor}, kv dict) in this adapter's conventions.
+
+        The reusable loader: rows and heads are permuted back, F32 transforms
+        undone, signs and block taken from ``prism.hadamard.*``. The state can
+        seed distillation (start from a published file) or be installed into
+        a model (``from_gguf``)."""
+        from ..formats.gguf import GGUFError, GGUFReader, f32_inverse, prism_signs
+        from ..formats.state import TernaryState, TernaryTensor
+        plan = self.gguf_tensors()
+        with GGUFReader(path) as r:
+            arch = r.value("general.architecture")
+            if arch != self.gguf_arch:
+                raise GGUFError(f"{path}: architecture {arch!r}, this adapter reads {self.gguf_arch!r}")
+            self.gguf_check(r.kvd)
+            got = {t.name: (t.gtype, tuple(t.ne)) for t in r.tensors}
+            want = {t.name: (t.gtype, tuple(t.ne)) for t in plan}
+            if got != want:
+                diff = sorted(set(got.items()) ^ set(want.items()))[:4]
+                raise GGUFError(f"{path}: tensors do not match this model's config "
+                                f"({len(got)} in the file, {len(want)} expected; e.g. {diff})")
+            block = int(r.value("prism.hadamard.block_size"))
+            signs = {w: torch.from_numpy(s.copy()) for w, s in prism_signs(r).items()}
+            tensors, floats = {}, {}
+            for t in plan:
+                inv = t.inverse_perm()
+                if t.ternary:
+                    codes, scales = r.ptq1_0(t.name)
+                    if inv is not None:
+                        codes, scales = codes[inv], scales[inv]
+                    tensors[t.source] = TernaryTensor(torch.from_numpy(np.ascontiguousarray(codes)),
+                                                      torch.from_numpy(np.ascontiguousarray(scales)))
+                else:
+                    a = r.array(t.name)
+                    if inv is not None:
+                        a = a[inv]
+                    floats[t.source] = f32_inverse(t.op, torch.from_numpy(np.ascontiguousarray(a)), t.shape)
+            kv = {k: v for k, (_, v) in r.kvd.items() if not k.startswith("tokenizer.ggml.")}
+        used = {t.shape[1] for t in tensors.values()}
+        missing = sorted(used - set(signs))
+        if missing:
+            raise GGUFError(f"{path}: no prism.hadamard sign vector for widths {missing}")
+        state = TernaryState(tensors, {w: s for w, s in signs.items() if w in used}, block, 128,
+                             {"source": "gguf", "path": str(path), "general.name": kv.get("general.name")})
+        if log is not None:
+            log(f"read {path}: {len(tensors)} PTQ1_0 tensors, {len(floats)} F32 tensors, block {block}")
+        return state.validate(), floats, kv
+
+    def from_gguf(self, path, *, model_dir=None, dtype=torch.bfloat16, device="cpu", attn: str = "sdpa",
+                  small_fp32: bool = False, log=None):
+        """A native model whose every weight comes from a Prism PTQ1_0 GGUF.
+
+        Ternary tensors become TernaryLinear/TernaryEmbedding (codes stay in
+        the rotated basis, exactly as ``eval --from distill`` installs them);
+        F32 tensors go back to the checkpoint conventions in ``dtype``, or in
+        FP32 for 1-D tensors (norms, A_log, dt_bias) with ``small_fp32``, as
+        Prism's runtime keeps them. ``model_dir`` supplies generation_config.json."""
+        from ..stages.common import apply_small, install_ternary
+        device = torch.device(device)
+        state, floats, _ = self.read_gguf(path, log=log)
+        model = self.empty_model(dtype=dtype, attn=attn)
+        install_ternary(self, model, state.records(), device)
+        apply_small(self, model, floats, device=device, dtype=dtype, keep_fp32_vectors=small_fp32)
+        meta = [n for n, t in list(model.named_parameters()) + list(model.named_buffers()) if t.is_meta]
+        if meta:
+            raise ValueError(f"{path}: the GGUF leaves {len(meta)} tensors unset, e.g. {meta[:4]}")
+        model.to(device)
+        if model_dir is not None and (Path(model_dir) / "generation_config.json").exists():
+            from transformers import GenerationConfig
+            model.generation_config = GenerationConfig.from_pretrained(model_dir)
+        model.eval()
+        model.requires_grad_(False)
+        self.text_model(model).config.use_cache = False
+        return model

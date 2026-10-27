@@ -14,7 +14,8 @@ from ..config import (canonical_hash, distill_uses_endpoints, input_paths, stage
 from ..core.geometry import Geometry, check_signs, derive_geometry, make_signs
 from ..core.ternary import TernaryEmbedding, TernaryLinear, dense_weight, shared_hadamard
 from ..digest import DigestCache
-from ..formats.state import TernaryState, TernaryTensor, load_signs, load_state, read_scales, read_signs, save_signs
+from ..formats.state import (TernaryState, TernaryTensor, load_signs, load_state, read_scales, read_signs,
+                             read_small, save_signs)
 from ..rundir import RunDir, StageNotReady
 
 _DTYPES = {"bfloat16": torch.bfloat16, "float16": torch.float16, "float32": torch.float32}
@@ -115,6 +116,18 @@ class StageContext:
                                    local_files_only=bool(m.get("local_files_only")),
                                    keep_vision=bool(m.get("keep_vision")))
 
+    def model_dir(self) -> Path:
+        """Local directory of the model's files (config, tokenizer, safetensors); resolves a hub id
+        through the Hugging Face cache (downloads only when local_files_only is off)."""
+        path = Path(self.model_path())
+        if path.is_dir():
+            return path
+        from huggingface_hub import snapshot_download
+        m = self.cfg["model"]
+        return Path(snapshot_download(self.model_path(), revision=m.get("revision"),
+                                      local_files_only=bool(m.get("local_files_only")),
+                                      allow_patterns=["*.json", "*.safetensors", "*.jinja", "*.txt"]))
+
     def load_tokenizer(self):
         m = self.cfg["model"]
         return self.adapter().load_tokenizer(self.model_path(), revision=m.get("revision"),
@@ -196,6 +209,11 @@ class StageContext:
             state = state.with_scales(scales)
         return state
 
+    def distill_small(self) -> dict:
+        """Trained high-precision tensors of the distill stage ({} unless distill.train.small), as the
+        values the distilled model computed with (FP32 tensors). Call after ``state_through("distill")``."""
+        return read_small(self.run.stage_dir("distill", create=False) / "scales.safetensors")
+
 
 def resolve_module(adapter: ModelAdapter, model, key: str):
     """(parent, attribute, module) for a relative key."""
@@ -250,6 +268,32 @@ def install_ternary(adapter: ModelAdapter, model, records, device) -> list:
     if device.type == "cuda":
         torch.cuda.empty_cache()
     return installed
+
+
+@torch.no_grad()
+def apply_small(adapter: ModelAdapter, model, values: dict, *, device=None, dtype=None,
+                keep_fp32_vectors: bool = False) -> int:
+    """Set high-precision tensors named relative to the text model (``norm.weight``,
+    ``layers.0.linear_attn.A_log``).
+
+    A real parameter keeps its dtype and device and gets the values copied in.
+    A meta parameter (a model built for a GGUF) is replaced by one in ``dtype``
+    on ``device``; with ``keep_fp32_vectors`` 1-D tensors stay FP32."""
+    lm = adapter.text_model(model)
+    for key, value in values.items():
+        parent_name, _, attr = key.rpartition(".")
+        parent = lm.get_submodule(parent_name) if parent_name else lm
+        current = getattr(parent, attr, None)
+        if not isinstance(current, torch.nn.Parameter):
+            raise KeyError(f"{key}: no such parameter in the text model")
+        if tuple(current.shape) != tuple(value.shape):
+            raise ValueError(f"{key}: shape {tuple(value.shape)} != model {tuple(current.shape)}")
+        if current.is_meta:
+            want = torch.float32 if keep_fp32_vectors and value.ndim == 1 else (dtype or value.dtype)
+            parent._parameters[attr] = torch.nn.Parameter(value.to(device=device, dtype=want), requires_grad=False)
+        else:
+            current.copy_(value.to(device=current.device, dtype=current.dtype))
+    return len(values)
 
 
 def legacy_records(legacy: dict):

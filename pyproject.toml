@@ -26,6 +26,7 @@ include = ["openbonsai*"]
 
 [tool.setuptools.package-data]
 "openbonsai.eval" = ["assets/bonsai-dev/*.json", "assets/bonsai-dev/*.jsonl", "assets/bonsai-dev/*.md"]
+"openbonsai.formats" = ["assets/*.json"]
 
 [tool.pytest.ini_options]
 # research/ keeps legacy tests for reading only; CI never collects or imports it.

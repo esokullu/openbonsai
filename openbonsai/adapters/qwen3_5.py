@@ -10,12 +10,14 @@ vision tower is dropped after loading unless ``keep_vision``) and text-only
   them F32 as ``ssm_alpha``/``ssm_beta``); conv1d, A_log, dt_bias and norms
   are not Linear and are untouched.
 - Sequential GPTQ order matches research/experiments/gptq_ternary.py.
+- Prism's ``qwen35`` PTQ1_0 GGUF layout: adapters/qwen3_5_gguf.py.
 """
 from __future__ import annotations
 
 import torch
 
 from .base import LayerPlan, ModelAdapter
+from .qwen3_5_gguf import Qwen35GGUF
 
 _ORDER = {
     "linear_attention": (("linear_attn.in_proj_qkv", "linear_attn.in_proj_z"), ("linear_attn.out_proj",),
@@ -26,7 +28,7 @@ _ORDER = {
 _KEEP = {"linear_attention": ("linear_attn.in_proj_a", "linear_attn.in_proj_b"), "full_attention": ()}
 
 
-class Qwen35Adapter(ModelAdapter):
+class Qwen35Adapter(Qwen35GGUF, ModelAdapter):
     name = "qwen3_5"
     model_types = ("qwen3_5", "qwen3_5_text")
     gguf_arch = "qwen35"
@@ -46,8 +48,8 @@ class Qwen35Adapter(ModelAdapter):
 
     def load(self, path, *, revision=None, device="cpu", dtype=torch.bfloat16, attn="sdpa",
              local_files_only=False, keep_vision=False, **options):
-        from transformers import Qwen3_5ForCausalLM, Qwen3_5ForConditionalGeneration
-        cls = Qwen3_5ForConditionalGeneration if self.config.model_type == "qwen3_5" else Qwen3_5ForCausalLM
+        from transformers import Qwen3_5ForConditionalGeneration
+        cls = self._model_class()
         model = cls.from_pretrained(path, revision=revision, dtype=dtype, device_map=str(device),
                                     attn_implementation=attn, local_files_only=local_files_only,
                                     trust_remote_code=False)
@@ -59,9 +61,27 @@ class Qwen35Adapter(ModelAdapter):
         tokenizer = self.load_tokenizer(path, revision=revision, local_files_only=local_files_only)
         return model, tokenizer
 
+    def _model_class(self):
+        from transformers import Qwen3_5ForCausalLM, Qwen3_5ForConditionalGeneration
+        return Qwen3_5ForConditionalGeneration if self.config.model_type == "qwen3_5" else Qwen3_5ForCausalLM
+
+    def empty_model(self, *, dtype=torch.bfloat16, attn="sdpa"):
+        from accelerate import init_empty_weights
+        cls = self._model_class()
+        with init_empty_weights(include_buffers=False):
+            model = cls._from_config(self.config, dtype=dtype, attn_implementation=attn)
+        if self.config.model_type == "qwen3_5":
+            model.model.visual = None   # the GGUF is text only
+        return model
+
     def text_model(self, model):
         inner = model.model
         return inner.language_model if hasattr(inner, "language_model") else inner
+
+    def checkpoint_name(self, key: str) -> str:
+        if key == "lm_head.weight":
+            return key
+        return ("model.language_model." if self.config.model_type == "qwen3_5" else "model.") + key
 
     def layer_plan(self, i: int) -> LayerPlan:
         kind = self.text_config.layer_types[i]

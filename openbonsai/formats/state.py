@@ -190,10 +190,22 @@ def load_signs(path) -> tuple[dict[int, Tensor], int]:
     return signs, block
 
 
-def save_scales(path, scales: dict[str, Tensor], meta: dict | None = None) -> Path:
+def save_scales(path, scales: dict[str, Tensor], meta: dict | None = None,
+                small: dict[str, Tensor] | None = None, small_dtypes: dict[str, str] | None = None) -> Path:
+    """Distilled fp16 scales; optionally the trained high-precision tensors (``small::<name>``, FP32
+    masters, names relative to the text model) with the dtype each was computed in."""
     from safetensors.torch import save
     tensors = {f"scales::{k}": scales[k].to(torch.float16).contiguous() for k in _sorted_keys(scales)}
-    return atomic_write_bytes(path, save(tensors, _metadata(format=SCALES_FORMAT, meta=meta or {})))
+    small = small or {}
+    dtypes = dict(small_dtypes or {})
+    if set(dtypes) != set(small):
+        raise ValueError("small_dtypes must name the compute dtype of every small tensor")
+    for k in _sorted_keys(small):
+        tensors[f"small::{k}"] = small[k].detach().to(torch.float32).cpu().contiguous()
+    fields = {"format": SCALES_FORMAT, "meta": meta or {}}
+    if small:
+        fields["small_dtypes"] = {k: dtypes[k] for k in _sorted_keys(dtypes)}
+    return atomic_write_bytes(path, save(tensors, _metadata(**fields)))
 
 
 def read_scales(path) -> tuple[dict[str, Tensor], dict]:
@@ -201,7 +213,26 @@ def read_scales(path) -> tuple[dict[str, Tensor], dict]:
     from safetensors import safe_open
     with safe_open(str(path), framework="pt", device="cpu") as f:
         md = _read_metadata(f, SCALES_FORMAT, path)
-        return {n.split("::", 1)[1]: f.get_tensor(n) for n in f.keys()}, md.get("meta") or {}
+        return ({n.split("::", 1)[1]: f.get_tensor(n) for n in f.keys() if n.startswith("scales::")},
+                md.get("meta") or {})
+
+
+def read_small(path, *, cast: bool = True) -> dict[str, Tensor]:
+    """Trained high-precision tensors saved with the scales (empty if none).
+
+    ``cast``: FP32 values of what the model computed with (the master rounded
+    to its compute dtype, e.g. BF16); False returns the FP32 masters."""
+    from safetensors import safe_open
+    with safe_open(str(path), framework="pt", device="cpu") as f:
+        md = _read_metadata(f, SCALES_FORMAT, path)
+        dtypes = md.get("small_dtypes") or {}
+        out = {}
+        for n in f.keys():
+            if n.startswith("small::"):
+                key = n.split("::", 1)[1]
+                t = f.get_tensor(n)
+                out[key] = t.to(getattr(torch, dtypes[key])).to(torch.float32) if cast else t
+        return out
 
 
 def load_scales(path) -> dict[str, Tensor]:
