@@ -1,0 +1,610 @@
+{
+  "date": "2026-10-26",
+  "scope": "CPU integration checks; sealed remote 9B measurements are separate and this reconciled branch has not run on CUDA",
+  "base_commit": "8d995bf2232b35b37fce2d8e116e1450a1f0eebb",
+  "environment": {
+    "python": "3.12.9",
+    "torch": "2.14.1",
+    "transformers": "5.20.2",
+    "platform": "Darwin",
+    "device": "cpu"
+  },
+  "tests": {
+    "command": "python -m pytest -q",
+    "passed": 699,
+    "seconds": 15.88
+  },
+  "review": {
+    "decoder": "independent read-only review; no blockers",
+    "packing_loading_generation_timing": "independent read-only review; no blockers; 172 focused tests"
+  },
+  "file_sha256": {
+    "openbonsai/adapter.py": "3be18b393a0d4775bd3a9fa527e0f4057ff3135660500382314b94add1e0b7c7",
+    "openbonsai/export.py": "d80b7e64e3ff4f09b5e006531c3e95ea39106af565af6705723382a2a1ca97d9",
+    "openbonsai/mixed_export.py": "42f8dd11c2414f378d23bcd0a50b8121268b995a3baf3cfafba0764b04718d29",
+    "openbonsai/mixed_formats.py": "9075cb8ae89a521f098f071dcaaed281b621a5e75b9448865070ad0522a2be70",
+    "openbonsai/prepare.py": "0ee82a7a9b0a043d0c22aa2556be4e2582afdee7d5afad00c34b067d2c23135b",
+    "openbonsai/quantizer.py": "f581037fb00b2169098779acc5721053a754396bf29bf41782b8ac699dfbb888",
+    "openbonsai/rotations.py": "f1cf7f03e05fdbb19124eda801775117cf43370a74b7edefd243113be5d1d8d4",
+    "openbonsai/trainer.py": "894ad74fd644dba443243077472bba684eac7d9065f1fd81c710f9c803fe17f6",
+    "tests/test_quantizer_chunked.py": "d51e96f6fa9f2c12c76ed0bb6d35b0689d2f5d765d0900a7240a1b42c0fcf152",
+    "tests/test_rotations_chunked.py": "4efbd6230ec28b054cea1b082645f55f3440268dc6ef1c1c79f1a6c332218d4b",
+    "tests/test_mixed_port.py": "10f39075e4c89d913b81437137048bf1ceda46cd3b8ea9c8b0d27f44bbc6d911",
+    "tests/test_mixed_cache.py": "709f0e7b914184b6c54484e6a0a3690adaacd0b14ae9a6031c7eff045df21bdb",
+    "tests/test_adapter_export.py": "a72b559ae87befef3ddf95b39ef7aa8a66b1cf2f5e923b9a5cb2ae6abcbffa8b",
+    "tests/test_calibration.py": "166e3bcad595f3a990d80531b022b0ff9fcde2a48beade2022f7db4c063574b0",
+    "tests/test_trainer.py": "3ffcf35a7f84a2fe467071736ba541dd73d59cea8e24a3eedbb21a1f4edc41e8"
+  },
+  "smokes": {
+    "decoder": {
+      "command": "python -m openbonsai.rotation_smoke --output runs/runtime-rotation-smoke",
+      "report_sha256": "40813f436081133014b577e22b4b15e749a3e46aa42fc6a41c6867dfe50ce98e",
+      "report": {
+        "kind": "paired random native Qwen fixture; software/placement validation only",
+        "real_9b_weights_loaded": false,
+        "quality_claim": false,
+        "device": "cpu",
+        "seed": 5090,
+        "rotation_block_size": 64,
+        "group_size": 128,
+        "data": {
+          "fit": [
+            [
+              [
+                177,
+                105,
+                42,
+                18,
+                155,
+                222,
+                30,
+                183,
+                89,
+                53,
+                235,
+                63
+              ]
+            ],
+            [
+              [
+                156,
+                109,
+                214,
+                50,
+                98,
+                200,
+                225,
+                184,
+                48,
+                154,
+                112,
+                48
+              ]
+            ]
+          ],
+          "search_validation": [
+            [
+              [
+                23,
+                225,
+                137,
+                128,
+                59,
+                173,
+                26,
+                64,
+                15,
+                162,
+                181,
+                152
+              ]
+            ],
+            [
+              [
+                70,
+                121,
+                22,
+                163,
+                126,
+                162,
+                153,
+                230,
+                156,
+                116,
+                135,
+                151
+              ]
+            ]
+          ],
+          "benchmark_answers_used": false
+        },
+        "coverage": "same 25 decoder projections; endpoints BF16 in paired experiment",
+        "endpoint_status": "separate native invariance/gradient/export tests; not silently window-trained",
+        "conditions": {
+          "unrotated": {
+            "training_seconds": 0.37144537502899766,
+            "peak_allocated_bytes": null,
+            "teacher_bypass_exact_before_and_after": true,
+            "reference_reload_exact": true,
+            "fp16_export_rounding_max_logit_error": 0.0078125,
+            "original_nll": 5.4790425300598145,
+            "hard_nll": 5.47030782699585,
+            "packed_nll": 5.470408916473389,
+            "artifact_bytes": 365715,
+            "vision_file_bytes": 0,
+            "reference_forward_seconds": 0.024192250100895762,
+            "runtime": "floating-point reconstruction with optional explicit transforms; no low-bit kernel",
+            "training": {
+              "training_config": {
+                "epochs": 2,
+                "batch_size": 3,
+                "window_size": 2,
+                "stride": 2,
+                "learning_rate": 0.005,
+                "lora_learning_rate": 0.001,
+                "weight_decay": 0.0,
+                "grad_clip": 1.0,
+                "seed": 5090,
+                "gradient_checkpointing": true,
+                "reconstruction_loss": "huber",
+                "huber_delta": 1.0
+              },
+              "windows": [
+                {
+                  "start": 0,
+                  "end": 2,
+                  "hard_mse_before": 0.00010493730466502409,
+                  "hard_mse_after": 0.00010240548969401668,
+                  "steps": 2,
+                  "losses": [
+                    5.232663170318119e-05,
+                    5.161144508747384e-05
+                  ],
+                  "timing_seconds": {
+                    "cache": 0.015725333942100406,
+                    "evaluation_before": 0.016637458000332117,
+                    "optimization": 0.14865783299319446,
+                    "evaluation_after": 0.02020608400925994,
+                    "cleanup": 5.929102189838886e-05,
+                    "total": 0.2012859999667853
+                  },
+                  "reconstruction_loss": "huber",
+                  "huber_delta": 1.0
+                },
+                {
+                  "start": 2,
+                  "end": 4,
+                  "hard_mse_before": 0.00025472164270468056,
+                  "hard_mse_after": 0.0002435772136474649,
+                  "steps": 2,
+                  "losses": [
+                    0.00012557195077533834,
+                    0.00012381086708046496
+                  ],
+                  "timing_seconds": {
+                    "cache": 0.027412167051807046,
+                    "evaluation_before": 0.011235999874770641,
+                    "optimization": 0.11918191611766815,
+                    "evaluation_after": 0.011469833785668015,
+                    "cleanup": 5.304114893078804e-05,
+                    "total": 0.16935295797884464
+                  },
+                  "reconstruction_loss": "huber",
+                  "huber_delta": 1.0
+                }
+              ],
+              "samples": 2,
+              "reconstruction_objective": {
+                "name": "huber",
+                "huber_delta": 1.0,
+                "reduction": "mean over nonpadding hidden-state elements"
+              },
+              "nonpadding_tokens": 24,
+              "quantization": {
+                "lora_ranks": [
+                  4
+                ],
+                "factor_mappings": [
+                  "sigmoid"
+                ],
+                "lora_scaling": "1/rank; correction merged before ternarization",
+                "hard_phases": [
+                  "frozen_jacobian"
+                ],
+                "frozen_jacobian_reference": "last actual soft forward, before its optimizer update",
+                "factor_parameters": 15360,
+                "lora_parameters": 33280
+              },
+              "quality_claim": "software execution only; no full-model benchmark reproduction",
+              "timing_seconds": {
+                "cache": 0.04313750099390745,
+                "evaluation_before": 0.02787345787510276,
+                "optimization": 0.2678397491108626,
+                "evaluation_after": 0.031675917794927955,
+                "cleanup": 0.0001123321708291769,
+                "total": 0.37063895794562995
+              }
+            }
+          },
+          "rotated": {
+            "training_seconds": 0.497240083059296,
+            "peak_allocated_bytes": null,
+            "teacher_bypass_exact_before_and_after": true,
+            "reference_reload_exact": true,
+            "fp16_export_rounding_max_logit_error": 0.005859375,
+            "original_nll": 5.4790425300598145,
+            "hard_nll": 5.4917824268341064,
+            "packed_nll": 5.491856813430786,
+            "artifact_bytes": 373298,
+            "vision_file_bytes": 0,
+            "reference_forward_seconds": 0.0260928338393569,
+            "runtime": "floating-point reconstruction with optional explicit transforms; no low-bit kernel",
+            "training": {
+              "training_config": {
+                "epochs": 2,
+                "batch_size": 3,
+                "window_size": 2,
+                "stride": 2,
+                "learning_rate": 0.005,
+                "lora_learning_rate": 0.001,
+                "weight_decay": 0.0,
+                "grad_clip": 1.0,
+                "seed": 5090,
+                "gradient_checkpointing": true,
+                "reconstruction_loss": "huber",
+                "huber_delta": 1.0
+              },
+              "windows": [
+                {
+                  "start": 0,
+                  "end": 2,
+                  "hard_mse_before": 0.00010435406875330955,
+                  "hard_mse_after": 0.00010178823140449822,
+                  "steps": 2,
+                  "losses": [
+                    5.188320210436359e-05,
+                    5.134012826601975e-05
+                  ],
+                  "timing_seconds": {
+                    "cache": 0.014559624949470162,
+                    "evaluation_before": 0.024026625091210008,
+                    "optimization": 0.19503587507642806,
+                    "evaluation_after": 0.023660749895498157,
+                    "cleanup": 3.474997356534004e-05,
+                    "total": 0.2573176249861717
+                  },
+                  "reconstruction_loss": "huber",
+                  "huber_delta": 1.0
+                },
+                {
+                  "start": 2,
+                  "end": 4,
+                  "hard_mse_before": 0.0002538454912913342,
+                  "hard_mse_after": 0.00024386010287950435,
+                  "steps": 2,
+                  "losses": [
+                    0.0001255546412721742,
+                    0.00012360193068161607
+                  ],
+                  "timing_seconds": {
+                    "cache": 0.031426083063706756,
+                    "evaluation_before": 0.0173249589279294,
+                    "optimization": 0.17247962509281933,
+                    "evaluation_after": 0.01793275005184114,
+                    "cleanup": 3.691599704325199e-05,
+                    "total": 0.23920033313333988
+                  },
+                  "reconstruction_loss": "huber",
+                  "huber_delta": 1.0
+                }
+              ],
+              "samples": 2,
+              "reconstruction_objective": {
+                "name": "huber",
+                "huber_delta": 1.0,
+                "reduction": "mean over nonpadding hidden-state elements"
+              },
+              "nonpadding_tokens": 24,
+              "quantization": {
+                "lora_ranks": [
+                  4
+                ],
+                "factor_mappings": [
+                  "sigmoid"
+                ],
+                "lora_scaling": "1/rank; correction merged before ternarization",
+                "hard_phases": [
+                  "frozen_jacobian"
+                ],
+                "frozen_jacobian_reference": "last actual soft forward, before its optimizer update",
+                "factor_parameters": 15360,
+                "lora_parameters": 33280
+              },
+              "quality_claim": "software execution only; no full-model benchmark reproduction",
+              "timing_seconds": {
+                "cache": 0.04598570801317692,
+                "evaluation_before": 0.04135158401913941,
+                "optimization": 0.3675155001692474,
+                "evaluation_after": 0.041593499947339296,
+                "cleanup": 7.166597060859203e-05,
+                "total": 0.4965179581195116
+              }
+            }
+          }
+        },
+        "torch": "2.14.1"
+      }
+    },
+    "head": {
+      "command": "python -m openbonsai.head_smoke --output runs/runtime-head-smoke",
+      "report_sha256": "8db7200d885f5ce9d03163f0493b849b1061faa2c2c7fa82921094f3ad173894",
+      "report": {
+        "scope": "random native hybrid fixture; no pretrained quality or CUDA memory claim",
+        "source": {
+          "source_checkpoint": "random-native-Qwen3.5-head-fixture",
+          "source_content_sha256": "340fc6bbb344f7d476b0b5df0c816cb1ef3467f5c825360d83f5f1b88a5a988f"
+        },
+        "conditions": {
+          "unrotated": {
+            "training": {
+              "stage": "head-only-original-hidden",
+              "config": {
+                "epochs": 2,
+                "batch_size": 1,
+                "token_microbatch": 4,
+                "vocabulary_chunk": 31,
+                "learning_rate": 0.005,
+                "lora_learning_rate": 0.001,
+                "weight_decay": 0.0,
+                "grad_clip": 1.0,
+                "seed": 5090
+              },
+              "steps": [
+                {
+                  "step": 1,
+                  "epoch": 1,
+                  "total_steps": 4,
+                  "positions": 7,
+                  "progress": 0.25,
+                  "kl": 0.00694641619861393,
+                  "grad_norm": 0.0014172539813444018
+                },
+                {
+                  "step": 2,
+                  "epoch": 1,
+                  "total_steps": 4,
+                  "positions": 7,
+                  "progress": 0.5,
+                  "kl": 0.006835999162822254,
+                  "grad_norm": 0.0018166822846978903
+                },
+                {
+                  "step": 3,
+                  "epoch": 2,
+                  "total_steps": 4,
+                  "positions": 7,
+                  "progress": 0.75,
+                  "kl": 0.007064032237653239,
+                  "grad_norm": 0.002372474642470479
+                },
+                {
+                  "step": 4,
+                  "epoch": 2,
+                  "total_steps": 4,
+                  "positions": 7,
+                  "progress": 1.0,
+                  "kl": 0.007007569661816534,
+                  "grad_norm": 0.00226738303899765
+                }
+              ],
+              "positions": 14,
+              "records": 2,
+              "role": "calibration",
+              "source_provenance": {
+                "source_checkpoint": "random-native-Qwen3.5-head-fixture",
+                "source_content_sha256": "340fc6bbb344f7d476b0b5df0c816cb1ef3467f5c825360d83f5f1b88a5a988f"
+              },
+              "source_weight_sha256": "2c447608098752026b738b267330aba663d2446a7b0f8f9ac9837c1c1051b1ba",
+              "head_configuration": {
+                "group_size": 128,
+                "factor_mapping": "sigmoid",
+                "lora_rank": 4,
+                "hard_phase": "frozen_jacobian",
+                "soft_fraction": 0.8,
+                "max_sharpness": 30.0,
+                "row_chunk_size": 31,
+                "rotation": null
+              },
+              "initial_trainable_state_sha256": "bd40003a0486f03136a078fc8cb28ae2b1606f5fe3e3b6d15aa3fedf7a8f9aac",
+              "seed_scope": "config.seed controls cached record order only; caller initializes LoRA and rotation signs",
+              "cache_manifest_sha256": "a0ea838499db2c6cacda376a09d75f9714ba1ad36494df1a19730c9e6202e3de",
+              "objective": {
+                "name": "KL(original_teacher || student)",
+                "temperature": 1,
+                "reduction": "mean over valid next-token positions in each logical batch",
+                "logits": "native original BF16 computation",
+                "normalization": "global FP64 across full vocabulary",
+                "reported_loss": "actual KL; not the external-gradient surrogate"
+              },
+              "effective_vocabulary_chunk": 31,
+              "held_out_roles_checked": [
+                "search_validation"
+              ],
+              "separation": "held-out inputs are never fitted; caller owns semantic benchmark separation",
+              "quality_claim": false,
+              "torch": "2.14.1"
+            },
+            "validation": {
+              "kl": 0.006677551079735786,
+              "positions": 14,
+              "role": "search_validation",
+              "source_provenance": {
+                "source_checkpoint": "random-native-Qwen3.5-head-fixture",
+                "source_content_sha256": "340fc6bbb344f7d476b0b5df0c816cb1ef3467f5c825360d83f5f1b88a5a988f"
+              },
+              "cache_manifest_sha256": "a6ead8c58e61c1ab5ef50e08da5124b9b70321b62c62737196883c49d7fdd65d",
+              "objective": "actual full-vocabulary KL(original_teacher || student), temperature 1",
+              "normalization": "FP64",
+              "effective_vocabulary_chunk": 31,
+              "head_progress": 1.0,
+              "quality_claim": false
+            },
+            "training_seconds": 0.04595325002446771,
+            "candidate_encoding": "ternary-2bit",
+            "artifact_bytes": 1535193,
+            "candidate_bytes": 9479,
+            "retained_vision_file_bytes": 88336,
+            "random_fixture_nll": {
+              "original": 5.587172031402588,
+              "hard_fp32_scales_bf16_compute": 5.5900349617004395,
+              "exported_fp16_scales_bf16_compute": 5.590171813964844
+            },
+            "scale_export_max_logit_difference_same_chunks": 0.00390625,
+            "runtime_chunk_change_max_logit_difference": 0.0,
+            "fresh_process_max_logit_difference": 0.0,
+            "original_model_unchanged": true,
+            "multi_eos_preserved": true
+          },
+          "rotated": {
+            "training": {
+              "stage": "head-only-original-hidden",
+              "config": {
+                "epochs": 2,
+                "batch_size": 1,
+                "token_microbatch": 4,
+                "vocabulary_chunk": 31,
+                "learning_rate": 0.005,
+                "lora_learning_rate": 0.001,
+                "weight_decay": 0.0,
+                "grad_clip": 1.0,
+                "seed": 5090
+              },
+              "steps": [
+                {
+                  "step": 1,
+                  "epoch": 1,
+                  "total_steps": 4,
+                  "positions": 7,
+                  "progress": 0.25,
+                  "kl": 0.00656498142545652,
+                  "grad_norm": 0.0013692111242562532
+                },
+                {
+                  "step": 2,
+                  "epoch": 1,
+                  "total_steps": 4,
+                  "positions": 7,
+                  "progress": 0.5,
+                  "kl": 0.006752205187615056,
+                  "grad_norm": 0.0019115806790068746
+                },
+                {
+                  "step": 3,
+                  "epoch": 2,
+                  "total_steps": 4,
+                  "positions": 7,
+                  "progress": 0.75,
+                  "kl": 0.0067458084847792435,
+                  "grad_norm": 0.0023224244359880686
+                },
+                {
+                  "step": 4,
+                  "epoch": 2,
+                  "total_steps": 4,
+                  "positions": 7,
+                  "progress": 1.0,
+                  "kl": 0.0068922950425494185,
+                  "grad_norm": 0.002341077197343111
+                }
+              ],
+              "positions": 14,
+              "records": 2,
+              "role": "calibration",
+              "source_provenance": {
+                "source_checkpoint": "random-native-Qwen3.5-head-fixture",
+                "source_content_sha256": "340fc6bbb344f7d476b0b5df0c816cb1ef3467f5c825360d83f5f1b88a5a988f"
+              },
+              "source_weight_sha256": "2c447608098752026b738b267330aba663d2446a7b0f8f9ac9837c1c1051b1ba",
+              "head_configuration": {
+                "group_size": 128,
+                "factor_mapping": "sigmoid",
+                "lora_rank": 4,
+                "hard_phase": "frozen_jacobian",
+                "soft_fraction": 0.8,
+                "max_sharpness": 30.0,
+                "row_chunk_size": 31,
+                "rotation": {
+                  "convention": "row-DH",
+                  "normalization": "orthonormal",
+                  "axis": -1,
+                  "block_size": 64,
+                  "signs_sha256": "af0e0554f8a30182373bd37b4bdf430434171709ea9e7b03edb5231eac7486c0",
+                  "sign_hash_encoding": "canonical dtype/shape JSON header then contiguous raw tensor bytes"
+                }
+              },
+              "initial_trainable_state_sha256": "bd40003a0486f03136a078fc8cb28ae2b1606f5fe3e3b6d15aa3fedf7a8f9aac",
+              "seed_scope": "config.seed controls cached record order only; caller initializes LoRA and rotation signs",
+              "cache_manifest_sha256": "a0ea838499db2c6cacda376a09d75f9714ba1ad36494df1a19730c9e6202e3de",
+              "objective": {
+                "name": "KL(original_teacher || student)",
+                "temperature": 1,
+                "reduction": "mean over valid next-token positions in each logical batch",
+                "logits": "native original BF16 computation",
+                "normalization": "global FP64 across full vocabulary",
+                "reported_loss": "actual KL; not the external-gradient surrogate"
+              },
+              "effective_vocabulary_chunk": 31,
+              "held_out_roles_checked": [
+                "search_validation"
+              ],
+              "separation": "held-out inputs are never fitted; caller owns semantic benchmark separation",
+              "quality_claim": false,
+              "torch": "2.14.1"
+            },
+            "validation": {
+              "kl": 0.006992759479651462,
+              "positions": 14,
+              "role": "search_validation",
+              "source_provenance": {
+                "source_checkpoint": "random-native-Qwen3.5-head-fixture",
+                "source_content_sha256": "340fc6bbb344f7d476b0b5df0c816cb1ef3467f5c825360d83f5f1b88a5a988f"
+              },
+              "cache_manifest_sha256": "a6ead8c58e61c1ab5ef50e08da5124b9b70321b62c62737196883c49d7fdd65d",
+              "objective": "actual full-vocabulary KL(original_teacher || student), temperature 1",
+              "normalization": "FP64",
+              "effective_vocabulary_chunk": 31,
+              "head_progress": 1.0,
+              "quality_claim": false
+            },
+            "training_seconds": 0.058957957895472646,
+            "candidate_encoding": "ternary-2bit",
+            "artifact_bytes": 1535476,
+            "candidate_bytes": 9762,
+            "retained_vision_file_bytes": 88336,
+            "random_fixture_nll": {
+              "original": 5.587172031402588,
+              "hard_fp32_scales_bf16_compute": 5.585734844207764,
+              "exported_fp16_scales_bf16_compute": 5.585753440856934
+            },
+            "scale_export_max_logit_difference_same_chunks": 0.001953125,
+            "runtime_chunk_change_max_logit_difference": 0.0,
+            "fresh_process_max_logit_difference": 0.0,
+            "original_model_unchanged": true,
+            "multi_eos_preserved": true
+          }
+        },
+        "coverage": "lm_head only; decoder, embedding, vision and small tensors original BF16",
+        "calibration_records": 2,
+        "validation_records": 2,
+        "tokenizer_included": false,
+        "runtime": "floating-point weight reconstruction; no ternary kernel"
+      }
+    }
+  },
+  "remote_source_provenance": {
+    "sealed_run_directory": "D:\\openbonsai\\runs\\2026-10-26-5090-rotations",
+    "final_manifest_sha256": "d723275e9057ed27c8bb7e2b010c0e28ef5fa517ffb95294cac76830ccbb6c2f",
+    "integration": "Recorded completed decoder and packing agent source diffs reconciled with newer bounded endpoint code; remote runner scripts and artifacts remain in sealed run"
+  },
+  "quality_claim": false
+}

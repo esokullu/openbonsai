@@ -1,0 +1,134 @@
+{
+  "format": "openbonsai.staged-tokenizer-padding-validation.v1",
+  "status": "passed",
+  "base_commit": "3ed708940d6a1ef711dfadcb3b8a699e53f4957c",
+  "scope": "Resolve missing original model padding from its authenticated existing tokenizer; no model/config rewrite or quality change claimed.",
+  "environment": {
+    "python": "3.12.9",
+    "platform": "macOS-26.0.1-arm64-arm-64bit",
+    "torch": "2.14.1",
+    "transformers": "5.20.2",
+    "device": "cpu"
+  },
+  "source_files": {
+    "openbonsai/pipeline_sources.py": {
+      "bytes": 43355,
+      "sha256": "ea4f0a6383f10bd353ae60eda339e82dba3d421c9d342e0a0894fdd3dd10617c"
+    },
+    "tests/test_pipeline_padding.py": {
+      "bytes": 17022,
+      "sha256": "45ef853e9e29d174a4d9a08f26f2c07cb4fe67fd53f1e5ba5c965140b0ef4481"
+    },
+    "docs/staged-pipeline.md": {
+      "bytes": 24423,
+      "sha256": "8cd8b91b40304b43a2b677cdf1505079fba52290abc9780851ab951035a44772"
+    }
+  },
+  "tests": {
+    "distinct_passed": 166,
+    "full_suite_repeated": false,
+    "batches": [
+      {
+        "command": "python -m pytest -q tests/test_pipeline_padding.py",
+        "passed": 32,
+        "seconds": 8.9,
+        "log": {
+          "bytes": 99,
+          "sha256": "98553102d0654889549fd0b42f6ddc158f2ca6bc9def61d55e4d609bed1212b9"
+        }
+      },
+      {
+        "command": "python -m pytest -q tests/test_pipeline_sources.py tests/test_pipeline_historical.py tests/test_pipeline_historical_command.py tests/test_pipeline_endpoints.py tests/test_head_evaluation.py",
+        "passed": 134,
+        "seconds": 24.2,
+        "log": {
+          "bytes": 181,
+          "sha256": "4cb59fee1e824855ed0b933ade8a56961a7d38f0d76dc6d857038b488c656986"
+        }
+      }
+    ],
+    "initial_fixture_corrections": {
+      "passed": 30,
+      "failed": 2,
+      "production_changed": false,
+      "cause": "Invalid tokenizer producer construction and output inside protected historical input parent; fixed test setup, retained initial log."
+    }
+  },
+  "supervised_native_proof": {
+    "stages": [
+      {
+        "stage": "seal",
+        "status": "complete",
+        "child_status": "complete",
+        "exit_code": 0,
+        "no_live_owned_processes": true,
+        "result_sha256": "640029059b99b8dd5dea6ef79c38d110ee8ab3221fd07d2b9f64172874c4d8f3",
+        "payload_sha256": "f439d5b2cfb27efe35583b153e71fe8cff4b07dbd1d8dc4d41f3ab2c359d2f92"
+      },
+      {
+        "stage": "cache-head",
+        "status": "complete",
+        "child_status": "complete",
+        "exit_code": 0,
+        "no_live_owned_processes": true,
+        "result_sha256": "e47c6ffd13e612290dfdf7b2e3d30f48748389d9f8ab1f0e3daeced5558f8b5a",
+        "payload_sha256": "35fc7f498d6712f5fa67410dd0f59cf59b78ac6aac078acb44815f362e6699e7"
+      }
+    ],
+    "records": 2,
+    "valid_head_positions": 5,
+    "new_padding_tokens": 0,
+    "source_pad_and_embedding_padding_idx_remain_none": true,
+    "original_saved_generation_pad_unchanged": true,
+    "exact_native_hidden_labels_positions": true,
+    "historical_raw_ids_masks_eos_provenance_preserved": true
+  },
+  "materialized_original_tokenizer_proof": {
+    "resolved_pad_token_id": 248044,
+    "padding_source": "tokenizer",
+    "vocabulary_size": 248320,
+    "vocabulary_size_basis": "248320 original head rows documented by completed remote preflight",
+    "tokenizer_content_sha256": "58a188315ecbd022fa3059d8a2489c74ef53f1af06d7a54aa8ee7a6b996b01d0",
+    "tokenizer_files": {
+      "chat_template.jinja": {
+        "sha256": "a4aee8afcf2e0711942cf848899be66016f8d14a889ff9ede07bca099c28f715",
+        "bytes": 7756
+      },
+      "merges.txt": {
+        "sha256": "a9d356d7bdf1ef4949e3e748e95b8e10ad9d4e2e838eddc38a0a7b6b94d1db8d",
+        "bytes": 3353259
+      },
+      "tokenizer.json": {
+        "sha256": "5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42",
+        "bytes": 12807982
+      },
+      "tokenizer_config.json": {
+        "sha256": "316230d6a809701f4db5ea8f8fc862bc3a6f3229c937c174e674ff3ca0a64ac8",
+        "bytes": 16710
+      },
+      "vocab.json": {
+        "sha256": "ce99b4cb2983d118806ce0a8b777a35b093e2000a503ebde25853284c9dfa003",
+        "bytes": 6722759
+      }
+    },
+    "source_unchanged": true,
+    "proof": {
+      "bytes": 1561,
+      "sha256": "92244a674323804b40fd2f7905dc6e05c20119f97d5871603a2f37dd9493878c"
+    },
+    "pretrained_weights_loaded": false
+  },
+  "review": {
+    "result": "No actionable finding",
+    "receipt": {
+      "bytes": 3474,
+      "sha256": "1998e32da15d1a61a114a1f1eacbde8f13810e821becd1bc59ad52e89ae01958"
+    }
+  },
+  "limitations": [
+    "CPU staged/native fixture and original tokenizer metadata only; no new pretrained CUDA quality result.",
+    "Existing code-bound jobs require their frozen implementation; this does not migrate old job seals.",
+    "Temporary tokenizer-only packaging is additional CPU file I/O during policy resolution.",
+    "The active remote synthetic CUDA diagnostic is unchanged."
+  ]
+}

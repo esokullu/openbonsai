@@ -1,0 +1,94 @@
+{
+  "scope": "Explicit optional head rotation in the staged pipeline; native random CPU software validation only",
+  "date": "2026-10-26",
+  "status": "passed",
+  "implementation_python_sha256": "bcb7282d4a6134cb9bc0b1d8f5b42c5918f939a395ba179c0f5c8110246f1bde",
+  "implementation_files_sha256": {
+    "openbonsai/pipeline_sources.py": "5486ea265921aa5cc13aa9d8df64ea96a07a429dd7d7329bec8a9dd1dc118ccd",
+    "openbonsai/pipeline_endpoints.py": "460d3902c278e8f489e8a4a39c820fc918f48c1304e30c3b34005bffff554db3",
+    "openbonsai/pipeline_decoder.py": "46b268dafbdde930e80313b11d6ffc7c7faf7b246a72981ac70af98b19d2741a",
+    "tests/test_pipeline_head_rotation.py": "6ead436bd940b89aa0152241b33bb189174230848745d7787f842cb80d5fe799",
+    "tests/test_pipeline_decoder.py": "30c976020ec9cc1b44dae883468f063edd66b382bbece9d381b9a81557938e2c",
+    "tests/test_pipeline_command.py": "6038234e1566313f776a6254099c68bc8dfac349e150afe5819395167ab915a2"
+  },
+  "full_suite": {
+    "passed": 1746,
+    "skipped": 1,
+    "seconds": 112.2,
+    "wall_seconds": 112.68203512509353,
+    "log_sha256": "c51ad1f302bbc34dd6c1963c4522984413c89dee3b420cf76efdbf59ee5ad11b",
+    "skip": "Actual Windows kill-on-close Job Object test requires Windows; current host is macOS"
+  },
+  "focused_cases_passed": 106,
+  "focused_initial_failures": "Fourteen old mocked-context tests omitted endpoint quantization fields. Only their fixture was corrected; all 37 affected cases then passed. Full suite subsequently passed.",
+  "paired_command_proof": {
+    "test": "tests/test_pipeline_command.py::test_supervised_paired_head_rotation_same_source_and_fresh_reload",
+    "passed": 1,
+    "seconds": 50.55,
+    "test_source_sha256": "6038234e1566313f776a6254099c68bc8dfac349e150afe5819395167ab915a2",
+    "log_sha256": "1f6ffe7d8cf31d0ae3006e3605e23883eab78715cd189b950fa55e1e150386eb",
+    "index_sha256": "2e1da98c1da2a18692ef41e2bf032861d1e7ad7abd0996feff32eaaf8dc165e2",
+    "supervised_commands_completed": 15,
+    "new_head_control_commands": 6,
+    "fresh_process_reloads": 2,
+    "assertions": [
+      "identical original source/record contents/cache tensors",
+      "mode-only head recipe difference",
+      "same initial raw trainables and two-update soft/hard budget",
+      "native original MM/text logits exact",
+      "both unquantized head bypasses exact to same-row original linear",
+      "legacy omitted mode preserves rotations",
+      "none mode omits actual rotation metadata/sign tensors and declares null descriptor fields",
+      "only lm_head replaced; omitted native tensors and FP32 A_log preserved",
+      "candidate file bytes unchanged in artifact",
+      "whole-directory byte accounting exact",
+      "independent native+MixedLinear composition equals loaded artifact",
+      "fresh-process logits and EOS exact for both arms",
+      "original source/tokenizer/prompts and protected upstream receipts unchanged"
+    ],
+    "arms": {
+      "RH": {
+        "mode": "legacy-hadamard-omitted-key",
+        "candidate_encoding": "ternary-base3",
+        "candidate_bytes": 9089,
+        "artifact_bytes": 1466548,
+        "manifest_sha256": "37e3e1442acc58f4c5056856bc6b6c79de4157cdff0991abe2c20f5b285c7d0c",
+        "fresh_output_sha256": "92f3537dd09221b65237718cfb566e3f1f70e331f5998198458b299fa6865855",
+        "fixed_probe_fresh_logits_exact": true
+      },
+      "UH": {
+        "mode": "none",
+        "candidate_encoding": "ternary-base3",
+        "candidate_bytes": 8806,
+        "artifact_bytes": 1466265,
+        "manifest_sha256": "a96546435d39e5d90bed585e66a0c0fe13fab971e6b3a7c9b8b12193c6244093",
+        "fresh_output_sha256": "99b17983ac3b6fc8c94fec97a9b153e6a29c1ad8dc118a73ad69f199bdb7d612",
+        "fixed_probe_fresh_logits_exact": true
+      }
+    },
+    "fixture": "Tiny random Qwen3.5 conditional model, original BF16 matrices and saved FP32 recurrent exceptions; language-only controls, same native original source"
+  },
+  "contract": {
+    "head_modes": [
+      "hadamard",
+      "none"
+    ],
+    "omitted_mode": "hadamard",
+    "omitted_key_is_not_added_to_recipe": true,
+    "none_passes_actual_signs_none": true,
+    "decoder_embedding_rotation_options_unchanged": true,
+    "mode_checked_on_publish_load_and_assembly": true,
+    "default_quantizer_objective_optimizer_unchanged": true,
+    "old_code_bound_jobs_migrated": false
+  },
+  "validation_reproduction": "python -m pytest -q; focused tests/test_pipeline_head_rotation.py and the paired test in tests/test_pipeline_command.py",
+  "independent_review": "Hash-bound source and documentation review, including mode enforcement, retained precision, default behavior and unchanged code-identity requirements",
+  "active_5090_source_changed": false,
+  "pretrained_quality_claim": false,
+  "limitations": [
+    "No actual Qwen3.5-9B head calibration, CUDA capacity, model-quality recovery or approximately 2 GB result is established.",
+    "Both tiny H-only controls retain original decoder/embedding; their measured bytes are software accounting evidence, not a 9B projection.",
+    "Reference inference reconstructs floating-point weights; no acceleration claim.",
+    "Separate rotation jobs retain their own job/cache/candidate bindings; historical token import is not added by this change."
+  ]
+}

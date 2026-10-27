@@ -1,0 +1,179 @@
+{
+  "status": "preregistered_before_repair_model_execution",
+  "authority": "Coordinator thread 01a175c1-8247-7133-bc37-abd01464a940; single authorized teacher-target repair pair",
+  "model": "Qwen/Qwen3.5-9B",
+  "revision": "c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+  "source_state": "../2026-10-26-5090-ultrachat-attempt2/rotated128x1/learned-fp32-state.pt",
+  "source_state_sha256": "4675c425ca82166a3f9275b5df358162f5b0a5ac8bb851d0fac8de962533274d",
+  "parent_seal_sha256": "d7ae0ccf66b38f223366beb105beba32d651e5c2c1be166c21624eac7885bf8a",
+  "v2_seal_sha256": "a4c5e7b2058f298d01cc09f042417b64e4d4a0f32b4dbaf61d5c54bb42f840cc",
+  "window": [
+    16,
+    17
+  ],
+  "arms": [
+    {
+      "name": "conditional",
+      "target": "Tq = original window(xq)"
+    },
+    {
+      "name": "original_prefix",
+      "target": "T0 = original window(x0)"
+    }
+  ],
+  "common_input": "same xq/native kwargs/masks; T0 independent native original-source pass,all quantizers disabled,stop atlayer17 beforehead; one model",
+  "fixed": "all originaltensors, embeddings/head/vision/norm/recurrent, rotations/signs/statistics andlayersoutside16",
+  "trainable": "selected factor_parameters/lora_parameters only",
+  "training": {
+    "samples": 128,
+    "epochs": 1,
+    "updates_per_arm": 128,
+    "sequence_length": 512,
+    "batch_size": 1,
+    "group_size": 128,
+    "lora_rank": 64,
+    "rotation_block_size": 4096,
+    "factor_mapping": "sigmoid",
+    "hard_phase": "frozen_jacobian",
+    "loss": "huber",
+    "huber_delta": 1,
+    "grad_clip": 1,
+    "weight_decay": 0,
+    "factor_lr": 0.005,
+    "lora_lr": 0.001,
+    "gradient_checkpointing": true,
+    "optimizer": "torch.optim.AdamW inherited exact defaults/precision/kernels, explicit receipt",
+    "order": "random.Random(5090+16).shuffle(list(range(128)))",
+    "progress": "(step+1)/128",
+    "lr": "initial_lr*(1-step/128)",
+    "soft_steps": 102,
+    "hard_steps": 26,
+    "fresh_empty_optimizer_each_arm": true,
+    "exact_common_final128_warm_start": true
+  },
+  "fitting": {
+    "raw": "../2026-10-26-5090-ultrachat-attempt2/data/ayot128.jsonl",
+    "raw_sha256": "d77644080002e396c597e93b084d0e00596a69895281b73cd1d7952a62ce80f6",
+    "consumed": "../2026-10-26-5090-ultrachat-attempt2/data/consumed128.jsonl",
+    "consumed_sha256": "487a093fe330f35882ed04f969fa91e324b91630f5e17af003e02beebd23a699",
+    "records": 128,
+    "active_positions": 59855,
+    "no_regeneration_filter_retokenize": true
+  },
+  "search": {
+    "raw": "data/search-ayot16.jsonl",
+    "raw_sha256": "9c1c05142d948d8cb88e4770c3ac2695afb91b1f8534802ba4d81dd780b80d86",
+    "consumed": "data/search-consumed16.jsonl",
+    "consumed_sha256": "443aaba5e5b41c641c27cdcd45f34fd5a2e770fa466321c9bbab84436ff40aaf",
+    "records": 16,
+    "active_positions": 7203,
+    "development_only": true,
+    "neverfit": true,
+    "unused_final_confirmation_unopened": true
+  },
+  "preflight": {
+    "discarded_updates": 4,
+    "targets": [
+      "conditional",
+      "original_prefix"
+    ],
+    "per_target_progress": [
+      0.796875,
+      0.8046875
+    ],
+    "temporary_selected_state": true,
+    "fresh_optimizer_each_target": true,
+    "exact_restore_state_rng_flags_snapshots": true,
+    "hard_probe_exact_after": true,
+    "no_preflight_state_seeds_arm": true,
+    "first_two_native_paired_fitting_targets": true,
+    "reproduce_v2_initial_window16": true,
+    "original_bypass_hard_probes_exact": true
+  },
+  "resources": {
+    "maximum_optimizer_steps": 260,
+    "maximum_aggregate_model_process_seconds": 3600,
+    "external_cumulative_supervisor": true,
+    "sequential_only": true,
+    "no_retry_or_budget_reset": true,
+    "minimum_sampled_conservative_free_bytes": 4294967296,
+    "decoded_suffix_cache": false,
+    "fullmodelclone": false,
+    "projection_variable_work_margin": 1.25,
+    "final_verification_reserve_seconds": 300,
+    "projected_generation_tokens": 1024,
+    "projection": "actualfirsttwo cache,4discarded soft/backward/Adam+hardfrozenJacobian updates; fullforwardfixedfirstprompt plus>=512position shape covering everyprompt+128; loading,remainingcaching,training,instrumentation,NLL,ARC,4x128gensbotharms,freshverification included; stopbeforeeitherarmifnotfit"
+  },
+  "saved_states": [
+    "initial",
+    "true last-soft pre-update",
+    "optimizer atactuallastsofttransition",
+    "final hard"
+  ],
+  "diagnostics": [
+    "finite losses/gradients",
+    "pre/postclipnorms",
+    "actualgroupupdateRMS",
+    "mappedfactors/occupancy/effectiveLoRA",
+    "coordinatewisebiascorrectedmoment/epsilon zero-safe",
+    "samelastsoftparameterssoft/hardboundedreplay nomutation/RNGchange",
+    "hashunselectedlearnedandoriginaltensorsbeforeafter"
+  ],
+  "comparison": {
+    "fixed": [
+      "xq",
+      "Tq",
+      "T0",
+      "targetgap"
+    ],
+    "primary": "initialandbothfinalhardvscommonT0 on16search",
+    "metrics": [
+      "perrecord+elementpooled MSE/relRMSE/cosine/RMSratio",
+      "conditionalerror",
+      "fullsignedcross"
+    ],
+    "support": {
+      "minimum_pooled_T0_MSE_reduction_vs_both_initial_conditional": 0.05,
+      "minimum_records_improve_vs_conditional": 12,
+      "records": 16,
+      "maximum_record_regression_vs_either": 0.1
+    },
+    "reportallworsening": true,
+    "noqualityclaimfromboundarygain": true
+  },
+  "evaluation": {
+    "inputs": "../2026-10-26-5090-ultrachat-attempt2/inputs/diagnostic-inputs.json",
+    "sha256": "330ffeeb77fa384492a6494e1e698edd400d7088456dbd0b7bc0fd366b7d838a",
+    "nll_tokens": 2048,
+    "CE_dtype": "float32",
+    "arc_questions": 20,
+    "all_option_scores": true,
+    "generation_prompts": 4,
+    "max_new_tokens": 128,
+    "thinking": false,
+    "do_sample": false,
+    "use_cache": false,
+    "eos_token_ids": [
+      248044,
+      248046
+    ],
+    "attention": "eager",
+    "reuse_baseline_initial": "onlyexactrestoredprobes+settings+evaluator+datahashes;otherwisestopprotocolreview",
+    "allids_text_stopping": true,
+    "all_A_or_EOS_degenerate_failure": true,
+    "worseNLL_boundarygain_notpromotion": true
+  },
+  "verification": {
+    "freshprocesscompacteacharm": true,
+    "commonbase_dependency": true,
+    "exactFP32state_nativeprobe": true,
+    "selectedwindowpackedpayload": true,
+    "codec": "existingparentexportpolicy,no base3 change",
+    "scale_dtype": "existingFP16",
+    "exactcodes_scales_reload": true,
+    "separateFP16castdifference": true,
+    "no_whole_artifact_duplicates": true,
+    "delta_not_standalone": true
+  },
+  "stop": "onepair orfailedgate; noendpoints,widerwindows,grid,RCO,newbudget,successor"
+}

@@ -4,5 +4,6 @@ __pycache__/
 *.egg-info/
 build/
 dist/
-runs/
+/runs/
 .DS_Store
+/third_party/

@@ -1,0 +1,92 @@
+{
+ "output": "runs\\accept-shared\\export\\OpenBonsai-Qwen3.5-9B-PTQ1_0.gguf",
+ "name": "OpenBonsai-Qwen3.5-9B-PTQ1_0",
+ "notes": [
+  "layout equals the reference file's (Ternary-Bonsai-2-9B): names, order, types, ne, offsets and KV keys"
+ ],
+ "reference": true,
+ "write": {
+  "header_end": 11039597,
+  "data_start": 11039616,
+  "file_size": 1997486976,
+  "seconds": 37.60057735443115,
+  "ternary_weights": 8946450432,
+  "neg_scale_groups": 0,
+  "zero_scale_groups": 0,
+  "zero_scale_codes_cleared": 0,
+  "distilled_f32": 0
+ },
+ "verify": [
+  {
+   "ok": true,
+   "check": "GGUF v3, alignment 32",
+   "detail": "3, 32"
+  },
+  {
+   "ok": true,
+   "check": "tensor names, order, types, ne and offsets as planned",
+   "detail": "427 tensors"
+  },
+  {
+   "ok": true,
+   "check": "file size = data start + tensor data",
+   "detail": "1997486976 vs 1997486976"
+  },
+  {
+   "ok": true,
+   "check": "KVs read back equal the KVs written",
+   "detail": "49 KVs"
+  },
+  {
+   "ok": true,
+   "check": "weight_names + inverse_weight_names cover each PTQ1_0 tensor once",
+   "detail": "201 + 1 of 202"
+  },
+  {
+   "ok": true,
+   "check": "sign table covers every PTQ1_0 input width",
+   "detail": "widths [4096, 12288]"
+  },
+  {
+   "ok": true,
+   "check": "general.file_type = 143 (LLAMA_FTYPE_MOSTLY_PTQ1_0)",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "KV keys, order and types identical to the reference file",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "tensor names, order, types, ne and offsets identical to the reference file",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "data section starts where the reference's does",
+   "detail": "header end 11039597 (reference 11039588), data 11039616"
+  },
+  {
+   "ok": true,
+   "check": "Prism runtime KVs equal the reference file's",
+   "detail": "differences (expected: name, sign values; a fine-tune may change tokenizer KVs): ['general.name', 'prism.hadamard.sign_values']"
+  },
+  {
+   "ok": true,
+   "check": "decoded PTQ1_0 codes and fp16 scale bits == permuted, canonical state (exact)",
+   "detail": "8,946,450,432 weights in 61s"
+  },
+  {
+   "ok": true,
+   "check": "F32 tensors bit-identical to the transformed sources",
+   "detail": "225 tensors"
+  },
+  {
+   "ok": true,
+   "check": "function check (FP64, runtime transform vs fake-quant source rows)",
+   "detail": "22 tensors in layers [0, 3, 31] + endpoints, worst rel 1.13e-15"
+  }
+ ],
+ "seconds": 99.99374413490295
+}

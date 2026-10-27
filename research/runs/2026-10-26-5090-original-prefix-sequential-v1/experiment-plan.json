@@ -1,0 +1,204 @@
+{
+  "schema_version": 1,
+  "status": "preregistered_before_model_execution",
+  "created_utc": "2026-10-26T19:19:09.126480+00:00",
+  "experiment": "One fresh sequential decoder calibration using independent original-prefix teacher targets",
+  "source_checkpoint": "Qwen/Qwen3.5-9B",
+  "revision": "c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+  "fine_tuning": "none",
+  "scientific_initialization": "Fresh official BF16 only; bitwise match to authenticated parent initialization",
+  "checkout": "Frozen parent source with reviewed opt-in trainer teacher_prefix=original_prefix and observer callback only",
+  "scope": {
+    "windows": 32,
+    "order": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31
+    ],
+    "samples": 128,
+    "epochs": 1,
+    "batch_size": 1,
+    "sequence_length": 512,
+    "window_size": 1,
+    "stride": 1,
+    "updates": 4096,
+    "active_positions_per_window": 59855,
+    "shuffle": "random.Random(5090+window).shuffle(range(128))"
+  },
+  "method": {
+    "group_size": 128,
+    "rotation_block_size": 4096,
+    "rotation_seed": 5090,
+    "lora_rank": 64,
+    "factor_mapping": "sigmoid",
+    "hard_phase": "frozen_jacobian",
+    "reconstruction_loss": "huber",
+    "huber_delta": 1.0,
+    "learning_rate": 0.005,
+    "lora_learning_rate": 0.001,
+    "weight_decay": 0.0,
+    "grad_clip": 1.0,
+    "gradient_checkpointing": true,
+    "progress": "step/128",
+    "lr_multiplier": "1-(step-1)/128",
+    "soft_updates": 102,
+    "hard_updates": 26,
+    "fresh_optimizer_per_window": true,
+    "compute_dtype": "bfloat16",
+    "learned_and_moment_dtype": "float32"
+  },
+  "teacher": {
+    "student_input": "Current hard-quantized prefix including earlier newly calibrated windows",
+    "target": "Independent all-quantizers-bypassed original-weight prefix/window capture stopped at boundary",
+    "cache": "Current window only, bounded CPU/disk; preserve native kwargs/masks; no vocabulary head/no second model"
+  },
+  "runtime": {
+    "device": "local RTX5090 sm120 CUDA0",
+    "attention": "eager",
+    "use_cache": false,
+    "tf32": false,
+    "threads": 4,
+    "seed": 5090
+  },
+  "budget": {
+    "aggregate_model_process_seconds": 10800,
+    "prior_model_seconds": 0,
+    "discarded_updates": 4,
+    "maximum_total_updates": 4100,
+    "preflight_windows": [
+      0,
+      3
+    ],
+    "preflight_steps": [
+      102,
+      103
+    ],
+    "variable_margin": 1.25,
+    "additional_reserve_seconds": 600,
+    "worst_case_generation_tokens": 1024,
+    "cache_depth_anchors": [
+      0,
+      3,
+      16,
+      19,
+      30,
+      31
+    ],
+    "complete_export_historical_floor_seconds": 820.203793800436,
+    "stop_if_complete_plan_does_not_fit": true,
+    "no_retry": true,
+    "no_successor": true
+  },
+  "historical_cost_sources": [
+    {
+      "path": "D:\\openbonsai\\runs\\2026-10-26-5090-ultrachat-attempt2\\rotated16x8\\metrics.json",
+      "bytes": 3511,
+      "sha256": "2c162562aaf4e271a10117dd8239e53f3c61a3061a598de6c35d54a0c0e39095"
+    },
+    {
+      "path": "D:\\openbonsai\\runs\\2026-10-26-5090-ultrachat-attempt2\\rotated16x8\\fresh-reload-metrics.json",
+      "bytes": 1205,
+      "sha256": "f9a1dfbb3a8d636b8f8d1dcb897389f413493bbf524b91c2000992489f476e69"
+    },
+    {
+      "path": "D:\\openbonsai\\runs\\2026-10-26-5090-ultrachat-attempt2\\rotated128x1\\metrics.json",
+      "bytes": 3513,
+      "sha256": "758fc21b1ac0881a9eaf3a6daa0f288f6376968d32fea5f94cee6efed5e0c989"
+    },
+    {
+      "path": "D:\\openbonsai\\runs\\2026-10-26-5090-ultrachat-attempt2\\rotated128x1\\fresh-reload-metrics.json",
+      "bytes": 1207,
+      "sha256": "9eb7adfdcba5f2ab2c49f70a90926ea984c317c242d2bf4f00c2efa0480f4403"
+    }
+  ],
+  "window0_control": {
+    "required_before_window1": true,
+    "final_fp32_exact": true,
+    "all_shared_scientific_update_fields_exact": true,
+    "sample": "fitting record0",
+    "native_input_kwargs_boundary_exact": true,
+    "source": "Authenticated parent conditional128 window0",
+    "partial_model_logits_compared_to_fully_calibrated_parent": false
+  },
+  "evidence": {
+    "transition_windows": [
+      0,
+      16,
+      31
+    ],
+    "true_pre_update102_factors": true,
+    "actual_snapshot_hashes_at102_and103": true,
+    "final_compact_fp32_state": true,
+    "all4096finite_gradient_update_audits": true,
+    "optimizer_dumps": false
+  },
+  "evaluation": {
+    "inputs": "inputs/diagnostic-inputs.json",
+    "nll_scored_tokens": 2048,
+    "arc_easy_questions": 20,
+    "generations": 4,
+    "max_new_tokens": 128,
+    "eos_token_ids": [
+      248044,
+      248046
+    ],
+    "thinking": false,
+    "decoding": "greedy",
+    "scorer": "Unchanged frozen legacy FP32 CE/FP64 sum",
+    "full_hard_fp32_and_fresh_packed_passes": true,
+    "search_records": 16,
+    "search_windows": [
+      0,
+      16,
+      31
+    ],
+    "search_never_fit": true,
+    "final_confirmation_accessed": false,
+    "original_and_parent_scores_reused_only_after_source_runtime_probe_identity": true
+  },
+  "export": {
+    "policy": "Existing 2bit/BITCOS auto candidates, FP16 scales, row64 reference runtime",
+    "full_retained_state_and_vision": true,
+    "tokenizer_configuration": true,
+    "fresh_process_exact_payload_and_stored_scale_logit_parity": true,
+    "retained_bf16_endpoints_preclude_2GB_language_scope": true,
+    "speedup_claim": false
+  },
+  "reporting": {
+    "preliminary_only": true,
+    "seal_all_outputs": true,
+    "stop_after_this_run": true
+  },
+  "commands": [
+    "D:\\openbonsai\\.venv\\Scripts\\python.exe tools\\sequential_supervise.py"
+  ]
+}

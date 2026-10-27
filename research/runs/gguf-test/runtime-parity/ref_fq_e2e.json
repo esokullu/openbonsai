@@ -1,0 +1,22 @@
+{
+ "mode": "fq",
+ "e2e": "D:/openbonsai/runs/gguf-test/synthetic/e2e_state.pt",
+ "dump": "C:/Users/esoku/AppData/Local/Temp/claude/D--openbonsai/a378e74a-dcb3-49cb-a9bc-29dd6c56e1f4/scratchpad/fixcheck/llama_e2e_c256x4.kld",
+ "n_ctx": 256,
+ "n_chunk": 4,
+ "scored_tokens": 508,
+ "ppl_ref": 13745.448783803833,
+ "ppl_llama_from_dump": 13697.735924862025,
+ "ppl_ref_per_chunk_cumulative": [
+  14146.614330728306,
+  17495.919809427254,
+  15983.888965686858,
+  13745.448783803833
+ ],
+ "mean_kl_llama_vs_ref": 0.0027850453720001055,
+ "max_kl": 0.0072383245864882685,
+ "top1_agreement": 0.9507874015748031,
+ "nll_corr": 0.9996491254844266,
+ "mean_abs_nll_diff": 0.06508886805107758,
+ "seconds": 48.367942571640015
+}

@@ -1,0 +1,103 @@
+{
+  "status": "preregistered_before_new_data_generation_or_evaluation",
+  "protocol": "ultrachat-nested-coverage-v1",
+  "authority": "Main coordination thread 01a175c1-8247-7133-bc37-abd01464a940: new pinned-source rotated pair supersedes handwritten-source128x1 gate",
+  "source_base_commit": "ff5bbf10e94d5d35282b9dfa48fa13069289fbfd",
+  "reviewed_runtime_archive_sha256": "ba4d28808cf1f7244e0ac9244eb4d0d6a4ce683b90f1f13741dc9caf0a0af87f",
+  "model_id": "Qwen/Qwen3.5-9B",
+  "model_revision": "c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+  "fresh_original_bf16_per_arm": true,
+  "task_fine_tuning": false,
+  "dataset": {
+    "id": "HuggingFaceH4/ultrachat_200k",
+    "split": "train_sft",
+    "revision_resolution": "Resolve and save immutable commit before download/selection; recorded in source manifest",
+    "scan_limit": 5000,
+    "scan_order": "published train_sft shard order then row order",
+    "content": "first user message only; discard supplied assistant answers and all later turns",
+    "eligible": "nonempty first-user prompt; exact pinned current Qwen nonthinking chat template length20..160 inclusive; no truncation",
+    "deduplication": "normalized whitespace prompt text; source/schema identifiers also validated",
+    "shuffle": "one random.Random(5090).shuffle on eligible rows",
+    "primary_count": 128,
+    "maximum_reserves": 32,
+    "reserves_for": ["source_schema_failure", "duplicate", "empty_continuation"],
+    "forbidden_selection_signals": ["evaluation inputs or answers", "evaluation scores", "expected quality", "manual difficult-prompt replacement", "generated answer quality", "generated answer length"],
+    "scope": "Declared bounded length-filtered source distribution, not representative of all chat tasks"
+  },
+  "generation": {
+    "model_revision": "c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+    "enable_thinking": false,
+    "do_sample": false,
+    "max_new_tokens": 512,
+    "max_prompt_tokens": null,
+    "num_beams": 1,
+    "num_return_sequences": 1,
+    "eos_token_ids": [248044,248046],
+    "attention_implementation": "sdpa",
+    "use_cache": true,
+    "dtype": "bfloat16",
+    "seed": 5090,
+    "maximum_new_trace_attempts": 160,
+    "maximum_gpu_preparation_seconds": 5400,
+    "hard_time_limit": "Deadline stopping criterion; unfinished deadline trace preserved but excluded, stop entire preparation; no automatic continuation",
+    "completion": "128 distinct valid traces or stop; no regeneration for length or quality"
+  },
+  "consumption": {
+    "sequence_length": 512,
+    "truncation_side": "right",
+    "padding_side": "right",
+    "pad_token_id": 248044,
+    "mask": "original prompt and continuation active; padding zero; identical both arms"
+  },
+  "nested_selection": {
+    "input": "128 frozen consumed records and masks only",
+    "sort": ["active_positions", "prompt_id"],
+    "bins": 16,
+    "records_per_bin": 8,
+    "selection_per_bin": 1,
+    "objective": "minimize abs(8*sum(active_positions_selected16)-sum(active_positions_all128))",
+    "tie_break": "lexicographically smallest source prompt_id tuple in bin order",
+    "algorithm": "exact deterministic dynamic programming; freeze/hash implementation before generation",
+    "maximum_relative_exposure_difference": 0.05,
+    "relative_difference_denominator": "sum(active_positions_all128)",
+    "old_handwritten_budget_target": false,
+    "training_order": "128 in fixed accepted source-shuffle order;16 in that same parent order; trainer seeded shuffle unchanged"
+  },
+  "arms_committed_in_order": [
+    {"name":"rotated16x8","samples":16,"epochs":8,"calibration":"data/ayot16.jsonl"},
+    {"name":"rotated128x1","samples":128,"epochs":1,"calibration":"data/ayot128.jsonl"}
+  ],
+  "training": {
+    "device":"cuda","dtype":"bfloat16","batch_size":1,"sequence_length":512,
+    "window_size":1,"stride":1,"seed":5090,"group_size":128,"lora_rank":64,
+    "factor_mapping":"sigmoid","reconstruction_loss":"huber","huber_delta":1.0,
+    "factor_learning_rate":0.005,"lora_learning_rate":0.001,"weight_decay":0.0,"gradient_clip":1.0,
+    "gradient_checkpointing":true,"updates_per_window":128,"soft_steps":102,"hard_steps":26,
+    "last_actual_soft_sharpness":29.8828125,"hard_phase":"frozen_jacobian",
+    "snapshot":"last actual soft forward pre-update parameters and sharpness",
+    "rotation_block_size":4096,"rotation_sign_seed":5090,"rotation_order":"native row-vector D H",
+    "selected_decoder_projections":200,
+    "retained":"embeddings, head, vision, small recurrent gates, convolutions, norms and dynamics; MLP gate_proj stays quantized",
+    "runtime_row_chunk_size":64,"cache_decoded_weights":true,
+    "maximum_projected_training_seconds_per_arm":7200,
+    "memory_gate_bytes":30064771072,
+    "simultaneous_gpu_jobs":1
+  },
+  "preflight": {
+    "actual_source_resident_model":true,"calibration_cache_samples":128,
+    "stages":["soft backward","hard frozen-jacobian backward"],
+    "measure_separately":["loading","conversion","cache capture","optimization","other trainer phases"],
+    "failure_action":"preserve evidence and stop; no changed coverage or hyperparameters"
+  },
+  "evaluation": {
+    "existing_frozen_input_sha256":"330ffeeb77fa384492a6494e1e698edd400d7088456dbd0b7bc0fd366b7d838a",
+    "scored_nll_tokens":2048,"arc_questions":20,"generation_prompts":4,
+    "enable_thinking":false,"do_sample":false,"max_new_tokens":128,"use_cache":false,
+    "eos_token_ids":[248044,248046],"attention_implementation":"eager",
+    "stages":["hard FP32 learned state","FP16 scales same wrapper GEMM","packed fresh-process reload"],
+    "scope":"repeated development diagnostics; no final-confirmation claim",
+    "second_arm_independent_of_first_arm_quality":true
+  },
+  "stop_after":"completed and sealed paired evaluations, or any failed data/safety/correctness gate",
+  "forbidden_successors":["more epochs","new sample count","sign or LR grid","endpoint calibration","RCO","cloud GPU","push","upload"]
+}

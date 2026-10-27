@@ -1,0 +1,16 @@
+{
+  "base_commit": "0cbf667fb5f65ef2e6a03ab269431dcb8f0f7db5",
+  "model": "Qwen/Qwen3.5-9B",
+  "revision": "c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+  "source": "cached original official BF16; no task fine-tuning; no packed or LS-recovered source",
+  "preserved_directories": ["D:/openbonsai/runs/2026-10-26-5090-pilot", "D:/openbonsai/runs/2026-10-26-5090-diagnosis"],
+  "fixed_settings": {"samples": 16, "sequence_length": 512, "batch_size": 1, "window_size": 1, "stride": 1, "seed": 5090, "group_size": 128, "lora_rank": 64, "lora_learning_rate": 0.001, "device": "cuda", "dtype": "bfloat16", "gradient_checkpointing": true, "aggressive_gates": false, "hard_phase": "frozen_jacobian", "packing": "auto", "thinking": false},
+  "controlled_run": {"epochs": 1, "factor_mapping": "exp", "reconstruction_loss": "mse", "learning_rate": 0.001, "updates_per_window": 16, "soft_steps": 12, "hard_steps": 4, "last_actual_soft_sharpness": 28.125},
+  "bounded_screen": {"epochs": 8, "factor_mapping": "sigmoid", "reconstruction_loss": "huber", "huber_delta": 1.0, "learning_rate": 0.005, "updates_per_window": 128, "soft_steps": 102, "hard_steps": 26, "last_actual_soft_sharpness": 29.8828125},
+  "screen_authorization": "Run once from fresh original BF16 if integration is numerically sound, regardless of controlled16x1 quality. No hyperparameter sweep.",
+  "diagnostic_gate": {"scored_tokens": 2048, "arc_questions": 20, "generation_prompts": 4, "reference_failed_nll": 13.257692343497184, "minimum_nll_improvement": 2.0, "minimum_arc_correct": 10, "generation_requirement": "all four intelligible, task-relevant, nondegenerate; manually inspect actual text", "stages": ["hard FP32 learned state", "reloaded FP16 packed state"]},
+  "full_gate": {"only_if_diagnostic_gate_passes": true, "scored_tokens": 16384, "arc_questions": 100, "generation_prompts": 10, "reference_failed_nll": 12.699257747822496, "minimum_nll_improvement": 2.0, "minimum_arc_correct": 50, "minimum_intelligible_relevant_nondegenerate_generations": 8},
+  "conditional_larger_run": {"only_if_both_gates_pass": true, "samples": 128, "epochs": 3, "recipe": "successful sigmoid/Huber bounded-screen settings", "source": "fresh original BF16", "window": "preflight window2/stride1; use if it fits, otherwise document window1/stride1", "calibration": "same original revision, nonthinking/template/EOS settings, additional distinct prompts separated from evaluation", "stop_after": true},
+  "limitations": ["Resource-allocation thresholds are exploratory, not evidence of near-BF16 or lossless quality.", "Rank64 structural fixes are combined in16x1; budget/mapping/objective/LR changes are combined in16x8, so these do not isolate each factor.", "Delta1.0 is explicitly chosen; released training threshold is unavailable.", "No optimized low-bit kernels are introduced; storage, inference memory and runtime are separate measurements."],
+  "no_push_or_upload": true
+}

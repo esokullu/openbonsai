@@ -1,0 +1,65 @@
+{
+  "status": "predeclared_before_results",
+  "source_commit": "ff5bbf10e94d5d35282b9dfa48fa13069289fbfd",
+  "model": "Qwen/Qwen3.5-9B",
+  "revision": "c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+  "source_scope": "Fresh original official BF16 checkpoint per condition; no task fine-tuning or compressed source",
+  "conditions_in_order": ["unrotated", "rotated"],
+  "fixed_training": {
+    "max_samples": 16, "sequence_length": 512, "batch_size": 1,
+    "epochs": 8, "window_size": 1, "stride": 1, "seed": 5090,
+    "group_size": 128, "lora_rank": 64, "factor_mapping": "sigmoid",
+    "reconstruction_loss": "huber", "huber_delta": 1.0,
+    "factor_learning_rate": 0.005, "lora_learning_rate": 0.001,
+    "hard_phase": "frozen_jacobian", "gradient_checkpointing": true,
+    "dtype": "bfloat16", "device": "cuda",
+    "updates_per_window": 128, "soft_steps": 102, "hard_steps": 26,
+    "last_actual_soft_sharpness": 29.8828125,
+    "coverage": "Same 200 conservative decoder projections; embeddings/head/vision/gates/convs/norms retained"
+  },
+  "rotation": {
+    "condition": "rotated", "block_size": 4096, "sign_seed": 5090,
+    "sign_generator": "SHA256 OpenBonsai-DH-v1 with full native module name",
+    "row_vector_contract": "R = signs * H; linear uses xR and WR; embedding inverse H then signs is preflight only",
+    "native_ordering": true,
+    "weight_transform_dtype": "float32 before low-rank correction and grouping",
+    "persistent_rotated_weight_copy": false
+  },
+  "calibration": {
+    "path": "D:/openbonsai/runs/2026-10-26-5090-pilot/ayot.jsonl",
+    "sha256": "09df0a26800a20e46288b5a775075c91dc5c0e98bc0bf81ac7906f304a0d820f",
+    "source_tokens": 5330, "active_tokens": 5234, "padding_tokens": 2958,
+    "truncated_tokens": 96, "truncated_records": 3,
+    "thinking": false, "generation_cap": 512, "new_calibration_generation": false
+  },
+  "evaluation": {
+    "path": "D:/openbonsai/runs/2026-10-26-5090-diagnosis/diagnostic-inputs.json",
+    "scored_tokens": 2048, "arc_questions": 20, "generation_prompts": 4,
+    "thinking": false, "greedy": true, "max_new_tokens": 128,
+    "use_cache": false, "eos_token_ids": [248044, 248046],
+    "stages": ["hard FP32 learned state", "exported scale representation", "independent fresh-process mixed reload"],
+    "full_suite_automatic": false
+  },
+  "preflight_gate": {
+    "cpu_suite": true, "cuda_rotation_smoke": true,
+    "native_float_rotation_all_selected_modules_positive_progress": true,
+    "teacher_bypass_before_after_optimization": true,
+    "soft_hard_factor_lora_gradients_and_fp32_snapshots": true,
+    "native_projection_shapes": [[12288,4096],[4096,12288]],
+    "native_hybrid_window": true,
+    "fresh_reload_exact": true, "both_eos_stopping": true,
+    "runtime_chunk_candidates": [64,512],
+    "runtime_chunk_selection": "Identical decoded weights and packed-runtime logits required; freeze same selected value for both conditions and reload",
+    "maximum_projected_training_seconds_per_condition": 7200,
+    "resource_failure_action": "Report measured constraints and stop before training; do not change coverage/budget silently"
+  },
+  "packing": "Ternary BITCOS only when complete candidate file is smaller; preserve learned codes, scales and explicit signs",
+  "stop_after": "Paired diagnostic results and report; no full suite, RCO search, candidate grid, endpoint training, 128-sample run, or sweep",
+  "limitations": [
+    "Research hypothesis, not Bonsai reproduction or lossless compression",
+    "Historical corrected16x1 has a different training recipe and is not the matched control",
+    "Current repeatedly used diagnostic inputs are development data, not fresh final confirmation",
+    "Retaining embeddings/head alone costs about4.07GB and prevents approaching a2GB model",
+    "Reference runtimes reconstruct floating weights; no low-bit-kernel or speedup claim"
+  ]
+}

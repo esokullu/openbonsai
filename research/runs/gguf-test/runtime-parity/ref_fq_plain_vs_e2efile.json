@@ -1,0 +1,22 @@
+{
+ "mode": "fq",
+ "e2e": "",
+ "dump": "C:/Users/esoku/AppData/Local/Temp/claude/D--openbonsai/a378e74a-dcb3-49cb-a9bc-29dd6c56e1f4/scratchpad/fixcheck/llama_e2e_c256x4.kld",
+ "n_ctx": 256,
+ "n_chunk": 4,
+ "scored_tokens": 508,
+ "ppl_ref": 14310.116531484828,
+ "ppl_llama_from_dump": 13697.735924862025,
+ "ppl_ref_per_chunk_cumulative": [
+  15751.608651734066,
+  17971.92993195042,
+  16759.19398015066,
+  14310.116531484828
+ ],
+ "mean_kl_llama_vs_ref": 0.06810422795465775,
+ "max_kl": 0.24385437549217664,
+ "top1_agreement": 0.6811023622047244,
+ "nll_corr": 0.993782540977526,
+ "mean_abs_nll_diff": 0.2898308467800369,
+ "seconds": 43.72997522354126
+}

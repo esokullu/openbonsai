@@ -223,3 +223,97 @@ footer a:hover {
     transition: none;
   }
 }
+
+/* Research-preview label, method section and footer lines */
+
+.preview-label {
+  display: inline-block;
+  margin: 18px 0 0;
+  padding: 3px 10px;
+  border: 1px solid #cfd8d1;
+  border-radius: 999px;
+  color: var(--focus);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  line-height: 1.6;
+  text-transform: uppercase;
+}
+
+.preview-label + .research-line {
+  margin-top: 16px;
+}
+
+.method {
+  width: 100%;
+  max-width: 640px;
+  padding-top: 40px;
+  border-top: 1px solid #e4eae5;
+}
+
+.method h2 {
+  margin: 0;
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
+  font-size: clamp(27px, 4vw, 36px);
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: -0.035em;
+  text-align: center;
+  text-wrap: balance;
+}
+
+.method-description,
+.method-status,
+.method-links {
+  max-width: 540px;
+  margin: 16px auto 0;
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.7;
+  text-align: center;
+  text-wrap: pretty;
+}
+
+.method-steps {
+  margin: 28px 0 0;
+  padding-left: 1.4em;
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.method-steps li + li {
+  margin-top: 12px;
+}
+
+.method-steps strong {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.method-status {
+  margin-top: 24px;
+}
+
+.method-links {
+  font-size: 13px;
+}
+
+.method a {
+  color: inherit;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.method a:hover {
+  color: var(--ink);
+}
+
+.method a:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 5px;
+}
+
+footer p + p {
+  margin-top: 4px;
+}

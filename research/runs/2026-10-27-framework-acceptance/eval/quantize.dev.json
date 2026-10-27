@@ -1,0 +1,17 @@
+{
+ "source": "quantize",
+ "suite": "dev",
+ "nll": 3.3183112722263854,
+ "ppl": 27.6136791750229,
+ "scored_tokens": 2048,
+ "arc_correct": 15,
+ "arc_total": 20,
+ "arc_preds": "CBABDCAABCADBCCBBBBB",
+ "manifest_frozen_sha256": "8021d9cc8f54943a3b816af74cbc41d588173d385f51b73a681e979393ef5fdf",
+ "generations": [
+  "1. Store fresh produce in airtight containers to prevent spoilage.\n2. Clean surfaces with a mild detergent to remove grease and dust.\n3. Organize shelves to keep items neatly arranged for easy access.<|im_end|>",
+  "Based on the provided information, there are **10 heads** and **28 legs**.\n\nSince chickens and rabbits have distinct anatomical structures, we can deduce the number of each animal based on their anatomical features:\n\n- **Chickens**: Chickens have 2 heads and 2 legs.\n- **Rabbits**: Rabbits have 2 heads and 2 legs.\n\nTherefore, there are **10 heads** and **28 legs** in total.\n\n**Explanation:**\n- Chickens have 2 heads and 2 legs.\n- Rabbits have 2 heads and ",
+  "Here is a Python function that checks whether parentheses are balanced, ignoring other characters, and includes an empty-string case.\n\n```python\ndef is_balanced(text):\n    # Check if parentheses are balanced\n    # Ignore other characters\n    # Include empty-string case\n    # Return True if balanced, False if unbalanced\n    # Return False if empty-string case\n    # Return True if balanced\n    # Return False if unbalanced\n    # Return True if balanced\n    # Return False if unbalanced\n    # Return True if balanced\n    # Return False if unbalanced\n    # Return True if balanced\n",
+  "**Yarın gelemiyorum, toplantıyı başka güne alsak olur mu?**\n\n**Yarın gelemiyorum, toplantıyı başka güne asak olur mu?**\n\n**Yarın gelemiyorum, toplantıyı başka güne asak olur mu?**\n\n**Yarın gelemiyorum, toplantıyı başka güne asak olur mu?**\n\n**Yarın gelemiyorum, toplantıyı başka güne asak olur mu?**\n\n**Yarın gelemiyorum, toplantıyı başka güne asak olur mu?**\n\n**Yarın gelemiyorum"
+ ]
+}

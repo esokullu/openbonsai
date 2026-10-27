@@ -1,0 +1,948 @@
+{
+  "format": "openbonsai.bonsai-reference-validation.v1",
+  "date_utc": "2026-10-26",
+  "base_implementation_commit": "f35fac6fac2f55d9fe07c867f17ca5922f24aedd",
+  "quality_claim": false,
+  "original_bf16_comparison": false,
+  "hardware": {
+    "platform": "macOS-26.0.1-arm64-arm-64bit",
+    "machine": "arm64",
+    "device": "CPU",
+    "threads": 4,
+    "system_memory_bytes": 68719476736,
+    "peak_process_memory_measured": false
+  },
+  "tests": {
+    "command": "python -m pytest -q",
+    "passed": 1060,
+    "seconds": 21.7,
+    "focused_new_tests": 17
+  },
+  "reviews": {
+    "preflight": "Independent code review; corrected invalid-timeout reporting and made executable hash a required build-receipt input",
+    "inventory": "Independent read-only review; exact typed payload bytes and separate metadata/alignment",
+    "actual_execution": "Official pinned PTQ1_0 loaded and scored on macOS CPU in two sequential worker processes"
+  },
+  "implementation_files": {
+    "tools/preflight_bonsai_reference.py": {
+      "sha256": "050caf004004ddc6c4bde281cdba5b03b5792b1bb99366552ce0472a5dfaca89",
+      "bytes": 24286
+    },
+    "tools/inspect_bonsai_reference.py": {
+      "sha256": "588ad33439530efce266d5192ef84f1bf6d82dfd422e977c67c944ec7289be78",
+      "bytes": 5424
+    },
+    "tests/test_bonsai_reference_preflight.py": {
+      "sha256": "6dc1328cc14c54daa7af9fb3f5a9f6191bf2f1d1d11a70b41ce773b91e0488c6",
+      "bytes": 12321
+    },
+    "openbonsai/evaluation.py": {
+      "sha256": "3b31b024db2bf56859494e0c5d69ffd13ac78a28b8b6f15134851be1949bfeb5",
+      "bytes": 27785
+    },
+    "openbonsai/eval_backends.py": {
+      "sha256": "1240292a821ad311b8ea2eeff35a9f3ae7b05903164811798c6cde79857fa929",
+      "bytes": 30532
+    },
+    "tools/prism_eval_worker.cpp": {
+      "sha256": "39df5d66f46abfe4f212ea0e62b2a85b42f8bb6a464548052f19705557ba195f",
+      "bytes": 18827
+    }
+  },
+  "actual_receipts": {
+    "inventory-reproducible.json": {
+      "sha256": "cedf87454c9f8042239d2a62bbb3401a3ab3a839a2b7cd57cab5abee66498c36",
+      "bytes": 92717
+    },
+    "forced-eos-input.json": {
+      "sha256": "a6a44339928dad38ca2dd4602275fa9c02dc5d4eea3bd18f64dd6e58f47e070f",
+      "bytes": 347
+    },
+    "frozen-inputs.json": {
+      "sha256": "e4257988aa1c42041890e8a4b438e38a64417a3f0cf618c07586e432f2c2fbdc",
+      "bytes": 34745
+    },
+    "prism-fresh.stderr": {
+      "sha256": "4814b64050c2a7f9ba05b7a90f9e05235cc433f740005dff5aa5ee7a1af4ddeb",
+      "bytes": 69960
+    },
+    "prism.stderr": {
+      "sha256": "dcc18d9cfacbc543bc330afb6626f3537d5ab2cb951b737a9560e64d5804fe44",
+      "bytes": 69960
+    },
+    "report.json": {
+      "sha256": "f322c72598796e840a521ca32f3d9d9d81961df8fc50eeaf11e534337d6fbd15",
+      "bytes": 20454
+    },
+    "scored-call-01.json": {
+      "sha256": "83146a76ec72c7d89bc01c3b6111abd34be5e6e51ac79733b93bed13c1168355",
+      "bytes": 1213
+    },
+    "scored-call-02.json": {
+      "sha256": "989fd6577428199ae1911ed1303a21fa62f3949531f31568e459d001645a35a3",
+      "bytes": 617
+    },
+    "scored-call-03.json": {
+      "sha256": "adfc7c8b8437f2074297944497e528860bd185a8f0de4120f71a07b42b1c468d",
+      "bytes": 617
+    },
+    "scored-call-04.json": {
+      "sha256": "18e15e7ac7e51225491bb221dd120a29412771b11b0da811b9c54d9999f906cc",
+      "bytes": 649
+    },
+    "scored-call-05.json": {
+      "sha256": "7c28661bef551acd59357a9d7db546f6e9e1854963ea533d07e6930a2bcdec60",
+      "bytes": 1792
+    },
+    "scored-call-06.json": {
+      "sha256": "5853c137f6e22bf26a08c535b3c946b4893dfbe1ebfaf4d803b278aad468c18d",
+      "bytes": 639
+    },
+    "scored-call-07.json": {
+      "sha256": "d5f29894531a34019843a027625f8527cbe2b63da10be81e47635a9d5fd7c5ef",
+      "bytes": 1791
+    },
+    "scored-call-08.json": {
+      "sha256": "a9c4fea8b4ac8562f398a8cc4dfff1d0178b21e96b4240c22c0a30f9c13d9f75",
+      "bytes": 625
+    },
+    "scored-call-09.json": {
+      "sha256": "392f5a20ea456dd2bfb4cacf3f595317c2f0ada973dbe94b6f7c1bd5a4b32d03",
+      "bytes": 1786
+    },
+    "scored-output.json": {
+      "sha256": "747b95fc01817dc0fcc784121e18de52ede8584bea2a38b4721441d82ad98aa8",
+      "bytes": 11004
+    }
+  },
+  "inventory": {
+    "format": "openbonsai.official-bonsai-inventory.v1",
+    "source": {
+      "repository": "prism-ml/Ternary-Bonsai-2-9B-gguf",
+      "revision": "5b2abb02362efbed46bbe204014b02837778b2c2",
+      "filename": "Ternary-Bonsai-2-9B-PTQ1_0.gguf",
+      "sha256": "3561df7ac7d26a71ffa991ac2db740b10841c3a350aa2676ccd3ff5d428b4e8b",
+      "bytes": 1997486976
+    },
+    "reader_source_sha": "c9c34bc9c4042c13a31598ebf43461cd0ad8f00d",
+    "inspection_script_sha256": "588ad33439530efce266d5192ef84f1bf6d82dfd422e977c67c944ec7289be78",
+    "scope": "Language-only file with embedded tokenizer; vision and optional MTP excluded",
+    "quality_claim": false,
+    "inference_executed": false,
+    "tensor_count": 427,
+    "by_type": {
+      "PTQ1_0": {
+        "tensors": 202,
+        "elements": 8946450432,
+        "bytes": 1957036032
+      },
+      "F32": {
+        "tensors": 225,
+        "elements": 7352832,
+        "bytes": 29411328
+      }
+    },
+    "tensor_payload_bytes": 1986447360,
+    "container_metadata_alignment_bytes": 11039616,
+    "ternary_matrix_count": 202,
+    "ternary_endpoints": [
+      {
+        "name": "output.weight",
+        "type": "PTQ1_0",
+        "shape_ggml_order": [
+          4096,
+          248320
+        ],
+        "elements": 1017118720,
+        "bytes": 222494720,
+        "offset": 11039616
+      },
+      {
+        "name": "token_embd.weight",
+        "type": "PTQ1_0",
+        "shape_ggml_order": [
+          4096,
+          248320
+        ],
+        "elements": 1017118720,
+        "bytes": 222494720,
+        "offset": 233550720
+      }
+    ],
+    "retained_f32_families": {
+      "output_norm.weight": {
+        "tensors": 1,
+        "bytes": 16384
+      },
+      "attn_norm.weight": {
+        "tensors": 32,
+        "bytes": 524288
+      },
+      "post_attention_norm.weight": {
+        "tensors": 32,
+        "bytes": 524288
+      },
+      "ssm_a": {
+        "tensors": 24,
+        "bytes": 3072
+      },
+      "ssm_alpha.weight": {
+        "tensors": 24,
+        "bytes": 12582912
+      },
+      "ssm_beta.weight": {
+        "tensors": 24,
+        "bytes": 12582912
+      },
+      "ssm_conv1d.weight": {
+        "tensors": 24,
+        "bytes": 3145728
+      },
+      "ssm_dt.bias": {
+        "tensors": 24,
+        "bytes": 3072
+      },
+      "ssm_norm.weight": {
+        "tensors": 24,
+        "bytes": 12288
+      },
+      "attn_k_norm.weight": {
+        "tensors": 8,
+        "bytes": 8192
+      },
+      "attn_q_norm.weight": {
+        "tensors": 8,
+        "bytes": 8192
+      }
+    },
+    "selected_metadata": {
+      "general.architecture": "qwen35",
+      "qwen35.block_count": 32,
+      "qwen35.context_length": 262144,
+      "prism.hadamard.version": 1,
+      "prism.hadamard.block_size": 4096,
+      "prism.hadamard.transform": "normalized-sylvester-walsh-hadamard",
+      "prism.hadamard.axis": "input-last-dimension",
+      "prism.hadamard.sign_mode": "explicit",
+      "prism.hadamard.weight_names": {
+        "entries": 201,
+        "canonical_value_sha256": "4a20839805c1dc952206201236aa8392b31e67d1991a445f9fa11215c7156e36"
+      },
+      "prism.hadamard.sign_widths": [
+        4096,
+        12288
+      ],
+      "prism.hadamard.sign_values": {
+        "entries": 16384,
+        "canonical_value_sha256": "b184319e261905c9eec44b34a74aabfeaf52d0e078ff41bed83b061a34fb18fd"
+      },
+      "prism.hadamard.inverse_weight_names": [
+        "token_embd.weight"
+      ],
+      "prism.hadamard.gdn_v_grouped": true,
+      "tokenizer.ggml.eos_token_id": 248046,
+      "tokenizer.ggml.add_bos_token": false,
+      "general.file_type": 143,
+      "tokenizer.ggml.bos_token_id": 248044
+    }
+  },
+  "preflight": {
+    "format": "openbonsai.official-bonsai-cpu-preflight.v1",
+    "status": "complete",
+    "passed": true,
+    "quality_claim": false,
+    "original_bf16_comparison": false,
+    "scope": "official PTQ1_0 checkpoint plus pinned CPU runtime; authored development inputs",
+    "limitations": [
+      "Authored development diagnostic only; no benchmark or original-BF16 quality comparison.",
+      "Text only; no vision, training, allocation or compression is performed.",
+      "CPU PTQ1_0 uses Q8_0 activation vec-dot; PQ2_0 uses Q8_K. FP32 logits/KV do not mean all-FP32 matmul or PQ2/CUDA kernel parity.",
+      "Earlier random F32 fixture tests did not exercise PTQ1_0 quantized kernels.",
+      "The official checkpoint plus pinned CPU runtime is the measured system.",
+      "A 16-token cap and simple authored examples cannot establish useful model quality."
+    ],
+    "phase": "complete",
+    "official_source": {
+      "repository": "prism-ml/Ternary-Bonsai-2-9B-gguf",
+      "revision": "5b2abb02362efbed46bbe204014b02837778b2c2",
+      "format": "PTQ1_0"
+    },
+    "expected": {
+      "gguf_sha256": "3561df7ac7d26a71ffa991ac2db740b10841c3a350aa2676ccd3ff5d428b4e8b",
+      "gguf_bytes": 1997486976,
+      "worker_sha256": "1d6c1fb39b3b9203a246d485f51d2fc2ab798d51a714a7cdbd30f87cb920fef9",
+      "runtime_sha": "c9c34bc9c4042c13a31598ebf43461cd0ad8f00d",
+      "tokenizer_sha256": "561ad2f92310c672b829c8971a72bfc3ce2e65df16fbdaa64dd573a8087cbd86",
+      "eos_ids": [
+        248044,
+        248046
+      ]
+    },
+    "settings": {
+      "context_length": 256,
+      "threads": 4,
+      "gpu_layers": 0,
+      "request_timeout_seconds": 300.0,
+      "generation_cap": 16,
+      "forced_eos_enabled": true
+    },
+    "gguf": {
+      "path": "/Users/barack/Documents/Codex/2026-10-26/i/work/openbonsai-rco/../research/bonsai-ptq1-reference/Ternary-Bonsai-2-9B-PTQ1_0.gguf",
+      "sha256": "3561df7ac7d26a71ffa991ac2db740b10841c3a350aa2676ccd3ff5d428b4e8b",
+      "bytes": 1997486976
+    },
+    "worker": {
+      "path": "/Users/barack/Documents/Codex/2026-10-26/i/work/openbonsai-rco/../research/prism-eval-build/cmake/bin/prism-eval-worker",
+      "sha256": "1d6c1fb39b3b9203a246d485f51d2fc2ab798d51a714a7cdbd30f87cb920fef9",
+      "bytes": 4887408
+    },
+    "tokenizer": {
+      "kind": "local-files-sha256",
+      "path": "/Users/barack/Documents/Codex/2026-10-26/i/work/openbonsai-rco/../openbonsai-monitor/eval-fixture-source/tokenizer",
+      "files": {
+        ".cache/huggingface/.gitignore": {
+          "sha256": "684888c0ebb17f374298b65ee2807526c066094c701bcc7ebbe1c1095f494fc1",
+          "bytes": 1
+        },
+        ".cache/huggingface/CACHEDIR.TAG": {
+          "sha256": "f6572428f6d5e1575e73a1502895a8731f10757dfbb634909c6e154b849af91d",
+          "bytes": 191
+        },
+        ".cache/huggingface/download/chat_template.jinja.lock": {
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        ".cache/huggingface/download/chat_template.jinja.metadata": {
+          "sha256": "d5c87e158601a4894014617e26f496e75ef12369615668c2e472d651fa90f805",
+          "bytes": 100
+        },
+        ".cache/huggingface/download/merges.txt.lock": {
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        ".cache/huggingface/download/merges.txt.metadata": {
+          "sha256": "fe32590b67658eae97dca8bee801a2d8294312e1946e749579b80adf87ea8985",
+          "bytes": 100
+        },
+        ".cache/huggingface/download/tokenizer.json.lock": {
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        ".cache/huggingface/download/tokenizer.json.metadata": {
+          "sha256": "f5f44d69e9190e18366b589350c798d426c925081a35095b51bbbdd81ab8de3a",
+          "bytes": 124
+        },
+        ".cache/huggingface/download/tokenizer_config.json.lock": {
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        ".cache/huggingface/download/tokenizer_config.json.metadata": {
+          "sha256": "d73a97fba966d15ff25e766c0dab54c0ce183cf993bb512c30f4630348d7d318",
+          "bytes": 100
+        },
+        ".cache/huggingface/download/vocab.json.lock": {
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        ".cache/huggingface/download/vocab.json.metadata": {
+          "sha256": "3204efac6b7f47f3904d2e8abbe294c43dccdd5265f9abfa11c22494243cb952",
+          "bytes": 100
+        },
+        ".cache/huggingface/trees/c202236235762e1c871ad0ccb60c8ee5ba337b9a.json": {
+          "sha256": "d7ad40636720ea7238027ab0d27df4ae4214320d59478ff8e44260c62a21d57d",
+          "bytes": 2813
+        },
+        "chat_template.jinja": {
+          "sha256": "a4aee8afcf2e0711942cf848899be66016f8d14a889ff9ede07bca099c28f715",
+          "bytes": 7756
+        },
+        "merges.txt": {
+          "sha256": "a9d356d7bdf1ef4949e3e748e95b8e10ad9d4e2e838eddc38a0a7b6b94d1db8d",
+          "bytes": 3353259
+        },
+        "tokenizer.json": {
+          "sha256": "5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42",
+          "bytes": 12807982
+        },
+        "tokenizer_config.json": {
+          "sha256": "316230d6a809701f4db5ea8f8fc862bc3a6f3229c937c174e674ff3ca0a64ac8",
+          "bytes": 16710
+        },
+        "vocab.json": {
+          "sha256": "ce99b4cb2983d118806ce0a8b777a35b093e2000a503ebde25853284c9dfa003",
+          "bytes": 6722759
+        }
+      },
+      "sha256": "561ad2f92310c672b829c8971a72bfc3ce2e65df16fbdaa64dd573a8087cbd86",
+      "bytes": 22911995
+    },
+    "frozen_sha256": "6d2bfbe6976b8c7f32c8e84548ca0b25238b596936728c80a2865db10defc59d",
+    "work_budget": {
+      "scored_targets_including_reset": 33,
+      "generation_tokens_maximum": 17,
+      "model_score_calls_maximum": 7,
+      "model_generation_calls_maximum": 2
+    },
+    "backend": {
+      "allocated_context_length": 256,
+      "batch_size": 64,
+      "cache_mode": "full-prefix-reference",
+      "context_length": 256,
+      "cuda_build": false,
+      "flash_attention": false,
+      "gpu_layers": 0,
+      "kv_cache_dtype": "float32",
+      "load_mtp": false,
+      "logits_dtype": "float32",
+      "model_path": "/Users/barack/Documents/Codex/2026-10-26/i/work/openbonsai-rco/../research/bonsai-ptq1-reference/Ternary-Bonsai-2-9B-PTQ1_0.gguf",
+      "native_eog_ids": [
+        248044,
+        248046,
+        248063,
+        248064,
+        248065
+      ],
+      "protocol": "openbonsai.frozen-evaluation.v1",
+      "reduction": "fp32-logits-fp64-logsumexp-v1",
+      "reset_policy": "per-record",
+      "runtime_sha": "c9c34bc9c4042c13a31598ebf43461cd0ad8f00d",
+      "threads": 4,
+      "ubatch_size": 64,
+      "vocab_size": 248320,
+      "backend": "prism",
+      "source_identity": {
+        "path": "/Users/barack/Documents/Codex/2026-10-26/i/work/openbonsai-rco/../research/bonsai-ptq1-reference/Ternary-Bonsai-2-9B-PTQ1_0.gguf",
+        "sha256": "3561df7ac7d26a71ffa991ac2db740b10841c3a350aa2676ccd3ff5d428b4e8b",
+        "bytes": 1997486976
+      },
+      "tokenizer_identity": {
+        "kind": "embedded-gguf",
+        "model_sha256": "3561df7ac7d26a71ffa991ac2db740b10841c3a350aa2676ccd3ff5d428b4e8b"
+      },
+      "runtime": {
+        "path": "/Users/barack/Documents/Codex/2026-10-26/i/work/openbonsai-rco/../research/prism-llama.cpp",
+        "sha": "c9c34bc9c4042c13a31598ebf43461cd0ad8f00d",
+        "tracked_source_clean": true,
+        "executable": {
+          "path": "/Users/barack/Documents/Codex/2026-10-26/i/work/openbonsai-rco/../research/prism-eval-build/cmake/bin/prism-eval-worker",
+          "sha256": "1d6c1fb39b3b9203a246d485f51d2fc2ab798d51a714a7cdbd30f87cb920fef9",
+          "bytes": 4887408
+        }
+      },
+      "argv": [
+        "/Users/barack/Documents/Codex/2026-10-26/i/work/openbonsai-rco/../research/prism-eval-build/cmake/bin/prism-eval-worker",
+        "--model",
+        "/Users/barack/Documents/Codex/2026-10-26/i/work/openbonsai-rco/../research/bonsai-ptq1-reference/Ternary-Bonsai-2-9B-PTQ1_0.gguf",
+        "--context-length",
+        "256",
+        "--threads",
+        "4",
+        "--gpu-layers",
+        "0"
+      ],
+      "stderr": {
+        "path": "/Users/barack/Documents/Codex/2026-10-26/i/work/openbonsai-rco/../openbonsai-monitor/official-bonsai-cpu-preflight/prism.stderr",
+        "max_bytes": 1048576,
+        "truncated": false
+      }
+    },
+    "eog": {
+      "expected_evaluation_eos_ids": [
+        248044,
+        248046
+      ],
+      "observed_native_eog_ids": [
+        248044,
+        248046,
+        248063,
+        248064,
+        248065
+      ],
+      "same_set": false,
+      "policy": "Use the explicitly frozen expected EOS IDs; native EOG is reported, never substituted."
+    },
+    "raw_nfc_probe": {
+      "raw_utf8_hex": "65cc81",
+      "reference_ids": [
+        933
+      ],
+      "native_gguf_ids": [
+        68,
+        52033
+      ],
+      "equal_before_explicit_nfc": false
+    },
+    "diagnostic_aggregate": {
+      "nll_sum": 46.153294277404946,
+      "scored_tokens": 14,
+      "mean_nll": 3.296663876957496,
+      "perplexity": 27.022338531567453,
+      "choice_correct": 1,
+      "choice_labelled": 1,
+      "choice_accuracy": 1.0,
+      "generations": 1
+    },
+    "generation": {
+      "id": "authored-short-instruction",
+      "text_id": "instruction",
+      "input_ids": [
+        248045,
+        846,
+        198,
+        20206,
+        440,
+        6681,
+        279,
+        3299,
+        4757,
+        13,
+        248046,
+        198,
+        248045,
+        74455,
+        198,
+        248068,
+        271,
+        248069,
+        271
+      ],
+      "max_new_tokens": 16,
+      "eos_ids": [
+        248044,
+        248046
+      ],
+      "generated_ids": [
+        9066,
+        248046
+      ],
+      "stop_reason": "eos",
+      "token_pieces_hex": [
+        "74726565",
+        "3c7c696d5f656e647c3e"
+      ],
+      "generated_bytes_hex": "747265653c7c696d5f656e647c3e",
+      "utf8_complete": true,
+      "display_text": "tree<|im_end|>",
+      "rendered_sha256": "667e6fb8ae46f9ed697f19df0ab689120050e8cf86d9e06b7542c6e5dfe37179"
+    },
+    "choice": {
+      "selected_id": "tree",
+      "correct": true,
+      "not_a_benchmark": true
+    },
+    "state_reset": {
+      "input_ids": [
+        32,
+        4757,
+        26817,
+        28428,
+        264,
+        14367,
+        13,
+        11116,
+        10583,
+        5372,
+        8574,
+        279,
+        3000,
+        13,
+        357,
+        4757,
+        26817,
+        28428,
+        264,
+        14367,
+        13,
+        11116,
+        10583,
+        5372,
+        8574,
+        279,
+        3000,
+        13,
+        357,
+        4757,
+        26817,
+        28428,
+        264,
+        14367,
+        13,
+        11116,
+        10583,
+        5372,
+        8574,
+        279,
+        3000,
+        13,
+        357,
+        4757,
+        26817,
+        28428,
+        264,
+        14367,
+        13,
+        11116,
+        10583,
+        5372,
+        8574,
+        279,
+        3000,
+        13,
+        357,
+        4757,
+        26817,
+        28428,
+        264,
+        14367,
+        13,
+        11116,
+        10583,
+        5372,
+        8574,
+        279,
+        3000,
+        13,
+        357,
+        4757,
+        26817,
+        28428,
+        264,
+        14367,
+        13,
+        11116,
+        10583,
+        5372,
+        8574,
+        279,
+        3000,
+        13,
+        357,
+        4757,
+        26817,
+        28428,
+        264,
+        14367,
+        13,
+        11116,
+        10583,
+        5372,
+        8574,
+        279,
+        3000
+      ],
+      "other_input_ids": [
+        32,
+        4757,
+        3749,
+        3000,
+        321,
+        2919,
+        13,
+        11116,
+        19101,
+        1831,
+        2919,
+        494
+      ],
+      "score_positions": [
+        1,
+        63,
+        64,
+        65,
+        96
+      ],
+      "exact_repeat": true,
+      "before": {
+        "score_positions": [
+          1,
+          63,
+          64,
+          65,
+          96
+        ],
+        "target_logprobs": [
+          -12.258797123344959,
+          -0.06372207369907508,
+          -0.06619405866588789,
+          -0.036837482796224945,
+          -1.209850787851757
+        ],
+        "nll_sum": 13.635401526357903,
+        "count": 5
+      },
+      "after": {
+        "score_positions": [
+          1,
+          63,
+          64,
+          65,
+          96
+        ],
+        "target_logprobs": [
+          -12.258797123344959,
+          -0.06372207369907508,
+          -0.06619405866588789,
+          -0.036837482796224945,
+          -1.209850787851757
+        ],
+        "nll_sum": 13.635401526357903,
+        "count": 5
+      }
+    },
+    "forced_eos": {
+      "request": {
+        "input_ids": [
+          248045,
+          846,
+          198,
+          20206,
+          440,
+          6681,
+          279,
+          3299,
+          4757,
+          13,
+          248046,
+          198,
+          248045,
+          74455,
+          198,
+          248068,
+          271,
+          248069,
+          271
+        ],
+        "max_new_tokens": 1,
+        "eos_ids": [
+          9066
+        ]
+      },
+      "result": {
+        "generated_ids": [
+          9066
+        ],
+        "stop_reason": "eos"
+      },
+      "quality_claim": false
+    },
+    "first_worker_final": {
+      "allocated_context_length": 256,
+      "batch_size": 64,
+      "cache_mode": "full-prefix-reference",
+      "context_length": 256,
+      "cuda_build": false,
+      "flash_attention": false,
+      "gpu_layers": 0,
+      "kv_cache_dtype": "float32",
+      "load_mtp": false,
+      "logits_dtype": "float32",
+      "model_path": "/Users/barack/Documents/Codex/2026-10-26/i/work/openbonsai-rco/../research/bonsai-ptq1-reference/Ternary-Bonsai-2-9B-PTQ1_0.gguf",
+      "native_eog_ids": [
+        248044,
+        248046,
+        248063,
+        248064,
+        248065
+      ],
+      "protocol": "openbonsai.frozen-evaluation.v1",
+      "reduction": "fp32-logits-fp64-logsumexp-v1",
+      "reset_policy": "per-record",
+      "runtime_sha": "c9c34bc9c4042c13a31598ebf43461cd0ad8f00d",
+      "threads": 4,
+      "ubatch_size": 64,
+      "vocab_size": 248320,
+      "backend": "prism",
+      "source_identity": {
+        "path": "/Users/barack/Documents/Codex/2026-10-26/i/work/openbonsai-rco/../research/bonsai-ptq1-reference/Ternary-Bonsai-2-9B-PTQ1_0.gguf",
+        "sha256": "3561df7ac7d26a71ffa991ac2db740b10841c3a350aa2676ccd3ff5d428b4e8b",
+        "bytes": 1997486976
+      },
+      "tokenizer_identity": {
+        "kind": "embedded-gguf",
+        "model_sha256": "3561df7ac7d26a71ffa991ac2db740b10841c3a350aa2676ccd3ff5d428b4e8b"
+      },
+      "runtime": {
+        "path": "/Users/barack/Documents/Codex/2026-10-26/i/work/openbonsai-rco/../research/prism-llama.cpp",
+        "sha": "c9c34bc9c4042c13a31598ebf43461cd0ad8f00d",
+        "tracked_source_clean": true,
+        "executable": {
+          "path": "/Users/barack/Documents/Codex/2026-10-26/i/work/openbonsai-rco/../research/prism-eval-build/cmake/bin/prism-eval-worker",
+          "sha256": "1d6c1fb39b3b9203a246d485f51d2fc2ab798d51a714a7cdbd30f87cb920fef9",
+          "bytes": 4887408
+        }
+      },
+      "argv": [
+        "/Users/barack/Documents/Codex/2026-10-26/i/work/openbonsai-rco/../research/prism-eval-build/cmake/bin/prism-eval-worker",
+        "--model",
+        "/Users/barack/Documents/Codex/2026-10-26/i/work/openbonsai-rco/../research/bonsai-ptq1-reference/Ternary-Bonsai-2-9B-PTQ1_0.gguf",
+        "--context-length",
+        "256",
+        "--threads",
+        "4",
+        "--gpu-layers",
+        "0"
+      ],
+      "stderr": {
+        "path": "/Users/barack/Documents/Codex/2026-10-26/i/work/openbonsai-rco/../openbonsai-monitor/official-bonsai-cpu-preflight/prism.stderr",
+        "max_bytes": 1048576,
+        "truncated": false
+      }
+    },
+    "fresh_process_state_reset": {
+      "exact_repeat": true,
+      "result": {
+        "score_positions": [
+          1,
+          63,
+          64,
+          65,
+          96
+        ],
+        "target_logprobs": [
+          -12.258797123344959,
+          -0.06372207369907508,
+          -0.06619405866588789,
+          -0.036837482796224945,
+          -1.209850787851757
+        ],
+        "nll_sum": 13.635401526357903,
+        "count": 5
+      },
+      "backend": {
+        "allocated_context_length": 256,
+        "batch_size": 64,
+        "cache_mode": "full-prefix-reference",
+        "context_length": 256,
+        "cuda_build": false,
+        "flash_attention": false,
+        "gpu_layers": 0,
+        "kv_cache_dtype": "float32",
+        "load_mtp": false,
+        "logits_dtype": "float32",
+        "model_path": "/Users/barack/Documents/Codex/2026-10-26/i/work/openbonsai-rco/../research/bonsai-ptq1-reference/Ternary-Bonsai-2-9B-PTQ1_0.gguf",
+        "native_eog_ids": [
+          248044,
+          248046,
+          248063,
+          248064,
+          248065
+        ],
+        "protocol": "openbonsai.frozen-evaluation.v1",
+        "reduction": "fp32-logits-fp64-logsumexp-v1",
+        "reset_policy": "per-record",
+        "runtime_sha": "c9c34bc9c4042c13a31598ebf43461cd0ad8f00d",
+        "threads": 4,
+        "ubatch_size": 64,
+        "vocab_size": 248320,
+        "backend": "prism",
+        "source_identity": {
+          "path": "/Users/barack/Documents/Codex/2026-10-26/i/work/openbonsai-rco/../research/bonsai-ptq1-reference/Ternary-Bonsai-2-9B-PTQ1_0.gguf",
+          "sha256": "3561df7ac7d26a71ffa991ac2db740b10841c3a350aa2676ccd3ff5d428b4e8b",
+          "bytes": 1997486976
+        },
+        "tokenizer_identity": {
+          "kind": "embedded-gguf",
+          "model_sha256": "3561df7ac7d26a71ffa991ac2db740b10841c3a350aa2676ccd3ff5d428b4e8b"
+        },
+        "runtime": {
+          "path": "/Users/barack/Documents/Codex/2026-10-26/i/work/openbonsai-rco/../research/prism-llama.cpp",
+          "sha": "c9c34bc9c4042c13a31598ebf43461cd0ad8f00d",
+          "tracked_source_clean": true,
+          "executable": {
+            "path": "/Users/barack/Documents/Codex/2026-10-26/i/work/openbonsai-rco/../research/prism-eval-build/cmake/bin/prism-eval-worker",
+            "sha256": "1d6c1fb39b3b9203a246d485f51d2fc2ab798d51a714a7cdbd30f87cb920fef9",
+            "bytes": 4887408
+          }
+        },
+        "argv": [
+          "/Users/barack/Documents/Codex/2026-10-26/i/work/openbonsai-rco/../research/prism-eval-build/cmake/bin/prism-eval-worker",
+          "--model",
+          "/Users/barack/Documents/Codex/2026-10-26/i/work/openbonsai-rco/../research/bonsai-ptq1-reference/Ternary-Bonsai-2-9B-PTQ1_0.gguf",
+          "--context-length",
+          "256",
+          "--threads",
+          "4",
+          "--gpu-layers",
+          "0"
+        ],
+        "stderr": {
+          "path": "/Users/barack/Documents/Codex/2026-10-26/i/work/openbonsai-rco/../openbonsai-monitor/official-bonsai-cpu-preflight/prism-fresh.stderr",
+          "max_bytes": 1048576,
+          "truncated": false
+        }
+      }
+    },
+    "seconds": 30.45921391597949,
+    "backend_final": {
+      "allocated_context_length": 256,
+      "batch_size": 64,
+      "cache_mode": "full-prefix-reference",
+      "context_length": 256,
+      "cuda_build": false,
+      "flash_attention": false,
+      "gpu_layers": 0,
+      "kv_cache_dtype": "float32",
+      "load_mtp": false,
+      "logits_dtype": "float32",
+      "model_path": "/Users/barack/Documents/Codex/2026-10-26/i/work/openbonsai-rco/../research/bonsai-ptq1-reference/Ternary-Bonsai-2-9B-PTQ1_0.gguf",
+      "native_eog_ids": [
+        248044,
+        248046,
+        248063,
+        248064,
+        248065
+      ],
+      "protocol": "openbonsai.frozen-evaluation.v1",
+      "reduction": "fp32-logits-fp64-logsumexp-v1",
+      "reset_policy": "per-record",
+      "runtime_sha": "c9c34bc9c4042c13a31598ebf43461cd0ad8f00d",
+      "threads": 4,
+      "ubatch_size": 64,
+      "vocab_size": 248320,
+      "backend": "prism",
+      "source_identity": {
+        "path": "/Users/barack/Documents/Codex/2026-10-26/i/work/openbonsai-rco/../research/bonsai-ptq1-reference/Ternary-Bonsai-2-9B-PTQ1_0.gguf",
+        "sha256": "3561df7ac7d26a71ffa991ac2db740b10841c3a350aa2676ccd3ff5d428b4e8b",
+        "bytes": 1997486976
+      },
+      "tokenizer_identity": {
+        "kind": "embedded-gguf",
+        "model_sha256": "3561df7ac7d26a71ffa991ac2db740b10841c3a350aa2676ccd3ff5d428b4e8b"
+      },
+      "runtime": {
+        "path": "/Users/barack/Documents/Codex/2026-10-26/i/work/openbonsai-rco/../research/prism-llama.cpp",
+        "sha": "c9c34bc9c4042c13a31598ebf43461cd0ad8f00d",
+        "tracked_source_clean": true,
+        "executable": {
+          "path": "/Users/barack/Documents/Codex/2026-10-26/i/work/openbonsai-rco/../research/prism-eval-build/cmake/bin/prism-eval-worker",
+          "sha256": "1d6c1fb39b3b9203a246d485f51d2fc2ab798d51a714a7cdbd30f87cb920fef9",
+          "bytes": 4887408
+        }
+      },
+      "argv": [
+        "/Users/barack/Documents/Codex/2026-10-26/i/work/openbonsai-rco/../research/prism-eval-build/cmake/bin/prism-eval-worker",
+        "--model",
+        "/Users/barack/Documents/Codex/2026-10-26/i/work/openbonsai-rco/../research/bonsai-ptq1-reference/Ternary-Bonsai-2-9B-PTQ1_0.gguf",
+        "--context-length",
+        "256",
+        "--threads",
+        "4",
+        "--gpu-layers",
+        "0"
+      ],
+      "stderr": {
+        "path": "/Users/barack/Documents/Codex/2026-10-26/i/work/openbonsai-rco/../openbonsai-monitor/official-bonsai-cpu-preflight/prism-fresh.stderr",
+        "max_bytes": 1048576,
+        "truncated": false
+      }
+    }
+  },
+  "limitations": [
+    "Engineering preflight uses authored development probes, not a quality benchmark or BF16 comparator.",
+    "CPU PTQ1_0 kernels include Q8_0 activation matmul operands; CUDA, PQ2_0, or all-float execution need separate validation.",
+    "Whole preflight wall time includes hashing/loading and must not be reported as tokens per second.",
+    "No vision or optional MTP files were downloaded or executed.",
+    "Current 5090 pair and its original FP32-cross-entropy diagnostic remain unchanged.",
+    "A final same-input held-out comparison under the shared protocol remains outstanding."
+  ]
+}

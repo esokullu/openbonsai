@@ -1,172 +1,258 @@
 # OpenBonsai
 
-[OpenBonsai](https://github.com/esokullu/openbonsai) is an independent, experimental ScaleQ-style compression project for Qwen3.5. It implements CAT-Q-style learned ternarization, AYOT self-generated calibration, native Qwen3.5 window reconstruction, and a standalone packed checkpoint. **This is working research code, not an official implementation or a reproduction of the paper's model-quality results.**
+**Research preview.** The method was measured end to end on Qwen3.5-9B, first with the research scripts and then with the package's own `openbonsai run`. The results are early and the evaluation is small, and math and code reasoning are far below the official Ternary Bonsai (see [Results](#results)).
 
-The original [ScaleQ-1.58 paper is included as a PDF](papers/2608.01078.pdf), with [attribution and provenance](papers/README.md).
+Independent project, not affiliated with or endorsed by Prism ML. Bonsai is Prism ML's product.
 
-The intended first target is `Qwen/Qwen3.5-9B`. No real 9B weights were downloaded, compressed, or evaluated when building this prototype. Validation uses random tiny native Qwen3.5 models with both GatedDeltaNet and full-attention blocks, plus a small multimodal fixture. It does not support arbitrary dense models or MoE models.
+OpenBonsai is an open (Apache-2.0) framework that compresses a dense language model to ternary weights in the format of Prism ML's Ternary Bonsai models: Prism's PTQ1_0 GGUF, which runs in Prism's llama.cpp fork. For Qwen3.5-9B the output is a file of about 2 GB, with the same tensor layout as Ternary-Bonsai-2-9B.
 
-## Motivation
+**Why.** Prism publishes finished Bonsai weights and an inference runtime. As far as we know, Prism has not published a pipeline to compress a model of your own. OpenBonsai is such a pipeline, in the open: you can bonsai-fy your own model or your own fine-tune with its own tokenizer and chat template, and measure what compression cost against your own BF16 model.
 
-Prism ML's Ternary Bonsai 2 family already includes Qwen3.5-based **2B, 4B, and 9B** models, with publicly available Apache 2.0 weights. [Prism's release announcement](https://prismml.com/news/bonsai-2-family). We want developers to be able to apply ternary compression to their own fine-tuned models. The official [9B release](https://huggingface.co/prism-ml/Ternary-Bonsai-2-9B-mlx-2bit) and [demo repository](https://github.com/PrismML-Eng/Bonsai-demo) reviewed on October 26, 2026 provide weights and inference tooling, but do not include a reproducible Bonsai 2 training/compression pipeline for that workflow.
+**Status.**
+- Qwen3.5-9B: measured end to end, with the research scripts and with the package's own `openbonsai run` (results below).
+- Dense Llama, Mistral, Qwen2/2.5 and Qwen3: implemented in a generic adapter, tested only on tiny random models on CPU, including loading tiny Llama and Qwen3 GGUFs in Prism's runtime. There are no real-model results for them yet. Whether Prism's runtime can run the result depends on the architecture (see [Other models](#other-models)).
+- ScaleQ/CAT-Q refinement is in `research/`, not in the pipeline: it has not beaten GPTQ plus distillation yet.
 
-**Our goal is to let everyone turn their own fine-tuned BF16 models into compact ternary models**, through an open, reproducible compression pipeline. Fine-tuning happens first, in BF16, using the developer's preferred training tools. OpenBonsai then learns ternary factors and a low-rank refinement around that customized checkpoint's frozen weights. The refinement is included before ternarization and is absorbed into the exported ternary weights. This workflow does not require fine-tuning the packed ternary model directly.
+## How it works
 
-## Intended workflow
-
-1. Fine-tune the BF16 model for your task. If using a mergeable adapter such as LoRA, merge it into a complete BF16 checkpoint before compression.
-2. Generate AYOT calibration traces with **that fine-tuned checkpoint**, using prompts representative of the intended tasks. Preserve its tokenizer and chat template.
-3. Run OpenBonsai using the same checkpoint and revision as both the weight source and the reconstruction reference. In this workflow, "original model" means the unquantized, fine-tuned checkpoint.
-4. Compare the compressed model with the fine-tuned BF16 baseline on held-out task and general-quality evaluations before deployment.
-
-Use the same exact custom model ID or local checkpoint path for `--model`, with `--dtype bfloat16`, in both `prepare` and `train`; an adapter-only directory is not a complete model. Keep local checkpoint and tokenizer files unchanged between the two commands. Each new fine-tuned checkpoint needs its own calibration and compression run. The current adapter targets native dense Qwen3.5, and compression of a real customized 9B checkpoint remains unvalidated.
-
-The compact model retains its parameter count; the storage reduction comes from ternary weight representation. Quality preservation must be measured. BF16 task fine-tuning is external to this package, and packed checkpoints do not contain the original weights or optimizer state needed to resume compression training.
-
-## What works
-
-- Original-model generation preserves the exact question, reasoning, and answer token IDs; model ID and resolved revision are recorded.
-- Frozen original weights provide the teacher; three learned factors per group and a rank-64 low-rank refinement adapt the student. `--lora-rank 0` disables the refinement for an ablation.
-- Differentiable soft ternarization, followed by exact hard ternary forward values; no mean is added back to the reconstructed weights.
-- Selectable CAT-Q sigmoid factor mappings and masked Huber reconstruction, alongside the original exponential mapping and MSE defaults.
-- The hard-stage surrogate uses the parameters and sharpness from the actual last soft forward, with the current loss gradient. This is an explicit interpretation of the paper's backward rule.
-- Sliding windows reconstruct original-weight window outputs from the **same input** as the quantized window. The input comes from the previously quantized prefix. Padding is excluded from the loss.
-- Native Qwen3.5 blocks retain their individual masks, rotary inputs, gates, and recurrent behavior. Gradient checkpointing is supported in the tested CPU reference path.
-- Packed checkpoint export with lossless BITCOS or legacy two-bit storage, retained floating tensors, checksums, exact byte accounting, and offline reload.
-- CPU-only repacking of existing artifacts, with unchanged ternary codes, scales, biases, and retained weights; no new calibration or training.
-
-The default projection policy compresses the text MLP `gate/up/down`, full-attention `q/k/v/o`, and linear-attention `in_proj_qkv/in_proj_z/out_proj` projections. Embeddings, vocabulary head, vision tower, convolutions, norms, recurrent state parameters, and small `in_proj_a/in_proj_b` gates remain floating point. `--aggressive-gates` additionally compresses those two gates; its quality has not been evaluated. Preserving vision tensors does not establish preserved multimodal quality: the text stack changes, and calibration is text-only.
-
-## Install and run the offline test
-
-From this directory, with Python 3.12 and an appropriate PyTorch build for your hardware:
-
-```bash
-python3.12 -m venv .venv
-source .venv/bin/activate
-python -m pip install -e '.[test]'
-python -m pytest -q
-python -m openbonsai smoke --output runs/tiny-packed
+```
+your BF16 model ──► traces: it answers prompts in its own chat template (AYOT)
+        │
+        ▼
+calibration blocks: WikiText-2 train + UltraChat + its own traces (+ your JSONL)
+        │
+   1 rotate      W·S·H: one ±1 sign vector per input width, Hadamard blocks of 4096
+   2 round       sequential GPTQ to {-1, 0, +1} codes, fp16 scale per 128 weights
+  (3 refine)     ScaleQ/CAT-Q: research/ only, not in the default pipeline
+     endpoints   ternary LM head and token embedding (GPTQ)
+   4 distill     group scales against the BF16 model's top-64, codes frozen
+        │
+        ▼
+export: PTQ1_0 GGUF (~2 GB for 9B) ──► Prism's llama.cpp fork
 ```
 
-Installing the package also provides the `openbonsai` CLI. Run `openbonsai --help` to see its commands; every `python -m openbonsai ...` invocation in this README can also be written as `openbonsai ...`.
+**1. Rotation.** Ternary codes with one scale per group cannot represent a few large weights next to many small ones. A signed Hadamard rotation spreads every input's weight across a block, so the values in a group look alike. We use Prism's layout exactly: the file stores W·S·H (S holds one ±1 sign vector per input width, shared by every tensor of that width; H is the normalized Hadamard matrix in blocks of 4096). The runtime rotates the activations to H(s⊙x), so the rotation adds no weights.
 
-The smoke command needs no network, model weights, or datasets. It trains a tiny hybrid model, exports it, and checks exact logits after reloading the same FP16-scale packed representation. A separate number measures rounding introduced when FP32 learned scales are exported to FP16. `runs/tiny-packed-report.json` records losses, bytes, and those checks. Existing nonempty output directories are refused.
+**2. Sequential GPTQ ternary rounding.** Layer by layer, in data-flow order inside each layer, every linear layer is rounded to codes {-1, 0, +1} in groups of 128 rotated input weights, with one fp16 scale per row and group. GPTQ pushes each column's rounding error onto the columns not yet rounded, using the second moment (Hessian) of the layer's real inputs. Those inputs come from the already-quantized layers below, on calibration data that includes the model's own answers (AYOT, "attend to your own thoughts", from the ScaleQ paper). This step does most of the work: dev NLL goes from 8.94 (rotated, rounded without calibration data) to 3.32.
 
-The original `validation.json` records the initial **80 passing tests** and an end-to-end offline smoke run. The BITCOS update is recorded separately in [validation-bitcos.json](validation-bitcos.json): **221 passing tests**, an offline training/export smoke run, and exact full-model logits after repacking a pre-update artifact. On that tiny fixture, packed tensors shrink by **14.54%** and the complete model artifact by **3.54%**; these are software checks, not a size or quality benchmark for a real 9B model. The tested stack is Python 3.12.9, PyTorch 2.14.1, Transformers 5.20.2, Accelerate 1.15.0, Safetensors 0.8.0, and Pytest 9.1.1. Transformers is constrained to the tested minor version because this adapter calls native decoder blocks. The main suite runs on CPU; additional initial-prototype checks exercised MPS training and a 129-token multimodal-wrapper training run. CUDA, full-model mixed precision, and optimized DeltaNet kernels have not been validated here.
+**3. ScaleQ/CAT-Q refinement (research only).** CAT-Q learns a center, a threshold and a scale per group by block-wise reconstruction, as in the ScaleQ-1.58 paper. In our runs on small budgets it did not reach usable quality on its own, and it has not yet beaten GPTQ plus distillation on the same data, so it stays in [research/](research/README.md).
 
-The low-rank refinement and hard-gradient update is recorded in [validation-refinement.json](validation-refinement.json): **248 passing tests**, corrective optimization on a controlled tiny native model, and an offline rank-64 training/export smoke run with exact packed reload logits. These checks do not establish recovered pretrained-model quality or CUDA memory requirements.
+**4. Scale distillation.** The codes stay frozen. Every (row, group) scale gets a trainable multiplier, trained through the whole model against the BF16 model's top-64 next-token probabilities plus one bucket for the remaining mass. This reduces error that builds up across layers, which GPTQ's layer-by-layer objective cannot see. On 4.2M tokens it takes the all-ternary model from dev NLL 3.48 to 2.89 and ARC-Easy from 13/20 to 19/20.
 
-The sigmoid/Huber options and tokenizer compatibility fix are recorded in [validation-catq-options.json](validation-catq-options.json): **291 passing tests**, independent formula/gradient checks, a real offline tokenizer regression, and exact packed reload logits for a sigmoid-plus-Huber smoke run. The default exponential mapping and MSE objective are preserved; 9B quality remains unvalidated for these options.
+**Endpoints and export.** The "endpoints" are the LM head and the token embedding. The LM head is rounded by GPTQ with the Hessian of the final hidden states. The token embedding has no input Hessian (its inputs are one-hot), so its GPTQ weights each dimension by the square of layer 0's norm gain, which is what the first layer sees. The export writes Prism's PTQ1_0 GGUF: 28 bytes per 128 weights (1.75 bits per weight, scale included), the `prism.hadamard.*` metadata, and the model's tokenizer and chat template. Every file is verified after it is written.
 
-## Run a small real-model pilot
+Details, evidence and what did not work: [docs/method.md](docs/method.md). The file format: [docs/formats.md](docs/formats.md).
 
-These commands **load/download the original 9B weights** and require substantial memory. They are examples; they were not run as part of this delivery. Start with a small pilot before the paper-sized recipe.
+## Quickstart
 
-Create `prompts.jsonl`, one object per line, containing `{"prompt":"..."}` or `{"question":"..."}`. The two prompts in `examples/prompts.jsonl` only demonstrate the format; they are not a sufficient calibration corpus.
+### Install
 
-```bash
-python -m openbonsai prepare \
-  --model Qwen/Qwen3.5-9B --revision main \
-  --prompts prompts.jsonl --output runs/ayot.jsonl \
-  --device cuda --dtype bfloat16 --enable-thinking \
-  --max-samples 16 --max-new-tokens 4096
+Python 3.12, PyTorch 2.14.1 and transformers 5.20.2 (the versions the results were measured with). Linux with an NVIDIA GPU:
 
-# Use the exact original-model revision that produced the calibration traces.
-REVISION=$(python -c 'import json; print(json.load(open("runs/ayot.jsonl.manifest.json"))["resolved_revision"])')
-
-python -m openbonsai train \
-  --model Qwen/Qwen3.5-9B --revision "$REVISION" \
-  --calibration runs/ayot.jsonl --output runs/qwen35-pilot \
-  --device cuda --dtype bfloat16 \
-  --max-samples 16 --sequence-length 512 --epochs 2 \
-  --batch-size 1 --window-size 2 --stride 1 \
-  --lora-rank 64 --lora-learning-rate 0.001 \
-  --cache-dir runs/window-cache --gradient-checkpointing
+```
+scripts/setup_linux.sh               # venv, CUDA PyTorch, this package (editable), optional FLA kernels
+scripts/setup_linux.sh --prism       # also clone Prism's llama.cpp at the pinned commit and build it (CPU)
+source .venv/bin/activate            # puts `openbonsai` on the PATH
 ```
 
-This deliberately reduced pilot is an execution check, not a quality recipe. Both commands accept `--local-files-only` to require cached/local assets. Quantized source checkpoints are inappropriate: calibration must come from the original model. The loader rejects declared quantization metadata.
+`scripts/setup_linux.sh --help` lists the options (CUDA index, `--prism-cuda`, `NO_FLA=1`, and more). By hand:
 
-For a controlled comparison with the released CAT-Q configuration, add `--factor-mapping sigmoid --reconstruction-loss huber --huber-delta 1.0` to `train`. These are independent options; defaults remain `exp` and `mse`. Sigmoid mode also uses CAT-Q's `+1e-6` scale epsilon. Huber delta `1.0` is an explicit choice because the authors' training threshold is unavailable. Hard reconstruction diagnostics remain MSE in either mode. The flags also work with the offline `smoke` command. See [the equations and reduction details](docs/method.md#factor-mappings-and-reconstruction-loss).
-
-The default rank-64 refinement adds `B @ A / 64` to each selected projection **before** ternarization; export contains no separate inference adapter. `--learning-rate` controls the group factors, while `--lora-learning-rate` controls the low-rank parameters; both default to `0.001`. Use `--lora-rank 0` to compare against factor-only calibration. A run needs at least one soft update before the hard stage; a one-update window is rejected.
-
-Existing packed artifacts cannot adopt the refinement or the corrected hard-stage derivative through `repack`. Start a new compression run from the original BF16 checkpoint, using a new output directory. Valid calibration traces from that same checkpoint can be reused. These changes do not establish restored 9B model quality; compare with the BF16 baseline and preserve the prior artifact for a controlled comparison. [Method details and source boundaries](docs/method.md).
-
-For the paper's default calibration budget, sample 1,024 mathematics prompts from MetaMathQA and 1,024 coding prompts from OpenCodeInstruct, generate traces with the original target model, then use 2,048 samples, sequence length 2,048, 60 epochs, and batch size 3. Dataset acquisition/sampling is left to the caller; it is not implemented or silently downloaded. Review dataset licenses and keep evaluation examples separate. The paper evaluates other model families; applying this recipe to Qwen3.5 is an experiment.
-
-Generation is greedy by default (a documented implementation choice). Generation caps can cut off reasoning or answers: inspect `records_hitting_generation_limit` in the preparation manifest. Training right-truncates/pads the saved sequences and separately reports active, truncated, and padding tokens. **2,048 × 2,048 is a token-slot budget; it is not necessarily 4,194,304 active tokens.** Missing model/revision provenance is counted for manually supplied JSONL; present metadata is checked against the target. Avoid files without provenance for scientific comparisons.
-
-## Memory and runtime
-
-This trainer keeps the complete original model on one device, together with group factors, low-rank parameters, derivative snapshots, and training intermediates. It has no model sharding, optimizer sharding, CPU layer offload, or training resume. BF16 original 9B weights alone are roughly 18 GB before these costs. The rank-64 path adds memory and computation during calibration, including reconstruction of the effective weight matrices. Its 9B peak VRAM is unmeasured; an earlier factor-only memory measurement does not validate this path. Run a fresh memory preflight before scaling. Packed file size is not a VRAM estimate.
-
-Without `--cache-dir`, all window inputs/targets live in CPU RAM. At 2,048 samples × 2,048 tokens × hidden size 4,096, two BF16 hidden-state streams alone occupy **64 GiB per window**, plus masks and rotary inputs. Disk caching moves these records to scratch storage; it still needs more than 64 GiB of free space at that budget and repeatedly reads them over 60 epochs. FP32 doubles the hidden-state storage. Completed window caches are removed. The Python reference attention/DeltaNet path and full-precision reconstruction can be slow; we make no runtime estimate for 9B.
-
-## Storage and inference
-
-New exports default to `--packing auto`. For each projection, this selects **BITCOS** when its code tensors use fewer bytes than legacy two-bit packing; ties keep the two-bit format. `--packing bitcos` forces BITCOS, and `--packing 2bit` produces the legacy representation. The loader accepts both formats and mixed-codec artifacts. BITCOS artifacts require this updated OpenBonsai loader.
-
-BITCOS stores one presence bit per weight and one sign bit per nonzero weight, following [Breaking the 1.58-bit Barrier for Ternary LLMs](https://arxiv.org/abs/2609.16338). With zero fraction `z`, the code streams cost approximately `2 - z` bits per weight, plus the same FP16 group scales. At 50% zeros and group size 128, the projection payload is approximately **1.625 bits per weight instead of 2.125**, about **23.5% smaller**. Actual savings depend on sparsity, group/byte padding, retained floating tensors, and file headers. `auto` compares code tensor bytes, so it does not guarantee a smaller complete artifact for tiny tensors with extra metadata.
-
-The implementation uses row-major, least-significant-bit-first presence and compacted sign streams (`1` means negative), with zero final-byte padding. It implements the paper's lossless storage principle, not its hardware-specific kernel layout. **Repacking an existing artifact changes no weight values and introduces no additional quantization or scale rounding.** It does not undo any quality loss from the earlier BF16-to-ternary conversion.
-
-Repack an existing pilot on CPU, without loading the original model or retraining:
-
-```bash
-python -m openbonsai repack \
-  --input runs/qwen35-pilot \
-  --output runs/qwen35-pilot-bitcos \
-  --packing auto
+```
+pip install --index-url https://download.pytorch.org/whl/cu130 torch==2.14.1
+pip install transformers==5.20.2 -e ".[test]"
 ```
 
-The command verifies input checksums, processes one projection at a time, preserves retained tensors and tokenizer assets, and reports exact before/after model-artifact bytes. Use a new output directory; the source is preserved. `--packing 2bit` can convert back to the legacy format. Python callers can use `repack_compressed(source, destination, packing="auto")` from `openbonsai.export`, or choose the codec with `save_compressed(..., packing="auto")`.
+**Windows.** The measured runs used Windows 11 with one RTX 5090. In PowerShell:
 
-`manifest.json` accounts for packed tensors, retained tensors, safetensors headers, config, and the manifest itself. `train` additionally saves tokenizer assets in `tokenizer/`; those supplementary files are excluded from the reported model-artifact byte total. The artifact is neither GGUF nor an ordinary `from_pretrained` checkpoint. Load it through this package:
-
-```python
-import torch
-from transformers import AutoTokenizer
-from openbonsai.export import load_compressed
-
-model = load_compressed("runs/qwen35-pilot", device="cuda")
-tokenizer = AutoTokenizer.from_pretrained("runs/qwen35-pilot/tokenizer")
-inputs = tokenizer("A short test", return_tensors="pt").to("cuda")
-with torch.no_grad():
-    logits = model(**inputs, use_cache=False).logits
+```
+py -3.12 -m venv .venv
+.venv\Scripts\python -m pip install --index-url https://download.pytorch.org/whl/cu130 torch==2.14.1
+.venv\Scripts\python -m pip install transformers==5.20.2 -e ".[test]"
+.venv\Scripts\Activate.ps1           # puts `openbonsai` on the PATH
 ```
 
-Reference inference dequantizes each projection to floating point for computation, including BITCOS projections. It provides compact persistent weight storage, but **no optimized ternary kernel, speed guarantee, or measured peak-memory reduction**. For maximum compatibility the loader disables caches; efficient incremental generation is future work. Packed artifacts omit original weights and optimizer state, so they cannot resume quantization training. The initial export rounds learned FP32 scales/biases to FP16; subsequent repacking preserves those stored FP16 values exactly.
+- To hide the GPU, set `CUDA_VISIBLE_DEVICES=-1`. An empty value unsets the variable on Windows.
+- flash-linear-attention is optional. Without it, transformers runs Qwen3.5's Gated DeltaNet layers (its linear-attention layers, which carry a recurrent state) in plain PyTorch: slower, same results up to rounding.
+- Prism's llama.cpp builds with the Visual Studio 2022 Build Tools and CMake, from a developer prompt. The pinned commit is `c9c34bc` of [PrismML-Eng/llama.cpp](https://github.com/PrismML-Eng/llama.cpp):
+  ```
+  git clone https://github.com/PrismML-Eng/llama.cpp prism-llama.cpp
+  cd prism-llama.cpp
+  git checkout --detach c9c34bc9c4042c13a31598ebf43461cd0ad8f00d
+  cmake -B build -DGGML_CUDA=OFF -DLLAMA_CURL=OFF
+  cmake --build build --config Release
+  ```
+  The binaries land in `build\bin\Release\` (`llama-cli.exe`, `llama-server.exe`, `llama-perplexity.exe`). The `B=...` example below is bash; in PowerShell, call `build\bin\Release\llama-cli.exe -m <file>.gguf` directly.
+- The HumanEval suite limits the memory of each test program with a Windows Job Object.
 
-## Explicit reconstruction choices
+### Try it on CPU first
 
-Some details are not sufficiently specified to claim an exact reproduction. These choices are recorded in code and training metadata:
+A tiny random Qwen3.5 runs the whole pipeline on a CPU in under a minute (18 s on our machine), with no downloads:
 
-| Detail | This implementation |
+```
+python -c "import sys; sys.path.insert(0, 'tests'); from tiny_models import save_tiny_qwen3_5; save_tiny_qwen3_5('runs/tiny-model')"
+openbonsai run --model runs/tiny-model --config examples/tiny-qwen3_5.yaml --out runs/tiny
+openbonsai inspect runs/tiny/export/OpenBonsai-tiny-model-PTQ1_0.gguf
+```
+
+### Qwen3.5-9B to a 2 GB GGUF
+
+```
+openbonsai run --config examples/qwen3_5-9b.yaml --out runs/qwen3_5-9b
+```
+
+This downloads Qwen3.5-9B and the calibration data at pinned revisions, then runs every stage into one run directory: traces, calibrate, quantize, endpoints, distill, export and eval. The result is `runs/qwen3_5-9b/export/OpenBonsai-Qwen3.5-9B-PTQ1_0.gguf`. Each stage is skipped when its output is current and resumes after an interruption (per layer, per teacher shard, per checkpoint). `--until STAGE`, `--force STAGE` and `--set SECTION.KEY=VALUE` control a run. A run checks many settings that a later stage would refuse before the first stage starts, and errors print one line (`--debug` shows the traceback, which a failed stage also writes to `logs/<stage>.log` in the run directory); `openbonsai inspect runs/qwen3_5-9b` shows what has finished.
+
+### Your own fine-tune
+
+```
+openbonsai run --model path/to/my-finetune --config examples/qwen3_5-9b.yaml --out runs/mine
+```
+
+Your model is the teacher. It writes its own traces with its own chat template, it is the BF16 reference for every metric, and its tokenizer and chat template go into the GGUF. For a Hugging Face id instead of a local folder, also pass `--set model.revision=null` (or your commit), because the example pins Qwen's commit. To mix your own data into calibration, copy the example config and add a source such as `- {kind: jsonl, path: my-data.jsonl, n: 32}` (one JSON object per line with `messages`, `text` or `input_ids`).
+
+What the fine-tune needs, and what to expect:
+- **A full, merged Qwen3.5 checkpoint** (`model_type` `qwen3_5` or `qwen3_5_text`, untied embedding and head) in safetensors. A LoRA adapter folder is not enough: merge it into the base weights first. The GGUF export reads `model.safetensors` or its index, so a run with a `.bin`-only checkpoint is refused before the first stage (`export.format: auto` writes a latent checkpoint instead). A Hugging Face repo whose only weights are a single `pytorch_model.bin` is not detected until the export stage; convert it to safetensors first. A checkpoint that is already quantized (`quantization_config`) is refused.
+- **Text only.** The vision tower is dropped; the GGUF holds the language model.
+- **Private or gated repositories** need `hf auth login` first.
+- **Calibration size.** `n` counts blocks of `calibrate.seq_len` tokens (2,048 in the example), so `n: 32` needs about 65K tokens of your data; calibrate refuses a source that is too short. The total `n` of `calibrate.sources` must be a multiple of `quantize.batch` (4). The example's 256 blocks plus `n: 32` is 288, which works; `n: 10` is refused before the first stage, with the `--set` that fixes it.
+- **Evaluation.** Use `--set 'eval.suites=[compare]'`, which scores the compressed model against your own BF16 model. `dev` and `extended` run only if your tokenizer is Qwen3.5's, unchanged, and `extended`'s chat NLL scores base Qwen3.5-9B's answers, not your model's.
+- **Keeping a skill.** Distillation only sees its data. To keep a skill your fine-tune added, put data for it in `distill.teacher.sources` as well as in `calibrate.sources`. Setting `distill.teacher.sources` replaces the default mix (512 WikiText-2, 1,512 UltraChat and 24 trace sequences of 2,048 tokens), so list that mix in full plus your `{kind: jsonl, ...}` entry, for example:
+  ```yaml
+  distill:
+    teacher:
+      sources:
+        - {kind: wikitext2, n: 512}
+        - {kind: ultrachat, n: 1384, min_row: 6000}
+        - {kind: traces, n: 24}
+        - {kind: jsonl, path: my-data.jsonl, n: 128}
+  ```
+
+### Run the GGUF in Prism's llama.cpp
+
+The file needs Prism's fork; upstream llama.cpp does not know PTQ1_0. With the build from `scripts/setup_linux.sh --prism`:
+
+```
+B=third_party/prism-llama.cpp-build/cpu/bin
+$B/llama-cli -m runs/qwen3_5-9b/export/OpenBonsai-Qwen3.5-9B-PTQ1_0.gguf          # chat
+$B/llama-server -m runs/qwen3_5-9b/export/OpenBonsai-Qwen3.5-9B-PTQ1_0.gguf --port 8080
+$B/llama-perplexity -m runs/qwen3_5-9b/export/OpenBonsai-Qwen3.5-9B-PTQ1_0.gguf -f wiki.test.raw -c 512 --chunks 8
+```
+
+`wiki.test.raw` is the WikiText-2 raw test file, as upstream llama.cpp's `scripts/get-wikitext-2.sh` downloads it. The official model to compare against is `Ternary-Bonsai-2-9B-PTQ1_0.gguf` from [prism-ml/Ternary-Bonsai-2-9B-gguf](https://huggingface.co/prism-ml/Ternary-Bonsai-2-9B-gguf) (we used revision `5b2abb0`).
+
+### Evaluate
+
+```
+openbonsai eval --run runs/qwen3_5-9b --from distill --suite dev,extended,compare
+openbonsai eval --run runs/qwen3_5-9b --from distill --suite gsm8k,humaneval   # humaneval executes model-written code: not a sandbox
+openbonsai eval --config examples/qwen3_5-9b.yaml --from runs/qwen3_5-9b/export/OpenBonsai-Qwen3.5-9B-PTQ1_0.gguf --suite dev,compare
+python -m pytest            # CPU test suite: tiny random Qwen3.5, Llama, Qwen3 and Qwen2 run the whole pipeline
+```
+
+`--from` takes a stage (`bf16`, `quantize`, `endpoints`, `distill`) or a file: a state, or a PTQ1_0 GGUF of an architecture the adapters cover (`qwen35`, `llama`, `qwen3`), with that model's config; the official Ternary Bonsai 2 9B file works with the 9B example config. `gsm8k` and `humaneval` generate with the model's chat template; `humaneval` executes model-written code, and its limits are not a security sandbox (see [docs/evaluation.md](docs/evaluation.md#reasoning-suites-gsm8k-humaneval)). `dev` and `extended` need the Qwen3.5 tokenizer; `compare` scores any model against its own BF16 original (NLL, top-1 agreement, full-vocabulary KL and expected acceptance rate). Suites, metrics and the test-data guard: [docs/evaluation.md](docs/evaluation.md).
+
+## Results
+
+Qwen3.5-9B. The dev suite is frozen: 2,048 WikiText-2 test tokens and 20 ARC-Easy questions. The extended suite: 16,384 WikiText-2 test tokens, 100 ARC-Easy questions, and NLL on 16 held-out answers the BF16 model generated itself ("chat"). Lower NLL is better.
+
+| Model | Endpoints | Dev NLL | ARC /20 | Wiki 16K NLL | ARC /100 | Chat NLL | GSM8K off / on | HumanEval off / on |
+|---|---|---|---|---|---|---|---|---|
+| Qwen3.5-9B BF16 | BF16 | 2.423 | 19 | 2.218 | 97 | 0.554 | 77/100 / 36/50 | 44/50 / 22/25 |
+| Ternary Bonsai 2 9B (official, Prism ML) | ternary | 3.191 | 17 | | | | 77/100 / 46/50 | 45/50 / 24/25 |
+| Plain ternary rounding (TWN), no rotation | BF16 | 10.2 | 9 | | | | | |
+| Rotation + least-squares rounding (RTN) | BF16 | 8.94 | 4 | | | | | |
+| Rotation (signs per module) + GPTQ, 128 / 256 calibration blocks | BF16 | 3.32 / 3.30 | 9 / 13 | | | | | |
+| Same, one sign vector per width (Prism's layout) | BF16 | 3.318 | 15 | 3.103 | 78 | 1.964 | | |
+| + ternary head | head ternary | 3.383 | 16 | 3.167 | 74 | 2.051 | | |
+| + ternary embedding: all ternary, ~2 GB | ternary | 3.480 | 13 | 3.281 | 62 | 2.225 | | |
+| **+ scale distillation (OpenBonsai)** | ternary | **2.892** | **19** | **2.626** | **87** | **1.318** | **30/100 / 19/50** | **6/50 / 3/25** |
+| + small high-precision tensors trained too (norms, `conv1d`, `A_log`, `dt_bias`, `in_proj_a/b`; `distill.train.small`) | ternary | 2.884 | 19 | 2.616 | 87 | 1.308 | | |
+
+In Prism's own llama.cpp runtime (CPU build at c9c34bc, WikiText-2 test, 8 chunks of 512 tokens), perplexity is 16.51 for the official Ternary Bonsai 2 9B and 11.93 for ours (the bold scale-distillation row, exported as a GGUF). Prism's runtime agrees with our PyTorch reference of the same weights, mean KL 0.0028 nats and 95% top-1 agreement over 508 tokens, on the exporter's synthetic test state (not a usable model; `research/runs/gguf-test/runtime-parity/`); that check has not been run on the distilled model. Prism quantizes activations to 8 bits, so the two are not identical. Both GGUF files are 1,997,486,976 bytes. The official model's dev NLL is 3.19 in Prism's CPU runtime with ARC 16/20, and 3.191 with ARC 17/20 in our PyTorch harness. The Prism perplexity logs and the export report are in `research/runs/2026-10-27-gguf-shared-v1/`.
+
+**Read these numbers with the caveats:**
+- **WikiText is partly in-domain for us.** Our calibration and distillation data include WikiText-2 *train*; the dev, Wiki 16K and Prism perplexity numbers are on WikiText-2 *test*. Same source, different articles. We do not know Prism's training data, so on WikiText the comparison with the official model favors us. ARC is in neither our calibration nor our distillation data. Our data also contains other answers generated by the same model, so the chat NLL is in-distribution by design. (Trace prompts and training data that contain one of the 16 chat-NLL prompts or answers are refused, and the measured runs used a disjoint trace set. See [docs/evaluation.md](docs/evaluation.md#keeping-test-data-out).)
+- **The evaluation is small.** One ARC question is 5 percentage points on the dev suite. The dev suite was used throughout development, so it is not a fresh held-out set.
+- **Single runs, no variance.** Every row is one run. Treat differences of one or two ARC questions as noise: re-scoring the same 256-block GPTQ state with the package moved ARC from 13 to 14 (below).
+- **Reasoning, code and non-English output are the main weakness.** Perplexity-style numbers beat the official model, but GSM8K and HumanEval do not come close: 30/100 and 6/50 with thinking off, against 77/100 and 45/50 for the official Ternary Bonsai 2 9B and 77/100 and 44/50 for BF16. Generated code often has syntax errors or loops to the token cap, and the Turkish dev prompt collapses into repetition. This matches the ScaleQ paper's finding that calibrating on generic text keeps perplexity but loses math and code; our calibration and distillation data so far are WikiText, UltraChat and a few general self-generated answers. Recalibrating on the model's own math and code answers (training splits only) is the next step.
+- **Reasoning evals are small and capped.** GSM8K uses a frozen 100-problem subset and HumanEval 50 (thinking off, 512-token cap); with thinking on, the first 50 and 25 of the same subsets, 4,096-token cap, batch 8. With thinking on, 14/50 BF16 GSM8K answers and 4/50 official-model answers ran out of tokens mid-thought, so the cap understates thinking-mode accuracy (most for BF16). Ours ran out on 19/25 HumanEval problems with thinking on, mostly by looping. Greedy decoding, the model's own chat template, one run each. Results: `research/runs/2026-10-27-reasoning-v1/`.
+- **Only Qwen3.5-9B has run on real weights.** The runtime checks in Prism's llama.cpp (perplexity, KL, file layout) exist only for the 9B. No real dense model (Llama, Mistral, Qwen3) has been compressed, and no real dense GGUF has been run in Prism.
+- **Where the numbers come from.** They were measured with the research scripts in `research/experiments/`. The package ports their arithmetic, and tests check the ports bit for bit on CPU. Given the measured state, the package's exporter writes a GGUF byte-identical to the measured one (`research/validation/p2-export-parity.md`). GPU numbers can still differ slightly: a package re-score of the 256-block GPTQ state gave dev NLL 3.293 and ARC 14/20, against 3.295 and 13/20 from the research script (`research/runs/2026-10-27-accept-256/eval/`). The package's own `openbonsai run` of the 9B example (traces off, the measured run's calibration data) reproduced it on the GPU: its quantize stage is bit-identical to the research GPTQ state (0 code or scale differences in 6.9B weights; dev NLL 3.3183, ARC 15/20), and the full run through endpoints, distillation, verified export and eval gave dev NLL 2.887, ARC 19/20, Wiki 16K 2.630, ARC 89/100, chat NLL 1.322 (`research/runs/2026-10-27-framework-acceptance/`).
+
+### Starting from Prism's weights (separate experiment)
+
+This is not a from-scratch result and not what `openbonsai run` does. Prism ML releases the Ternary Bonsai 2 weights under Apache-2.0. In one experiment we kept Prism's ternary codes, converted from the official 9B GGUF, and distilled only their group scales against BF16 Qwen3.5-9B on 2.1M tokens. Dev NLL went from 3.191 to 2.706 and ARC from 17/20 to 18/20. The codes are Prism's work; only the scale distillation is ours. Logs: `research/runs/2026-10-27-bonsai-start-*`.
+
+## Hardware and time
+
+One RTX 5090 (32 GB), Qwen3.5-9B, the example config:
+
+| Stage | Time |
 |---|---|
-| Initialization | Low-rank `A` uses Kaiming uniform and `B` starts at zero; group statistics exclude partial-group padding |
-| Low-rank refinement | Default rank 64, fixed scaling `1/r`; group statistics recomputed from `W + B @ A / r`; rank 0 retains factor-only statistics |
-| Factor mappings | Default `exp`: `tanh` mean and exponential scale/threshold; optional `sigmoid`: released CAT-Q bounded mappings and scale epsilon |
-| Schedule | First 80% soft, sharpness rising to 30; final 20% hard |
-| Hard-stage backward | Full soft-map Jacobian at the actual last soft forward's pre-update factors, low-rank parameters, and sharpness; applied to the current upstream loss gradient |
-| Progress zero | Exact original-weight bypass; training starts at positive progress |
-| Reconstruction | MSE by default or configurable Huber over nonpadding elements; shared quantized-prefix input; hard diagnostics always MSE |
-| Optimizer | AdamW; separate factor and low-rank learning rates, both 0.001 by default; linear decay, weight decay 0, gradient clipping 1 |
-| Windows | Default width 4, stride 2, shrinking tail; overlapping factors and low-rank parameters warm-start and restart annealing |
-| Architecture | Native dense Qwen3.5; conservative projection policy described above |
-| Export | Ternarize the refined weights; no low-rank tensors or adapter computation remain at inference |
+| quantize: sequential GPTQ on 256 × 2,048 tokens | about 10 min |
+| endpoints: head and embedding GPTQ | about 1 min |
+| distill, teacher pass: BF16 top-64 on 2,048 × 2,048 tokens | about 8 min |
+| distill, training: 1 epoch over the same 4.2M tokens | about 45 min |
+| export and verification (CPU) | about 2 min |
 
-The hard-stage surrogate is explicitly an approximation to an underspecified rule. It freezes a local Jacobian, not the previous batch's loss gradients. A `soft_surrogate` alternative is available in the `TernaryLinear` Python API; it is not the CLI default. The public CAT-Q release confirms pre-quantization low-rank refinement, but provides inference/export code rather than its training implementation. Our initialization, backward interpretation, and Qwen3.5 adaptation remain independent choices. See [the method notes](docs/method.md) for pinned source links and remaining differences. The frozen source weights remain recoverable only during training. No generic ternarization can guarantee bitwise lossless recovery or unchanged behavior for every input.
+The timed stages add up to about 65 minutes. Traces, calibrate and eval were not timed separately. Traces generate 160 answers of up to 512 tokens in 20 batches of 8. We measured 26.5 decode steps/s for batch-1 generation, and a batch costs about the same per step, so the estimate is at most 20 × 512 ÷ 26.5 ≈ 6.5 minutes. Model loading comes on top.
 
-Before using a compressed 9B model, evaluate the original and compressed checkpoints on the same held-out general, reasoning, coding, and intended-domain tasks with identical prompting/decoding. Check long-context and multimodal behavior separately if needed. This package does not yet include that evaluation harness. Neither toy loss improvement nor serialization parity establishes quality preservation, superiority to GSQ-RCO/SLQ, or equivalence to Bonsai.
+**GPU memory.** Only one 32 GB card has been used; smaller cards are untested. Estimates from the code, not measurements: quantize keeps the BF16 model (about 18 GB) on the GPU, plus the inputs of the layer being rounded for all 256 × 2,048 calibration tokens (about 4.3 GB per copy in BF16; two copies coexist while the next layer's inputs are computed). Fewer calibration blocks is the lever: 128 blocks gave dev NLL 3.32 against 3.30 for 256. For distillation training, the one measurement is the scales-only run of the separate experiment above, on the same 9B model: a peak of 16.4 GB (`research/runs/2026-10-27-bonsai-start-scales/log.jsonl`).
 
-## Sources
+**Disk.** Estimates for the 9B example:
+- Hugging Face cache: about 18-20 GB for the BF16 model, plus the datasets (set `HF_HOME` to put it elsewhere).
+- The run directory: about 10-15 GB. `quantize/` took 3.6 GB in one run (the state plus its per-layer copies); the teacher's top-64 shards about 1.6 GB; the distillation checkpoint about 0.8 GB; the GGUF 2 GB; the `compare` suite's cached BF16 logits about 2 GB.
 
-- [ScaleQ-1.58, arXiv:2608.01078](https://arxiv.org/abs/2608.01078): AYOT and the CAT-Q composition; §2 and Appendix C.
-- [CAT-Q, arXiv:2606.26650](https://arxiv.org/abs/2606.26650): grouped modulation, soft ternarization, sliding-window reconstruction.
-- [BITCOS, arXiv:2609.16338](https://arxiv.org/abs/2609.16338): presence bitmap and compacted signs for lossless packing of already-ternary weights; §II-A. Our portable implementation does not include the paper's fused CPU/Intel GPU kernels.
-- [Official BitTern repository](https://github.com/IntelChina-AI/BitTern/tree/5a8fcd4f7e0366554b732d300a37e6ea467c3c35/projects/cat-q), refreshed October 26, 2026 at commit `5a8fcd4f7e0366554b732d300a37e6ea467c3c35`: released low-rank refinement, inference/export behavior, and model-specific configurations; its training code was unavailable in that snapshot.
-- [SliderQuant](https://github.com/deep-optimization/SliderQuant), inspected commit `bf2641ece550d5f6edb0028c2ae8b0ee658bc9bf`: sliding-window implementation context. This prototype does not vendor its code or reproduce its full training system.
-- [Qwen3.5-9B configuration](https://huggingface.co/Qwen/Qwen3.5-9B/blob/main/config.json) and [native Transformers Qwen3.5 implementation](https://github.com/huggingface/transformers/tree/main/src/transformers/models/qwen3_5): architecture adaptation.
+## Other models
 
-OpenBonsai is an independent implementation, unaffiliated with the paper authors or the Bonsai model developers. Model, tokenizer, datasets, and dependencies retain their respective licenses.
+The pipeline does not know about any one architecture. An adapter says which linear layers to round and in what order, which to keep in high precision, and how the GGUF is laid out.
+
+| Model type | Adapter | Export | Real-model results |
+|---|---|---|---|
+| `qwen3_5` (Qwen3.5, untied) | `qwen3_5` | PTQ1_0 GGUF, Ternary-Bonsai-2 layout | 9B, above |
+| `llama` (Llama 2/3.x, Llama-architecture models such as Nanbeige4-style ones) | `dense` | PTQ1_0 GGUF with a byte-level BPE tokenizer (Llama 3.x); latent with SentencePiece (Llama 2) | none yet |
+| `mistral` | `dense` | PTQ1_0 GGUF with a byte-level BPE tokenizer, else latent | none yet |
+| `qwen3` | `dense` | PTQ1_0 GGUF; a tied table stays BF16 | none yet |
+| `qwen2` (Qwen2, Qwen2.5) | `dense` | latent checkpoint only: Prism's loader refuses `prism.hadamard` for this architecture | none yet |
+
+A latent checkpoint is a Hugging Face folder with the dequantized weights plus the exact codes and scales, for when Prism cannot run the architecture. A dense model of a known type needs no code, but it needs a few settings on top of the 9B example config (revision, evaluation suites, tied endpoints): see [the dense worked example](docs/adding-a-model.md#worked-example-2-a-dense-llamananbeige-style-model). A new dense type is one table row; a new architecture is one adapter file. How, and how to choose what stays in high precision with a sensitivity scan: [docs/adding-a-model.md](docs/adding-a-model.md).
+
+**Base model without a chat template.** The traces stage cannot run: the model has no chat template to answer prompts in, so `openbonsai run` refuses it before the first stage and shows these settings. Turn traces off and replace the trace data with UltraChat, whose conversations are then joined as plain text. Add to the command:
+
+```
+--set traces.enabled=false --set 'calibrate.sources=[{kind: wikitext2, n: 128}, {kind: ultrachat, n: 128, min_row: 6000}]' --set 'distill.teacher.sources=[{kind: wikitext2, n: 512}, {kind: ultrachat, n: 1536, min_row: 6000}]'
+```
+
+**Hadamard block.** The block is derived from the model's widths. Prism's runtime has run real models only at block 4,096 (Qwen3.5-9B, ours and the official one), and tiny random models at block 128 in our tests. Other blocks, such as 2,048 for Llama 3.1 8B, are untested on real weights.
+
+**Licence of the output.** The compressed model is a derivative of your base model and keeps its licence. Llama 3.x, for example, requires a model name that starts with "Llama": set it with `--set export.name=Llama-3.1-8B-OpenBonsai-PTQ1_0` or similar (it names the file and `general.name`).
+
+## Repository layout
+
+| Path | Contents |
+|---|---|
+| `openbonsai/` | the package: `adapters/` (Qwen3.5, dense), `core/` (Hadamard, GPTQ, ternary modules, losses), `stages/` (one module per stage), `formats/` (run state, PTQ1_0 codec, GGUF reader and writer), `eval/` (suites, frozen inputs), `cli.py` |
+| `examples/` | `qwen3_5-9b.yaml` (closest to the measured settings; the differences, such as the trace prompts and the head's calibration blocks, are in its comments), tiny CPU configs, sample prompts and data |
+| `docs/` | [method](docs/method.md), [formats](docs/formats.md), [adding a model](docs/adding-a-model.md), [evaluation](docs/evaluation.md) |
+| `tests/` | CPU tests; tiny random models run the whole pipeline |
+| `tools/prism/` | optional worker that scores the frozen dev suite inside Prism's llama.cpp |
+| `scripts/setup_linux.sh` | Linux setup, optional Prism build |
+| `research/` | history: experiment scripts, CAT-Q code, findings, run reports ([research/README.md](research/README.md)) |
+| `web/` | the project's landing page |
+
+## Research history
+
+The method above came out of a longer search. Before GPTQ, we tried CAT-Q-only calibration at small budgets; those models scored dev NLL 8.3 to 13.3 and could not answer the dev prompts. That code, the findings documents, 27 validation receipts and every run report are in [research/](research/README.md). The tag `legacy-staged-pipeline` keeps the old pipeline runnable.
+
+## License and acknowledgements
+
+Apache License 2.0 ([LICENSE](LICENSE)). [NOTICE](NOTICE) lists third-party data, formats and their licenses.
+
+OpenBonsai builds on the work below. None of these authors or organizations is affiliated with OpenBonsai or endorses it.
+- **ScaleQ-1.58 and CAT-Q.** Shigeng Wang, Chao Li, Yangyuxuan Kang, Jiawei Fan and Anbang Yao (Intel Labs China), "Attend to Your Own Thoughts: Breaking the Barrier for Post-Training Quantization of Reasoning LLMs through the Lens of 1.58-Bit Quantization", [arXiv:2608.01078](https://arxiv.org/abs/2608.01078) (the paper is in [research/papers](research/papers/README.md)). The AYOT traces come from this paper, and the CAT-Q code in `research/catq/` is an independent implementation of it, informed by the [BitTern](https://github.com/IntelChina-AI/BitTern) CAT-Q release.
+- **Prism ML's Bonsai format and runtime.** The PTQ1_0 block layout and the `prism.hadamard.*` conventions follow [PrismML-Eng/llama.cpp](https://github.com/PrismML-Eng/llama.cpp) (MIT), a fork of llama.cpp by the ggml authors. Ternary Bonsai is Prism ML's model family; we use it only as a baseline and, in the separate experiment above, as a starting point.
+- **GPTQ.** Elias Frantar, Saleh Ashkboos, Torsten Hoefler, Dan Alistarh, "GPTQ: Accurate Post-Training Quantization for Generative Pre-trained Transformers", [arXiv:2210.17323](https://arxiv.org/abs/2210.17323).
+- **Hadamard rotations.** QuaRot ([arXiv:2404.00456](https://arxiv.org/abs/2404.00456)) and SpinQuant ([arXiv:2405.16406](https://arxiv.org/abs/2405.16406)).
+- **Ternary language models.** BitNet ([arXiv:2310.11453](https://arxiv.org/abs/2310.11453)) and BitNet b1.58 ([arXiv:2402.17764](https://arxiv.org/abs/2402.17764)); Ternary Weight Networks ([arXiv:1605.04711](https://arxiv.org/abs/1605.04711)) for the plain-rounding baseline.
+- **Models and data.** Qwen3.5 by the Qwen team (Apache-2.0); WikiText-2 (CC BY-SA 3.0), ARC (CC BY-SA 4.0), UltraChat 200k (MIT), GSM8K (MIT) and HumanEval (MIT). Revisions and licenses are in [NOTICE](NOTICE).
+- **Software.** PyTorch, Hugging Face transformers, safetensors and the Hub, and flash-linear-attention.

@@ -1,0 +1,447 @@
+{
+  "format": "openbonsai.teacher-target-validation.v1",
+  "date_utc": "2026-10-26",
+  "base_commit": "b24abeaaa4f1f4f429911f787f9bef5b3e59115a",
+  "quality_claim": false,
+  "pretrained_weights_loaded": false,
+  "active_5090_run_changed": false,
+  "default_teacher_prefix": "quantized",
+  "experimental_teacher_prefix": "original",
+  "source_boundaries": {
+    "SliderQuant_commit": "bf2641ece550d5f6edb0028c2ae8b0ee658bc9bf",
+    "CATQ_release_commit": "5a8fcd4f7e0366554b732d300a37e6ea467c3c35",
+    "finding": "The ancestor default uses separate original-prefix targets; missing CAT-Q/ScaleQ training code does not prove identical target provenance. This is an opt-in control, not a claimed bug fix."
+  },
+  "hardware": {
+    "platform": "Darwin-25.0.0-arm64-arm-64bit-Mach-O",
+    "device": "cpu",
+    "threads_per_probe": 4,
+    "python": "3.12.9",
+    "torch": "2.14.1",
+    "transformers": "5.20.2",
+    "performance_benchmark": false,
+    "timing_limit": "Final CPU probe ran alongside test suite; phase wall times are diagnostics only."
+  },
+  "tests": {
+    "command": "python -m pytest -q",
+    "passed": 1093,
+    "seconds": 25.72,
+    "new_teacher_target_tests": 28,
+    "coverage": [
+      "independent untouched native F32/BF16 original teacher",
+      "recurrent/full-attention block kwargs and padding",
+      "nonzero low-rank correction bypass and source preservation",
+      "bounded embedding original bypass and caller-selected student flags",
+      "packed/unknown source preflight rejection",
+      "hooks/flags restored on both-pass failures",
+      "disk cache parity",
+      "overlapping checkpointed training",
+      "default vs explicit legacy identical updates",
+      "CLI to export metadata propagation"
+    ]
+  },
+  "reviews": [
+    "Independent source/core/cache/probe review with no remaining findings",
+    "Independent endpoint boundary review with no remaining findings",
+    "Independent paired evidence/documentation review; clarified same student inputs within each arm"
+  ],
+  "implementation_files": {
+    "openbonsai/trainer.py": {
+      "sha256": "93499873a03fe6b339f7345e63f0623366cd93771cedbe7a6b405658ceb748c5",
+      "bytes": 22744
+    },
+    "openbonsai/cli.py": {
+      "sha256": "833bacb827b9ed7d636d86f97bf48dc3c343339b19c9f2ded18084fa872ea81d",
+      "bytes": 12731
+    },
+    "tools/probe_teacher_targets.py": {
+      "sha256": "66059ccbe395a1ceaf0e7f977d0b40070694a2e77a934dbf8fd23e210e1532dd",
+      "bytes": 11867
+    },
+    "tests/test_teacher_targets.py": {
+      "sha256": "29436a4972a3621c75e71cf667d0f92156287061b658d3600f43bb81af6ccfca",
+      "bytes": 16847
+    },
+    "tests/test_trainer.py": {
+      "sha256": "75be93dad9bc27e63f11162acdb5cce952c326c0dd232ab5aec8418a3742b004",
+      "bytes": 15480
+    },
+    "tests/test_cli.py": {
+      "sha256": "7acbca86a78a78563f618559325e434d5200947e5b09359f580443ff5536f5f4",
+      "bytes": 9236
+    }
+  },
+  "probe": {
+    "command": "python tools/probe_teacher_targets.py --output NEW_DIRECTORY",
+    "seed": 5090,
+    "scope": "Random four-block native hybrid Qwen; decoder projections only; endpoints retained",
+    "dtype": "bfloat16",
+    "group_size": 128,
+    "rotation_block_size": 64,
+    "lora_rank": 4,
+    "calibration_ids": [
+      [
+        [
+          177,
+          105,
+          42,
+          18,
+          155,
+          222,
+          30,
+          183,
+          89,
+          53,
+          235,
+          63,
+          156,
+          109,
+          214,
+          50
+        ]
+      ],
+      [
+        [
+          98,
+          200,
+          225,
+          184,
+          48,
+          154,
+          112,
+          48,
+          23,
+          225,
+          137,
+          128,
+          59,
+          173,
+          26,
+          64
+        ]
+      ],
+      [
+        [
+          15,
+          162,
+          181,
+          152,
+          70,
+          121,
+          22,
+          163,
+          126,
+          162,
+          153,
+          230,
+          156,
+          116,
+          135,
+          151
+        ]
+      ],
+      [
+        [
+          29,
+          42,
+          155,
+          87,
+          141,
+          75,
+          224,
+          20,
+          174,
+          203,
+          77,
+          155,
+          82,
+          107,
+          135,
+          238
+        ]
+      ]
+    ],
+    "validation_ids": [
+      [
+        [
+          191,
+          213,
+          49,
+          128,
+          78,
+          5,
+          28,
+          32,
+          185,
+          150,
+          212,
+          138,
+          52,
+          122,
+          193,
+          145
+        ]
+      ],
+      [
+        [
+          120,
+          109,
+          33,
+          120,
+          66,
+          175,
+          84,
+          219,
+          146,
+          71,
+          34,
+          52,
+          35,
+          10,
+          129,
+          194
+        ]
+      ]
+    ],
+    "source_unchanged": true,
+    "initial_parameters_and_validation_targets_identical": true,
+    "report_receipt": {
+      "sha256": "66d1607fee00a08e6a988f2c2f725463084ef94a079152397cebe2bfcbbe0682",
+      "bytes": 54620
+    },
+    "conditions": {
+      "quantized": {
+        "initial_validation_targets": [
+          {
+            "window": 0,
+            "target_disagreement_mse": 0.0,
+            "hard_mse_to_conditional_teacher": 5.279353536025155e-05,
+            "hard_mse_to_original_teacher": 5.279353536025155e-05
+          },
+          {
+            "window": 1,
+            "target_disagreement_mse": 6.973615018068813e-05,
+            "hard_mse_to_conditional_teacher": 4.803237607120536e-05,
+            "hard_mse_to_original_teacher": 0.00010361163731431589
+          },
+          {
+            "window": 2,
+            "target_disagreement_mse": 0.0001326502242591232,
+            "hard_mse_to_conditional_teacher": 5.169505857338663e-05,
+            "hard_mse_to_original_teacher": 0.00016204960411414504
+          },
+          {
+            "window": 3,
+            "target_disagreement_mse": 0.0003073518892051652,
+            "hard_mse_to_conditional_teacher": 0.00017926883447216824,
+            "hard_mse_to_original_teacher": 0.00039280780765693635
+          }
+        ],
+        "final_validation_targets": [
+          {
+            "window": 0,
+            "target_disagreement_mse": 0.0,
+            "hard_mse_to_conditional_teacher": 5.150136712472886e-05,
+            "hard_mse_to_original_teacher": 5.150136712472886e-05
+          },
+          {
+            "window": 1,
+            "target_disagreement_mse": 6.807065801694989e-05,
+            "hard_mse_to_conditional_teacher": 4.7149418605840765e-05,
+            "hard_mse_to_original_teacher": 0.00010181356992688961
+          },
+          {
+            "window": 2,
+            "target_disagreement_mse": 0.00013012473937124014,
+            "hard_mse_to_conditional_teacher": 5.05523566971533e-05,
+            "hard_mse_to_original_teacher": 0.0001595273643033579
+          },
+          {
+            "window": 3,
+            "target_disagreement_mse": 0.00030161267204675823,
+            "hard_mse_to_conditional_teacher": 0.00017398421914549544,
+            "hard_mse_to_original_teacher": 0.0003843114973278716
+          }
+        ],
+        "training_seconds": 3.727510791970417,
+        "teacher_bypass_exact_before_and_after": true,
+        "hard_logit_mse_to_original": 0.02449372410774231,
+        "packed_logit_mse_to_original": 0.024485104717314243,
+        "original_random_nll": 5.5640869140625,
+        "hard_random_nll": 5.604017972946167,
+        "packed_random_nll": 5.604108572006226,
+        "export_rounding_and_runtime_max_logit_difference": 0.0078125,
+        "fresh_reload": {
+          "exact": true,
+          "fresh_process": true,
+          "logits_sha256": [
+            "4d4baac92f8cbd17c44f7a8560fe211a33d153fb27a903071fcc74cf90bd173f",
+            "f051bb0d7863d73e6f19c559444ecb036d8350b9c0fcda8d1af33d97867bcb32"
+          ]
+        },
+        "actual_artifact_bytes": 374342,
+        "runtime": "floating weight reconstruction; no ternary kernel",
+        "training_config": {
+          "epochs": 8,
+          "batch_size": 1,
+          "window_size": 1,
+          "stride": 1,
+          "learning_rate": 0.005,
+          "lora_learning_rate": 0.001,
+          "weight_decay": 0.0,
+          "grad_clip": 1.0,
+          "seed": 5090,
+          "gradient_checkpointing": true,
+          "reconstruction_loss": "huber",
+          "huber_delta": 1.0,
+          "teacher_prefix": "quantized"
+        },
+        "reconstruction_objective": {
+          "name": "huber",
+          "huber_delta": 1.0,
+          "reduction": "mean over nonpadding hidden-state elements",
+          "teacher_prefix": "quantized",
+          "student_input": "frozen hard-quantized prefix output",
+          "teacher_target": "original-weight window on the same quantized-prefix input"
+        },
+        "window_steps": [
+          32,
+          32,
+          32,
+          32
+        ],
+        "artifact_manifest": {
+          "sha256": "d055a4031c54f4e73c1c0683a83a360b35f50e42e71769cd40c85e4599923627",
+          "bytes": 25802
+        }
+      },
+      "original": {
+        "initial_validation_targets": [
+          {
+            "window": 0,
+            "target_disagreement_mse": 0.0,
+            "hard_mse_to_conditional_teacher": 5.279353536025155e-05,
+            "hard_mse_to_original_teacher": 5.279353536025155e-05
+          },
+          {
+            "window": 1,
+            "target_disagreement_mse": 6.973615018068813e-05,
+            "hard_mse_to_conditional_teacher": 4.803237607120536e-05,
+            "hard_mse_to_original_teacher": 0.00010361163731431589
+          },
+          {
+            "window": 2,
+            "target_disagreement_mse": 0.0001326502242591232,
+            "hard_mse_to_conditional_teacher": 5.169505857338663e-05,
+            "hard_mse_to_original_teacher": 0.00016204960411414504
+          },
+          {
+            "window": 3,
+            "target_disagreement_mse": 0.0003073518892051652,
+            "hard_mse_to_conditional_teacher": 0.00017926883447216824,
+            "hard_mse_to_original_teacher": 0.00039280780765693635
+          }
+        ],
+        "final_validation_targets": [
+          {
+            "window": 0,
+            "target_disagreement_mse": 0.0,
+            "hard_mse_to_conditional_teacher": 5.150136712472886e-05,
+            "hard_mse_to_original_teacher": 5.150136712472886e-05
+          },
+          {
+            "window": 1,
+            "target_disagreement_mse": 6.807065801694989e-05,
+            "hard_mse_to_conditional_teacher": 4.7465364332310855e-05,
+            "hard_mse_to_original_teacher": 0.00010190041939495131
+          },
+          {
+            "window": 2,
+            "target_disagreement_mse": 0.00013049373228568584,
+            "hard_mse_to_conditional_teacher": 5.1100469136144966e-05,
+            "hard_mse_to_original_teacher": 0.0001599534516572021
+          },
+          {
+            "window": 3,
+            "target_disagreement_mse": 0.00030231040727812797,
+            "hard_mse_to_conditional_teacher": 0.00017664301412878558,
+            "hard_mse_to_original_teacher": 0.00038807603414170444
+          }
+        ],
+        "training_seconds": 3.5207767081446946,
+        "teacher_bypass_exact_before_and_after": true,
+        "hard_logit_mse_to_original": 0.02473871037364006,
+        "packed_logit_mse_to_original": 0.024720454588532448,
+        "original_random_nll": 5.5640869140625,
+        "hard_random_nll": 5.5990376472473145,
+        "packed_random_nll": 5.599189043045044,
+        "export_rounding_and_runtime_max_logit_difference": 0.0078125,
+        "fresh_reload": {
+          "exact": true,
+          "fresh_process": true,
+          "logits_sha256": [
+            "3ed8a7025854d0e3036d6bb0d401a440f310a098cd3904470d42488bbc244bad",
+            "5766665e6ac0c37f6d67b1afce634510bbf1c170e3020d16aad55d652f827b17"
+          ]
+        },
+        "actual_artifact_bytes": 374332,
+        "runtime": "floating weight reconstruction; no ternary kernel",
+        "training_config": {
+          "epochs": 8,
+          "batch_size": 1,
+          "window_size": 1,
+          "stride": 1,
+          "learning_rate": 0.005,
+          "lora_learning_rate": 0.001,
+          "weight_decay": 0.0,
+          "grad_clip": 1.0,
+          "seed": 5090,
+          "gradient_checkpointing": true,
+          "reconstruction_loss": "huber",
+          "huber_delta": 1.0,
+          "teacher_prefix": "original"
+        },
+        "reconstruction_objective": {
+          "name": "huber",
+          "huber_delta": 1.0,
+          "reduction": "mean over nonpadding hidden-state elements",
+          "teacher_prefix": "original",
+          "student_input": "frozen hard-quantized prefix output",
+          "teacher_target": "original-weight window on original-weight prefix input"
+        },
+        "window_steps": [
+          32,
+          32,
+          32,
+          32
+        ],
+        "artifact_manifest": {
+          "sha256": "2ffb01ba41f340dfa8ee38f9bc83e6387e241b3c7bb7f801f2df7163dbe9afd6",
+          "bytes": 25800
+        }
+      }
+    },
+    "interpretation": "Original-prefix target did not improve hard/packed logit reconstruction on this random fixture. It has no pretrained quality implication. Random NLL uses legacy FP32 CE, not the frozen evaluation v1 protocol."
+  },
+  "optimizer_audit": {
+    "production_change": false,
+    "result_receipt": {
+      "sha256": "22970248b6675757a4d5424327f193ea7a3bc731fd7a133c95f233dcf7fa097f",
+      "bytes": 69093
+    },
+    "interpretation_receipt": {
+      "sha256": "1f7614782b45b7f4dce750be387742fe8f79ae6c5fc54c02bd109b872b91ab42",
+      "bytes": 9374
+    },
+    "finding": "No extra group-count loss division; synthetic default factor gradients well above epsilon. Hypothetical downscaled frozen-gradient stream demonstrates epsilon damping, not real-9B attribution. Need per-coordinate bias-corrected optimizer moments before considering epsilon control."
+  },
+  "limitations": [
+    "No real 9B original-prefix calibration or CUDA memory/timing test",
+    "No proof of CAT-Q or ScaleQ missing training implementation",
+    "No useful quality recovery demonstrated",
+    "No claim that arbitrary packed checkpoints provide original teacher weights",
+    "No optimized ternary inference kernel",
+    "Small random fixture byte difference is not a compression gain"
+  ],
+  "next_gate": "Complete and review both active 5090 diversity arms. Then measure later-window target divergence on a common frozen prefix before selecting a bounded paired control. No mid-run code changes or allocation search."
+}

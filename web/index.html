@@ -4,10 +4,10 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#ffffff">
-    <meta name="description" content="OpenBonsai is an experimental research toolkit for compressing fine-tuned language models into compact ternary weights. Starting with Qwen3.5.">
+    <meta name="description" content="OpenBonsai is an open framework that compresses a dense language model, or your own fine-tune of one, to ternary weights in Prism ML's PTQ1_0 (Bonsai) format. Research preview, measured so far on Qwen3.5-9B.">
     <meta property="og:type" content="website">
     <meta property="og:title" content="OpenBonsai — Open research in ternary compression">
-    <meta property="og:description" content="Fine-tune in BF16. Compress to ternary. An independent research project, starting with Qwen3.5.">
+    <meta property="og:description" content="Compress Qwen3.5-9B, or your own fine-tune of it, to a 2 GB ternary file that runs in Prism's llama.cpp. An independent research preview.">
     <meta name="color-scheme" content="light">
     <title>OpenBonsai — Open research in ternary compression</title>
     <link rel="icon" href="assets/openbonsai-mark.svg" type="image/svg+xml">
@@ -25,11 +25,12 @@
           fetchpriority="high"
         >
         <h1>OpenBonsai</h1>
+        <p class="preview-label">Research preview</p>
         <p class="research-line">Open research in ternary compression.</p>
         <p class="description">
-          An experimental toolkit for turning fine-tuned language models
-          into compact ternary weights. Fine-tune in BF16, then compress.
-          Starting with Qwen3.5.
+          An open framework that compresses a dense language model, or your
+          own fine-tune of one, to ternary weights in the Bonsai format.
+          Qwen3.5-9B becomes a 2&nbsp;GB file that runs in Prism's llama.cpp.
         </p>
         <a class="github-link" href="https://github.com/esokullu/openbonsai">
           <svg class="github-icon" viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" focusable="false">
@@ -38,11 +39,64 @@
           <span>Explore on GitHub</span>
         </a>
       </div>
+      <section class="method" aria-labelledby="method-title">
+        <h2 id="method-title">How it works</h2>
+        <p class="method-description">
+          Four stages turn a BF16 model into ternary weights, then one export
+          writes Prism's PTQ1_0 GGUF.
+        </p>
+        <ol class="method-steps">
+          <li>
+            <strong>Rotate.</strong>
+            A signed Hadamard rotation in Prism's layout spreads large weights
+            across each block, so three levels fit them better.
+          </li>
+          <li>
+            <strong>Round.</strong>
+            Sequential GPTQ rounds every large linear layer, the embedding
+            and head included, to −1, 0 or +1 with one scale per 128 weights,
+            on calibration data that includes the model's own answers.
+          </li>
+          <li>
+            <strong>Refine.</strong>
+            ScaleQ/CAT-Q refinement. Research only for now: it has not yet
+            beaten GPTQ plus distillation, so the default pipeline skips it.
+          </li>
+          <li>
+            <strong>Distill.</strong>
+            The codes stay fixed while every scale is trained against the
+            original model's predictions. On Qwen3.5-9B this closes more than
+            half of the gap to the original on our small dev suite (dev NLL
+            3.48 → 2.89; original 2.42).
+          </li>
+        </ol>
+        <p class="method-status">
+          Measured end to end on Qwen3.5-9B with the research scripts the
+          package ports, and reproduced by the package's own end-to-end run. Other
+          dense models have an adapter, tested only on tiny random models so
+          far, with no real-model results yet. Math, code and non-English
+          output are the main weakness: on small GSM8K and HumanEval subsets
+          the from-scratch model scores 30/100 and 6/50, against 77/100 and
+          45/50 for Prism's Ternary Bonsai 2 9B. Recalibrating on the model's
+          own math and code answers is the next step.
+        </p>
+        <p class="method-links">
+          <a href="https://github.com/esokullu/openbonsai/blob/main/README.md#results">Results and caveats</a>
+          <span aria-hidden="true"> · </span>
+          <a href="https://github.com/esokullu/openbonsai/blob/main/docs/method.md">Method</a>
+          <span aria-hidden="true"> · </span>
+          <a href="https://github.com/esokullu/openbonsai/blob/main/docs/formats.md">Format</a>
+          <span aria-hidden="true"> · </span>
+          <a href="https://github.com/esokullu/openbonsai/blob/main/docs/adding-a-model.md">Adding a model</a>
+        </p>
+      </section>
       <section class="explainer" aria-labelledby="explainer-title">
-        <h2 id="explainer-title">How does ternary compression work?</h2>
+        <h2 id="explainer-title">Background: how ScaleQ works</h2>
         <p class="explainer-description">
-          From three simple labels to calibration and quality checks.
-          An illustrated introduction to the ideas behind ScaleQ.
+          An illustrated introduction to ScaleQ-1.58 and its CAT-Q quantizer
+          (Wang et al., Intel Labs China), the paper that started this
+          project. The current pipeline uses its self-generated calibration
+          data (AYOT); CAT-Q itself is still in research.
         </p>
         <video
           class="explainer-video"
@@ -52,12 +106,12 @@
           poster="assets/openbonsai-explainer-poster.jpg"
           width="1920"
           height="1080"
-          aria-label="How does ternary compression work? English explainer with captions"
+          aria-label="Background: how ScaleQ works. English video with captions"
           aria-describedby="explainer-details"
         >
           <source src="assets/openbonsai-explainer-en.mp4" type="video/mp4">
           Your browser does not support embedded video.
-          <a href="assets/openbonsai-explainer-en.mp4">Download the English explainer</a>.
+          <a href="assets/openbonsai-explainer-en.mp4">Download the English video</a>.
         </video>
         <p class="explainer-details" id="explainer-details">
           4 min · English · Captions included
@@ -67,7 +121,8 @@
       </section>
     </main>
     <footer>
-      <p>An independent research project, inspired by <a href="https://arxiv.org/abs/2608.01078">ScaleQ</a> · by <a href="https://webbrain.one">WebBrain</a></p>
+      <p>Independent project, not affiliated with or endorsed by Prism ML. Bonsai is Prism ML's product.</p>
+      <p>Inspired by <a href="https://arxiv.org/abs/2608.01078">ScaleQ-1.58</a> (Wang et al., Intel Labs China) · Apache-2.0 · by <a href="https://webbrain.one">WebBrain</a></p>
     </footer>
   </body>
 </html>

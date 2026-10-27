@@ -1,0 +1,5 @@
+{"variant": "keep=8", "nll": 9.29638770092825, "ppl": 10898.579089172219, "arc_correct": 4, "arc_preds": "CCCCCCCCCCCCCCCCCCCC", "generations": [], "seconds": 17.052286863327026, "kept_rows": 5}
+{"variant": "keep=4", "nll": 9.359666503579028, "ppl": 11610.515830837936, "arc_correct": 4, "arc_preds": "CCCCCCCCCCCCCCCCCCCC", "generations": [], "seconds": 15.523943424224854, "kept_rows": 22}
+{"variant": "keep=3", "nll": 9.618682342163126, "ppl": 15043.21506326486, "arc_correct": 6, "arc_preds": "CBCBBBBBDBBBBBBBBBCB", "generations": [], "seconds": 15.542343378067017, "kept_rows": 118}
+{"variant": "keep=2", "nll": 9.722252083090648, "ppl": 16684.77795591532, "arc_correct": 4, "arc_preds": "CCCCCCCCCCCCCCCCCCCC", "generations": [], "seconds": 15.361361742019653, "kept_rows": 799}
+{"variant": "keepnorot=4", "nll": 10.532002074736642, "ppl": 37496.47002033409, "arc_correct": 7, "arc_preds": "AACDDAAAACDDADDAADAA", "generations": [], "seconds": 10.608908653259277, "kept_rows": 22}

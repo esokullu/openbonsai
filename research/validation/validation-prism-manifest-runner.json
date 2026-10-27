@@ -1,0 +1,44 @@
+{
+  "date": "2026-10-26",
+  "base_commit": "2e4efddab416b60c704610d73edad1f2938dc79a",
+  "scope": "Portable bounded CPU manifest wrapper; synthetic scorer contracts and harmless subprocess cleanup tests",
+  "quality_claim": false,
+  "portable_tool_actual_gguf_execution": false,
+  "active_5090_experiment_changed": false,
+  "active_official_cpu_experiment_changed": false,
+  "file_sha256": {
+    "tools/evaluate_prism_manifest.py": "24487b4b3eb69d0667c28469aa9b9b0a5f41da275f7ff642ae9bfe9a5b130b3f",
+    "tests/test_prism_manifest_runner.py": "8e791df6c57f083de41e6c072ba6a3210785852eaaa373d80ec1863f236090b0",
+    "configs/evaluation/bonsai-development-cpu.json": "7bcb2fc026c1b1c425a9bbbacc22c861215867f0d79c9abc3131def0db4d2d05",
+    "pyproject.toml": "46f149fdb20db48679645729ad992dbce636a1bd9e00d918a1126c1467795d32",
+    "openbonsai/evaluation.py": "3b31b024db2bf56859494e0c5d69ffd13ac78a28b8b6f15134851be1949bfeb5",
+    "openbonsai/eval_backends.py": "1240292a821ad311b8ea2eeff35a9f3ae7b05903164811798c6cde79857fa929",
+    "tools/prism_eval_worker.cpp": "39df5d66f46abfe4f212ea0e62b2a85b42f8bb6a464548052f19705557ba195f"
+  },
+  "focused_tests": {
+    "passed": 29,
+    "seconds": 2.1,
+    "command": "PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=2 python -m pytest -q tests/test_prism_manifest_runner.py",
+    "scope": "synthetic manifests, fake backend and harmless Python subprocesses",
+    "log_sha256": "af40994b1a29960a0965d6e24b59008519ac14dd0ccb5bd39580ec03885f5e14"
+  },
+  "full_suite": {
+    "passed": 1502,
+    "seconds": 38.99,
+    "command": "PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=2 python -m pytest -q",
+    "log_sha256": "20d26bc13a8bba1140e4abf1587113e4a8edb05dd33f1db1c4d303792327aa55"
+  },
+  "review": {
+    "lifecycle_and_profile": "independent review passed",
+    "scientific_and_documentation": "independent review passed",
+    "root": "full source, test evidence and unchanged active scientific-source hashes reviewed"
+  },
+  "limits": [
+    "CPU POSIX supervisor only; maximum10800seconds",
+    "Existing manifest/profile and separately authenticated local model/worker required; no evaluation corpus bundled",
+    "Shape-based timing estimate is not a guarantee; complete hard deadline remains enforced",
+    "Legacy FP32 metrics are not numerically matched to common FP64 evaluator",
+    "RSS is sampled summed process RSS, not exact peak physical memory",
+    "Concurrent CPU experiment means test timings are diagnostic, not inference benchmarks"
+  ]
+}

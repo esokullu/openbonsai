@@ -1,0 +1,58 @@
+{
+  "scope": "Final hard calibration KL in the staged head fitting report; native random CPU software checks only",
+  "date": "2026-10-26",
+  "status": "passed",
+  "base_commit": "77e150e1edf974d753cc8fbdcfabd0332424fa20",
+  "implementation_files_sha256": {
+    "openbonsai/pipeline_endpoints.py": "da6a2522f5479295b325a163c28f6e5fb311943feff593cdbf6277e7a47e4c8b",
+    "tests/test_pipeline_head_final_calibration.py": "8312ba7738e5e940a4483ffe19f362f50806ee25835b7059196b0e8f9b16f647"
+  },
+  "focused_validation": {
+    "passed": 48,
+    "seconds": 12.92,
+    "command": "OMP_NUM_THREADS=2 ../scaleq-env/bin/python -m pytest -q tests/test_pipeline_head_final_calibration.py tests/test_pipeline_endpoints.py tests/test_pipeline_head_rotation.py",
+    "log_sha256": "eaebd4f36e2d8b02cbc39f3cfedbcade273fabf25f59b2a5532ba8412d75c5ce"
+  },
+  "supervised_command_validation": {
+    "passed": 1,
+    "seconds": 48.41,
+    "test": "tests/test_pipeline_command.py::test_supervised_paired_head_rotation_same_source_and_fresh_reload",
+    "test_source_sha256": "6038234e1566313f776a6254099c68bc8dfac349e150afe5819395167ab915a2",
+    "log_sha256": "97020d2644e8cc8213375a839fea88184b11f3fd4668565b5ac4321836239fa7",
+    "scope": "Existing paired native CPU staged seal/cache/fit/export/assembly test with independent fresh-process reload for both head modes"
+  },
+  "contract": {
+    "report_key": "calibration",
+    "operation": "evaluate-head-calibration",
+    "required_final_state": "Declared update count complete, progress1, quantization enabled, rotation-only disabled",
+    "objective": "Actual complete-vocabulary KL(original_teacher || student), temperature1",
+    "measurement": "All valid calibration cache positions; native logits, global FP64 probability normalization; final learned FP32 scales before export rounding",
+    "optional_search_validation_scored": true,
+    "evaluation_cache_scored": false,
+    "optimizer_updates_added": 0,
+    "objective_optimizer_defaults_changed": false,
+    "additional_final_calibration_pass_must_be_budgeted": true,
+    "existing_state_source_and_report_provenance_guards_retained": true
+  },
+  "proof_scope": [
+    "Current final hard operator before export, progress1 and quantization enabled; original teacher on original-hidden calibration cache.",
+    "Dense full-vocabulary FP64 KL oracle over final learned ternary codes and FP32 scales, native BF16 cast; optional signed rotation both modes.",
+    "Exact tensor values/identities/versions, gradients, flags/snapshots and CPU/Python RNG preserved during evaluation.",
+    "Calibration/search cache/config/source bindings retained; evaluation cache checked but not scored.",
+    "Failure or final-state mutation prevents candidate export/publication."
+  ],
+  "independent_review": {
+    "result": "No actionable findings",
+    "source_and_test_hashes_match": true,
+    "review_sha256": "35f6da2cf817ffbb97fc1e7c847f1714e0c721912cbd65bfa22b6abb7c92d2f0"
+  },
+  "limitations": [
+    "Tiny CPU fixtures; no pretrained/CUDA quality or actual-shape resource claims.",
+    "Metric is before exported FP16 scale rounding, not a reloaded packed-artifact score.",
+    "No default objective, optimizer, schedule, training budget or held-out evaluation behavior changed.",
+    "No full-suite rerun for this change; 48 focused tests and one supervised paired command test passed.",
+    "The active 5090 preflight remains pinned to77e150e; this change is for a separately frozen future run, not an in-place mutation."
+  ],
+  "pretrained_quality_claim": false,
+  "active_5090_source_changed": false
+}

@@ -1,0 +1,24 @@
+Loading weights: 100%|██████████| 760/760 [00:10<00:00, 69.98it/s] 
+[transformers] `causal_conv1d_fn` is falling back to its reference PyTorch implementation because `causal_conv1d` is not installed. This is correct but much slower; install `causal_conv1d` for the optimized kernel.
+{"variant": "decoder_only", "nll": 3.3183112722263854, "ppl": 27.6136791750229, "arc_correct": 15, "arc_preds": "CBABDCAABCADBCCBBBBB", "wiki16k_nll": 3.1027483891376155, "arc100": 78, "chat_nll": 1.9644299887156509}
+[transformers] Token indices sequence length is longer than the specified maximum sequence length for this model (2504609 > 262144). Running this sequence through the model will result in indexing errors
+Traceback (most recent call last):
+  File "D:\openbonsai\work\scaleq-recovery\experiments\endpoints.py", line 120, in <module>
+    main()
+  File "D:\openbonsai\work\scaleq-recovery\experiments\endpoints.py", line 99, in main
+    head.weight.copy_(hd.to(head.weight.device))
+RuntimeError: a leaf Variable that requires grad is being used in an in-place operation.
+Loading weights: 100%|██████████| 760/760 [00:10<00:00, 70.18it/s] 
+[transformers] `causal_conv1d_fn` is falling back to its reference PyTorch implementation because `causal_conv1d` is not installed. This is correct but much slower; install `causal_conv1d` for the optimized kernel.
+{"variant": "decoder_only", "nll": 3.3183112722263854, "ppl": 27.6136791750229, "arc_correct": 15, "arc_preds": "CBABDCAABCADBCCBBBBB", "wiki16k_nll": 3.1027483891376155, "arc100": 78, "chat_nll": 1.9644299887156509}
+[transformers] Token indices sequence length is longer than the specified maximum sequence length for this model (2504609 > 262144). Running this sequence through the model will result in indexing errors
+head quantized in 37s
+{"variant": "plus_head", "nll": 3.3831131538919132, "ppl": 29.462349318249288, "arc_correct": 16, "arc_preds": "CBABCCAACCADBCCBCBBB", "wiki16k_nll": 3.1674948272420846, "arc100": 74, "chat_nll": 2.0506620314619113}
+embedding quantized in 13s
+[transformers] `causal_conv1d_update` is falling back to its reference PyTorch implementation because `causal_conv1d` is not installed. This is correct but much slower; install `causal_conv1d` for the optimized kernel.
+{"variant": "both", "nll": 3.479286651310834, "ppl": 32.43657523253701, "arc_correct": 13, "arc_preds": "CBBBCCBACCCDBCCBCBBB", "wiki16k_nll": 3.279937191379639, "arc100": 63, "chat_nll": 2.2224522939434532}
+GEN: 1. Store your kitchen supplies in a dedicated, organized storage area to prevent clutter. | 2. Keep a designated cleaning station to ensure the kitchen remains tidy. | 3. Maintain a shared kitchen by using a shared cleaning station to keep the kitchen clean.<|im_end|>
+GEN: Based on the information provided, there are **10 chickens** and **28 rabbits**. |  | The 10 heads indicate that there are 10 chickens, and the 28 legs indicate that there are 28 rabbits.<|im_end|>
+GEN: Here is a Python function that checks whether parentheses are balanced, ignoring other characters, and includes an empty-string case. |  | ```python | def is_balanced(text) |     # Check if parentheses are balanced |     # Ignore other characters |     # Include empty-string case |     # Return true if balanced |  
+GEN: Based on your request, here is a response to your query. |  | **The response to your query is: "The response to your query is: "The response to your query is: "The response to your query is: "The response to your query is: "The response to your query is: "The response to your query is: "The response to 
+{"variant": "embedding_only", "nll": 3.4160576925607984, "ppl": 30.44913822862378, "arc_correct": 11, "arc_preds": "BBBBDCBABBBDBCCBBBBB", "wiki16k_nll": 3.217775346300753, "arc100": 59, "chat_nll": 2.1385473097980703}

@@ -1,0 +1,6 @@
+# Preserve the SHA-pinned evaluation input bytes on Windows checkouts.
+/openbonsai/eval/assets/bonsai-dev/*.json -text
+/openbonsai/eval/assets/bonsai-dev/*.jsonl -text
+/openbonsai/eval/assets/reasoning/*.json -text
+# Shell scripts run on Linux even when checked out on Windows.
+*.sh text eol=lf

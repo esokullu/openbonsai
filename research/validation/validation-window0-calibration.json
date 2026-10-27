@@ -1,0 +1,274 @@
+{
+  "schema_version": 1,
+  "status": "completed_sealed_local_reconstruction_control",
+  "run": "2026-10-27-5090-window0-budget-control-v1",
+  "scope": "First native decoder window only; six ternary projections; no full-model language evaluation or packed export",
+  "source": {
+    "model": "Qwen/Qwen3.5-9B",
+    "revision": "c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+    "dtype_policy": "Historical BF16 cast; not preserve-checkpoint",
+    "actual_runtime_source": "Bound by remote runtime-source-freeze.json; current repository HEAD is not the executed runtime",
+    "frozen_files": 182,
+    "main_head_preserved": "891d260af96a7ce61ccbcb23474015d975bb18dc",
+    "main_source_files_preserved": 39
+  },
+  "recipe": {
+    "group_size": 128,
+    "rotation_block_size": 4096,
+    "seed": 5090,
+    "rank": 64,
+    "factor_mapping": "sigmoid",
+    "loss": "huber",
+    "huber_delta": 1.0,
+    "learning_rate": 0.005,
+    "lora_learning_rate": 0.001,
+    "weight_decay": 0.0,
+    "grad_clip": 1.0,
+    "adam_epsilon": 1e-08,
+    "batch_size": 1,
+    "sequence_length": 512,
+    "hard_phase": "frozen_jacobian",
+    "A": {
+      "epochs": 1,
+      "updates": 128,
+      "soft": 102,
+      "hard": 26,
+      "last_soft_sharpness": 29.8828125
+    },
+    "B": {
+      "epochs": 4,
+      "updates": 512,
+      "soft": 409,
+      "hard": 103,
+      "last_soft_sharpness": 29.9560546875
+    },
+    "fresh_initialization_each_arm": true,
+    "confounds": "Repeated exposure, annealing duration and LR/sharpness trajectories change together"
+  },
+  "data": {
+    "calibration_records": 128,
+    "calibration_valid_positions": 59855,
+    "calibration_valid_hidden_elements": 245166080,
+    "search_records": 16,
+    "search_valid_positions": 7203,
+    "search_valid_hidden_elements": 29503488,
+    "search_fitted": false,
+    "common_original_input_target_cache_exact": true,
+    "role": "Calibration and disjoint search-development; no fresh final confirmation"
+  },
+  "hard_metrics": {
+    "initial": {
+      "calibration_mse": 0.0024979247200743915,
+      "search_mse": 0.002489267054690463,
+      "search_relative_rmse": 0.46426374839796314
+    },
+    "A": {
+      "calibration_mse": 0.00030911908265730446,
+      "search_mse": 0.0003113105955107963,
+      "search_relative_rmse": 0.16418216528524363,
+      "search_cosine": 0.9864541121507877,
+      "search_rms_ratio": 0.9795621765046701
+    },
+    "B": {
+      "calibration_mse": 0.000162908354157672,
+      "search_mse": 0.00016801047914713087,
+      "search_relative_rmse": 0.12061385907364364,
+      "search_cosine": 0.9927005819811445,
+      "search_rms_ratio": 0.9912348172183868
+    },
+    "B_versus_A": {
+      "calibration_mse_reduction_fraction": 0.4729915967747761,
+      "search_mse_reduction_fraction": 0.4603123646612143,
+      "search_rmse_reduction_fraction": 0.2653656451412133,
+      "calibration_improved_records": 128,
+      "search_improved_records": 16,
+      "search_record_reduction_percent_range": [
+        42.061231627423666,
+        50.1417412025677
+      ]
+    }
+  },
+  "same_parameter_last_soft_probe": {
+    "records": 1,
+    "valid_hidden_elements": 2097152,
+    "A": {
+      "soft_mse": 0.0002898713864362143,
+      "hard_mse": 0.0003010033129574484,
+      "increase_percent": 3.8402985055179633
+    },
+    "B": {
+      "soft_mse": 0.00014653362433222181,
+      "hard_mse": 0.00015580845748767202,
+      "increase_percent": 6.329491403571823
+    },
+    "actual_preupdate_snapshots_verified": true
+  },
+  "optimizer_observations": {
+    "calls": 8,
+    "all_state_preserved": true,
+    "A_poststeps": [
+      1,
+      102,
+      103,
+      128
+    ],
+    "B_poststeps": [
+      1,
+      409,
+      410,
+      512
+    ],
+    "B_final": {
+      "raw_mu": {
+        "r_below_epsilon_fraction": 0.9564437866210938,
+        "direction_norm_retention": 0.11174542742000979
+      },
+      "raw_scale": {
+        "r_below_epsilon_fraction": 0.9701673067533053,
+        "direction_norm_retention": 0.08147384857835142
+      },
+      "raw_threshold": {
+        "r_below_epsilon_fraction": 0.9792081392728366,
+        "direction_norm_retention": 0.06959491241956074
+      }
+    },
+    "norm_retention_definition": "sqrt(sum(damped_direction^2)/sum(epsilon_free_direction^2)), same r>0 domain; excludes LR, decay and native rounding",
+    "causal_quality_claim": false
+  },
+  "weight_summary": {
+    "A_zero_fraction": 0.3089860723568843,
+    "B_zero_fraction": 0.30949149223474354,
+    "A_correction_frobenius": 0.280803314081295,
+    "B_correction_frobenius": 1.1160081681972056,
+    "fitted_projections": 6,
+    "elements": 218103808
+  },
+  "execution": {
+    "model_process_seconds": 614.1709999996237,
+    "cap_seconds": 3600,
+    "preflight_seconds": 137.79699999978766,
+    "fit_seconds": 380.6710000000894,
+    "reload_seconds": 95.70299999974668,
+    "scientific_updates": 640,
+    "discarded_updates": 4,
+    "all_scientific_finite": true,
+    "metered_phases": 91,
+    "peak_allocated_bytes": 21709584896,
+    "peak_reserved_bytes": 21781020672,
+    "minimum_headroom_bytes": 10572791808,
+    "all_owned_children_reaped": true,
+    "owned_pids_absent": [
+      363832,
+      374284,
+      375196
+    ],
+    "retry_overlap_or_cap_extension": false,
+    "admission": {
+      "original_projection_seconds": 1293.7173212124035,
+      "omitted_preservation_pass_seconds": 20.849126799963415,
+      "corrected_projection_seconds": 1319.7787297123577,
+      "finding": "One standalone preservation call omitted from named cost bucket; actual complete run and corrected projection within unchanged cap. Fix counts before reuse."
+    }
+  },
+  "parity": {
+    "A_historical_final_state_shared_steps_native_boundary_exact": true,
+    "historical_assignment_rollback_exact": true,
+    "fresh_compact_state_reload_A_exact": true,
+    "fresh_compact_state_reload_B_exact": true,
+    "max_fixed_native_output_error": 0.0,
+    "packed_export_parity_claim": false
+  },
+  "inventory": {
+    "files_excluding_final_seal": 533,
+    "bytes_excluding_final_seal": 1551056647,
+    "scope": "Research archive including cache and compact states; not deployable model size"
+  },
+  "remote_evidence": {
+    "runtime-source-freeze.json": {
+      "bytes": 29593,
+      "sha256": "5f40a5af2f441c4813d7d99f5e776f1b37fd13adab3b8c44895b1f0320df2604"
+    },
+    "analysis/budget-results.json": {
+      "bytes": 3316093,
+      "sha256": "1d69128886ab4375e8f386bc96d3b001f03fafe35c8c95fe6d6a8ef0966f4c83"
+    },
+    "analysis/budget-results-review.json": {
+      "bytes": 78469,
+      "sha256": "0af63e7bfd9ed7dee88a4804ff26a4b52a14e5bed195fce1481041a7791e4d86"
+    },
+    "analysis/final-preservation.json": {
+      "bytes": 150599,
+      "sha256": "95434375ee916e23a7514e46ff1d516bad9295ce42a66314c39e2dcb19d4e588"
+    },
+    "analysis/execution-review.json": {
+      "bytes": 22423,
+      "sha256": "236c42cfd2c57442166ae02bbe5ace626b555fb562627930e122ab9f04d19aba"
+    },
+    "analysis/budget-accounting-review.json": {
+      "bytes": 5162,
+      "sha256": "a5b75c24c0f7f6923e3717849edeee60479dee713a46bf1da536ef7a5a8cabd5"
+    },
+    "inputs/calibration/ayot128.jsonl": {
+      "bytes": 1014760,
+      "sha256": "d77644080002e396c597e93b084d0e00596a69895281b73cd1d7952a62ce80f6"
+    },
+    "inputs/calibration/consumed128.jsonl": {
+      "bytes": 612783,
+      "sha256": "487a093fe330f35882ed04f969fa91e324b91630f5e17af003e02beebd23a699"
+    },
+    "data/search-consumed16.jsonl": {
+      "bytes": 77139,
+      "sha256": "443aaba5e5b41c641c27cdcd45f34fd5a2e770fa466321c9bbab84436ff40aaf"
+    },
+    "training/A-final-state.pt": {
+      "bytes": 54047955,
+      "sha256": "5fa0f916dd67f85cb39da104e7f1ffe07a68fd42e02995146d1421cc4284c9cf"
+    },
+    "training/B-final-state.pt": {
+      "bytes": 54047955,
+      "sha256": "7a9c4ee37a8d4bbb65f5518e36dbd509fc77468b06dd09de1575b3ccc7cbd6d8"
+    },
+    "reload/exact-parity.json": {
+      "bytes": 1131,
+      "sha256": "9048dcd5efeb18f7ed961404508eb8463d873f36b8d75e78388236a19e81ec6d"
+    },
+    "REPORT.md": {
+      "bytes": 20042,
+      "sha256": "202b20ec731bef09abf650895ef8ae8829b72f8ecc2b173248b81ceb58f3b6e9"
+    },
+    "final-validation.json": {
+      "bytes": 89535,
+      "sha256": "466a13bbb67aabede63b97019b014ffc639b4e4519a0bf28f3cdc206a5f5f1cf"
+    }
+  },
+  "local_retrieval_snapshots": [
+    {
+      "name": "window0-completed-model-2026-10-26T2222.json",
+      "bytes": 564293,
+      "sha256": "bfb0e236989a76f08a3c83c0e8802d7db6894edb7b07bf6f537d224a7d7c8754"
+    },
+    {
+      "name": "window0-evaluation-audit-2026-10-26T2223.json",
+      "bytes": 48086,
+      "sha256": "985cd347026dfd8255c589240cdfd0eab9eaa502ef43c70b1499f3db35c8d718"
+    },
+    {
+      "name": "window0-sealed-final-2026-10-26T2229.json",
+      "bytes": 106598,
+      "sha256": "4ce72ed8eb7a352bfa636fadde3b8500d45d93bd0c5f5b7f9375137a1c6b4bf3"
+    },
+    {
+      "name": "window0-admission-review-2026-10-26T2232.json",
+      "bytes": 105212,
+      "sha256": "ffd392a3eb6cab60d6b5b98825f71a6195823327ed5e2b202fef6fae6f21aad3"
+    }
+  ],
+  "evidence_boundary": "Saved direct remote outputs and independently reviewed remote receipts; no local rehash or copy of full tensor payloads or research archive is claimed.",
+  "limitations": [
+    "First-window reconstruction only; no language-quality, convergence or later-prefix recovery conclusion.",
+    "No pretrained endpoint calibration, full-model compressed artifact, size target or acceleration result.",
+    "Optimizer fixed-moment damping is observed but changed-epsilon training effects are untested in this result.",
+    "This source was not a BF16 fine-tune; successful fine-tune compression remains unproved.",
+    "No automatic full-model run or optimizer sweep follows from this result."
+  ]
+}

@@ -1,0 +1,7 @@
+{
+ "source": "quantize",
+ "suite": "extended",
+ "wiki16k_nll": 3.1027483891376155,
+ "arc100": 78,
+ "chat_nll": 1.9644299887156509
+}

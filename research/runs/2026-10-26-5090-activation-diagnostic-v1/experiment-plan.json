@@ -1,0 +1,39 @@
+{
+  "created_utc": "2026-10-26T17:04:56.970184+00:00",
+  "status": "predeclared_before_model_execution",
+  "scope": "one bounded read-only restoration and activation diagnostic; no training, search grid, endpoint compression or quality claim",
+  "reference_arm": "rotated128x1",
+  "parent": "D:/openbonsai/runs/2026-10-26-5090-ultrachat-attempt2",
+  "parent_seal_sha256": "d7ae0ccf66b38f223366beb105beba32d651e5c2c1be166c21624eac7885bf8a",
+  "reviewed_commit": "419d20ef43a0576f2f182842b88fbdb3c995aea0",
+  "windows": [
+    [
+      0,
+      1
+    ],
+    [
+      16,
+      17
+    ]
+  ],
+  "records": 16,
+  "batch_size": 1,
+  "sequence_length": 512,
+  "preparation_limit_seconds": 1200,
+  "preparation_max_attempts": 32,
+  "preparation_estimate_seconds": [
+    300,
+    360
+  ],
+  "preparation_estimate_source": "Parent original model generated58089tokens in2193.709generationseconds (~26.480tok/s);16times512newtokens plus17.4sload and checks",
+  "activation_limit_seconds": 2700,
+  "minimum_free_memory_bytes": 4294967296,
+  "initial_preflight_records": [
+    0,
+    1
+  ],
+  "selector": "later-window target-gap RMS >=0.5 times original-target error RMS on at least12of16 above predeclared repeat/bypass noise floor; indeterminate denominator makes rule unevaluable",
+  "source_gate": "exact parent inventory and original snapshot checksums; all84inheritedfiles unchanged; focused integration tests before sourcefreeze",
+  "failure_action": "preserve partial receipts, stop without retry or scientific recipe change",
+  "stop_after": "sealed diagnostic, coordinator review required before any fitting"
+}

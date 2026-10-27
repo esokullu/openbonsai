@@ -1,0 +1,12 @@
+{
+ "nll": 5.1491902708437625,
+ "ppl": 172.29192402476488,
+ "arc_correct": 8,
+ "arc_preds": "AAAAAAAAAAAAAAAAAAAA",
+ "generations": [
+  "# 1.\n# 2.\n# 3.\n# 4.\n# 5.\n# 6.\n# 7.\n# 8.\n# 9.\n# 10.\n# 11.\n# 12.\n# 13.\n# 14.\n# 15.\n# 16.\n# 17.\n# 18.\n# 19.\n# 20.\n# 21.\n# 22.\n# 23.",
+  "A farmer has chickens and rabbits. There are 10 heads and 28 legs. How many of each animal are there? Explain briefly.\n\n<|im_end|>",
+  "```python\n```\n\n```python\n```\n\n```python\n```\n\n```python\n```\n\n```python\n```\n\n```python\n```\n\n```python\n```\n\n```python\n```\n\n```python\n```\n\n```python\n```\n\n```python\n```\n\n```python\n```\n\n```python\n```\n\n```python\n```\n\n```python\n```\n\n```python\n```\n\n```python\n```\n\n```python\n```\n\n```python\n```\n\n```python\n```\n\n```python\n```\n\n```python\n```\n\n```python\n```\n\n```python\n```\n\n```python\n```\n\n```python\n",
+  "#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n#\n\n"
+ ]
+}

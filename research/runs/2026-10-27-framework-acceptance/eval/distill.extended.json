@@ -1,0 +1,7 @@
+{
+ "source": "distill",
+ "suite": "extended",
+ "wiki16k_nll": 2.6302044595094958,
+ "arc100": 89,
+ "chat_nll": 1.3217734791549804
+}

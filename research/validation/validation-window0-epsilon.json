@@ -1,0 +1,397 @@
+{
+  "schema_version": 1,
+  "status": "completed_sealed_local_epsilon_control",
+  "run": "2026-10-27-5090-window0-epsilon-control-v2",
+  "scope": "Six first-window decoder projections only; one C512 epsilon intervention against authenticated historical B512; no full-model quality or packed export",
+  "source": {
+    "model": "Qwen/Qwen3.5-9B",
+    "revision": "c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+    "dtype_policy": "Historical BF16 cast; not preserve-checkpoint",
+    "frozen_remote_source_files": 242,
+    "execution_source": "Remote runtime-source-freeze.json and isolated run adapters; current repository HEAD was not the executed historical runtime",
+    "public_cli_exact_historical_reproduction_claim": false,
+    "source_preservation": "Returned final-preservation and independent execution receipts report original/unselected tensors, inherited data, failed artifacts and dirty main preserved"
+  },
+  "comparator": {
+    "arm": "B512",
+    "receipt": "validation-window0-calibration.json",
+    "parent_final_seal": {
+      "bytes": 89535,
+      "sha256": "466a13bbb67aabede63b97019b014ffc639b4e4519a0bf28f3cdc206a5f5f1cf"
+    },
+    "compact_state": {
+      "bytes": 54047955,
+      "sha256": "7a9c4ee37a8d4bbb65f5518e36dbd509fc77468b06dd09de1575b3ccc7cbd6d8"
+    },
+    "exact_selected_state_and_native_output_replayed": true,
+    "pristine_rollback_before_C": true,
+    "C_warm_started_from_B": false
+  },
+  "recipe": {
+    "group_size": 128,
+    "rotation_block_size": 4096,
+    "seed": 5090,
+    "rank": 64,
+    "factor_mapping": "sigmoid",
+    "loss": "huber",
+    "huber_delta": 1.0,
+    "learning_rate": 0.005,
+    "lora_learning_rate": 0.001,
+    "weight_decay": 0.0,
+    "grad_clip": 1.0,
+    "batch_size": 1,
+    "sequence_length": 512,
+    "epochs": 4,
+    "updates_per_arm": 512,
+    "soft_updates": 409,
+    "hard_updates": 103,
+    "hard_phase": "frozen_jacobian",
+    "last_soft_preupdate_step": 409,
+    "last_soft_sharpness": 29.9560546875,
+    "B_adam_epsilon": 1e-08,
+    "C_adam_epsilon": 1e-09,
+    "changed_all_optimizer_groups": true,
+    "non_epsilon_optimizer_settings_initialization_record_order_schedule_matched": true,
+    "source_evidence": "exec-fc63c709-cd65-4de2-83f8-d93e3ce2168b; exec-e25e0622-689b-42ca-ba62-0c517c3fd850"
+  },
+  "data": {
+    "calibration_records": 128,
+    "calibration_valid_positions": 59855,
+    "calibration_valid_hidden_elements": 245166080,
+    "search_records": 16,
+    "search_valid_positions": 7203,
+    "search_valid_hidden_elements": 29503488,
+    "search_fitted_or_used_for_final_selection": false,
+    "role": "Reused calibration and disjoint search-development; not unused final confirmation",
+    "cache_records_original_inputs_targets_masks_native_kwargs_exact": 144,
+    "pooled_arithmetic": "Summed FP64 squared error divided by all valid hidden elements; padding excluded; not mean of record means",
+    "historical_data_bindings": {
+      "inputs/calibration/ayot128.jsonl": {
+        "bytes": 1014760,
+        "sha256": "d77644080002e396c597e93b084d0e00596a69895281b73cd1d7952a62ce80f6"
+      },
+      "inputs/calibration/consumed128.jsonl": {
+        "bytes": 612783,
+        "sha256": "487a093fe330f35882ed04f969fa91e324b91630f5e17af003e02beebd23a699"
+      },
+      "data/search-consumed16.jsonl": {
+        "bytes": 77139,
+        "sha256": "443aaba5e5b41c641c27cdcd45f34fd5a2e770fa466321c9bbab84436ff40aaf"
+      }
+    }
+  },
+  "final_hard_metrics": {
+    "B": {
+      "calibration_mse": 0.000162908354157672,
+      "search_mse": 0.00016801047914713087
+    },
+    "C": {
+      "calibration_mse": 0.00011861900800478741,
+      "search_mse": 0.00012685623910517702
+    },
+    "C_versus_B": {
+      "calibration_mse_reduction_fraction": 0.2718666355810019,
+      "search_mse_reduction_fraction": 0.2449504355375005,
+      "calibration_improved_records": 128,
+      "search_improved_records": 16,
+      "equal_records": 0,
+      "worsened_records": 0,
+      "calibration_record_reduction_percent_range": [
+        22.81242382713814,
+        38.255012462638895
+      ],
+      "search_record_reduction_percent_range": [
+        23.65733069826288,
+        25.717950666156764
+      ]
+    },
+    "evidence": "Direct numeric and training-review outputs agree; pooled arithmetic checked locally, all per-record summaries validated by remote saved-JSON review, not recomputed locally"
+  },
+  "same_parameter_last_soft_probe": {
+    "records": 1,
+    "state": "Actual pre-update409 parameters; separate from final pooled metrics",
+    "B": {
+      "soft_mse": 0.00014653362433222181,
+      "hard_mse": 0.00015580845748767202,
+      "hardening_increase_percent": 6.329491403571819
+    },
+    "C": {
+      "soft_mse": 0.00010381729351050709,
+      "hard_mse": 0.00011568367065392189,
+      "hardening_increase_percent": 11.430058270796506
+    },
+    "snapshots_match_preupdate_parameters_and_remain_unchanged": true,
+    "successive409_410_training_losses_are_not_a_transition_probe": true
+  },
+  "optimizer_observations": {
+    "poststeps_each_arm": [
+      1,
+      409,
+      410,
+      512
+    ],
+    "B_observations_reused": true,
+    "C_observations_new": true,
+    "all_state_preserved_per_remote_reviews": true,
+    "norm_retention_definition": "sqrt(sum((mhat/(r+epsilon))^2)/sum((mhat/r)^2)) on identical r>0 domain, with bias-corrected r=sqrt(vhat); excludes LR, decay and native rounding",
+    "B_final": {
+      "lora_A": {
+        "r_below_epsilon_fraction": 0.864682674407959,
+        "direction_norm_retention": 0.15015248340629234
+      },
+      "lora_B": {
+        "r_below_epsilon_fraction": 0.8958320617675781,
+        "direction_norm_retention": 0.1213565763816203
+      },
+      "raw_mu": {
+        "r_below_epsilon_fraction": 0.9564437866210938,
+        "direction_norm_retention": 0.11174542742000979
+      },
+      "raw_scale": {
+        "r_below_epsilon_fraction": 0.9701673067533053,
+        "direction_norm_retention": 0.08147384857835142
+      },
+      "raw_threshold": {
+        "r_below_epsilon_fraction": 0.9792081392728366,
+        "direction_norm_retention": 0.06959491241956074
+      }
+    },
+    "C_final": {
+      "lora_A": {
+        "r_below_epsilon_fraction": 0.43692779541015625,
+        "direction_norm_retention": 0.45471526348218194
+      },
+      "lora_B": {
+        "r_below_epsilon_fraction": 0.38579247214577417,
+        "direction_norm_retention": 0.5310694026355939
+      },
+      "raw_mu": {
+        "r_below_epsilon_fraction": 0.7555178128756009,
+        "direction_norm_retention": 0.3805446744524737
+      },
+      "raw_scale": {
+        "r_below_epsilon_fraction": 0.841458247258113,
+        "direction_norm_retention": 0.28635636273383214
+      },
+      "raw_threshold": {
+        "r_below_epsilon_fraction": 0.8733837421123798,
+        "direction_norm_retention": 0.25501995581942655
+      }
+    },
+    "initial_lora_A_null_ratio": "Expected zero moments when initial LoRA_B is zero; not missing gradient",
+    "not_a_same_late_moment_counterfactual": true,
+    "energy_or_actual_update_retention_claim": false,
+    "causal_gain_attribution_to_factor_family": false
+  },
+  "execution": {
+    "device": "NVIDIA RTX 5090",
+    "model_process_seconds": 498.60900000017136,
+    "family_cap_seconds": 1800,
+    "preflight_seconds": 133.20300000021234,
+    "fit_seconds": 265.655999999959,
+    "reload_seconds": 99.75,
+    "scientific_updates": 512,
+    "discarded_updates": 2,
+    "finite_scientific_updates": 512,
+    "present_gradients_per_update": 30,
+    "finite_FP32_moment_tensors": 60,
+    "model_processes": 3,
+    "all_owned_children_reaped": true,
+    "peak_allocated_bytes": 21705918976,
+    "peak_reserved_bytes": 21781020672,
+    "minimum_headroom_bytes": 10572791808,
+    "required_headroom_bytes": 4294967296,
+    "metered_phases": {
+      "preflight": 26,
+      "training": 25,
+      "reload": 13
+    },
+    "all_phase_memory_formulas_and_headroom_gates_passed": true,
+    "complete_work_admission_projection_seconds": 1326.9522931693355,
+    "admission_margin": 1.25,
+    "admission_reserve_seconds": 300,
+    "remaining_preservation_calls_counted": 2,
+    "scope": "Measured window0 control; not runtime or memory evidence for full-vocabulary head fitting"
+  },
+  "parity": {
+    "fresh_compact_C_state_and_fixed_native_output_bitwise_exact": true,
+    "max_absolute_output_error": 0.0,
+    "fixed_output": {
+      "shape": [
+        1,
+        512,
+        4096
+      ],
+      "dtype": "bfloat16",
+      "bytes": 4194304,
+      "sha256": "5d43cb555779e44efb472bb8e429b46ac04ef7ea9da6c5e2953516ff922e72d9"
+    },
+    "compact_state_bytes": 54047955,
+    "original_checkpoint_required": true,
+    "standalone_or_packed_model_claim": false,
+    "evidence": "exec-8219bbcf-c6a8-4a7b-a14a-131af80af158 and independent execution review"
+  },
+  "attempt_history": {
+    "v1": {
+      "status": "failed_before_model_launch",
+      "model_seconds": 0,
+      "scientific_updates": 0,
+      "discarded_updates": 0,
+      "final_seal": {
+        "bytes": 37689,
+        "sha256": "38b522a6900e532c27ae84328c922bbd0c3660bbf1940401ae2a48f80e777f5c"
+      },
+      "failure": "Worker guard failed before launch; originally rejected PID was not recorded",
+      "cause_boundary": "Source and native fixtures demonstrate the launcher-classification defect; the historical rejected process identity remains unknown"
+    },
+    "v2_correction": "Narrow verified current-launcher exemption plus native acceptance/rejection/timeout-cleanup checks; scientific recipe unchanged from v1; failed attempt preserved",
+    "administrative_sealing_correction": {
+      "model_work": false,
+      "scientific_change": false,
+      "description": "Before final seal, require documented passed_saved_json_training_review for the training review rather than generic passed; keep other receipt status guards",
+      "evidence": "Completed remote command exec-b7ace7ba-ead0-495e-a850-49eeb7c6cd16 and subsequent final seal; no independently reopened schema-failure receipt"
+    },
+    "final_report_notation_correction": {
+      "only_change": "Make sum of squared direction coordinates explicit",
+      "scientific_definition_changed": false,
+      "original_execution_review_report_sha256": "025314c524689195b326e0376a9d9a59ec9287a1622323eb276c74b29996c579",
+      "final_report_sha256": "9cd6509bfec1597e8a0eef0c0f3eb5d8134641dc8204166c73abf0d355b39674",
+      "binding_review": {
+        "bytes": 1172,
+        "sha256": "582729de1d7ce5966948fb34f7c3e013870a224bfb845f53091aabdd01ef2786",
+        "returned_command_id": "exec-95e89689-39d4-4b9b-a9fc-9fd785ea1dae",
+        "verification": "remote returned receipt; payload not independently rehashed locally"
+      }
+    }
+  },
+  "validation_checks": {
+    "inherited_focused_CPU_tests": {
+      "unique_passed": 77,
+      "scope": "Returned v1 scientific adapter/driver/supervisor receipts; inherited, not rerun as part of this publication"
+    },
+    "v2_targeted_tests": {
+      "passed": 22,
+      "seconds": 5.94,
+      "scope": "Returned focused command; overlaps inherited coverage, do not add as unique total"
+    },
+    "summary_lineage_synthetic_CPU_checks": {
+      "passed": 9,
+      "seconds": 0.18566800002008677
+    },
+    "native_Windows_guard_and_cleanup": "Passed in returned operational/execution review; not a macOS mock claim",
+    "local_publication_model_or_test_runs": false
+  },
+  "inventory": {
+    "files_excluding_final_seal": 405,
+    "bytes_excluding_final_seal": 207136037,
+    "scope": "Research archive with original-dependent compact state, caches and receipts; not deployable model bytes",
+    "weights_or_full_run_archive_included_in_this_publication": false
+  },
+  "remote_evidence": {
+    "runtime-source-freeze.json": {
+      "bytes": 38964,
+      "sha256": "d2facbb4905c8fbc7d9b55563d4768be5803940a2e0dec00b0dc94edb3435799",
+      "returned_command_id": "exec-11bb63cd-6f2e-4f13-bc7f-81a0108d29e4",
+      "verification": "remote returned receipt; payload not independently rehashed locally"
+    },
+    "analysis/epsilon-results-review.json": {
+      "bytes": 40873,
+      "sha256": "29a581d7f2dbc9adca46b80a8e3b1cce2a2e8b86303ef35abfaef5f7da8822c4",
+      "returned_command_id": "exec-b772f736-9fcb-4303-9575-40e471888175",
+      "verification": "remote returned receipt; payload not independently rehashed locally"
+    },
+    "analysis/training-results-review.json": {
+      "bytes": 87176,
+      "sha256": "ae9ba4d287e4ece755b7dc45d0a1bf16f9a6b3c20cd45ccc5523ef8669d87d69",
+      "returned_command_id": "exec-90763cdf-0cbc-47c2-85ff-6e0862d584b2",
+      "verification": "remote returned receipt; payload not independently rehashed locally"
+    },
+    "analysis/execution-review.json": {
+      "bytes": 14061,
+      "sha256": "d1dcb480016a80dafdc5995aad78f1d6feb32bf2c59003246ed2912b5c84d093",
+      "returned_command_id": "exec-75183e42-89b6-4498-85be-e2476d8a4d28",
+      "verification": "remote returned receipt; payload not independently rehashed locally"
+    },
+    "analysis/final-preservation.json": {
+      "bytes": 211688,
+      "sha256": "24f0478f55bc136c3f28f2d93f787a58a9e6d5fa9ccb6da81a595e1d1f0d225a",
+      "returned_command_id": "exec-4b3445ef-e541-49cb-8e92-0c167704a89d",
+      "verification": "remote returned receipt; payload not independently rehashed locally"
+    },
+    "analysis/report-numeric-review.json": {
+      "bytes": 5446,
+      "sha256": "94488a1db7c27f3f819fbb436bbec2586334f0ac10473cc1212be041ee04fb96",
+      "returned_command_id": "exec-3cd125cf-d03d-4a82-b5eb-15ea9de19ed9",
+      "verification": "remote returned receipt; payload not independently rehashed locally"
+    },
+    "analysis/report-provenance-review.json": {
+      "bytes": 1172,
+      "sha256": "582729de1d7ce5966948fb34f7c3e013870a224bfb845f53091aabdd01ef2786",
+      "returned_command_id": "exec-95e89689-39d4-4b9b-a9fc-9fd785ea1dae",
+      "verification": "remote returned receipt; payload not independently rehashed locally"
+    },
+    "training/C-final-state.pt": {
+      "bytes": 54047955,
+      "sha256": "3ff5c9f1bd162185173051f8f7114e75546f71f995f86baab567746a98a24198",
+      "returned_command_id": "exec-8219bbcf-c6a8-4a7b-a14a-131af80af158",
+      "verification": "remote returned receipt; payload not independently rehashed locally"
+    },
+    "REPORT.md": {
+      "bytes": 17317,
+      "sha256": "9cd6509bfec1597e8a0eef0c0f3eb5d8134641dc8204166c73abf0d355b39674",
+      "returned_command_id": "exec-95e89689-39d4-4b9b-a9fc-9fd785ea1dae",
+      "verification": "remote returned receipt; payload not independently rehashed locally"
+    },
+    "final-validation.json": {
+      "bytes": 75762,
+      "sha256": "e90323e066bb5886dc318fb0f7ce54f89139634c15a82ed32531e8be71b4aacb",
+      "returned_command_id": "exec-d0efcbff-d27c-46cb-859c-2a18e45b70fc",
+      "verification": "remote returned receipt; payload not independently rehashed locally"
+    }
+  },
+  "local_evidence_snapshot": {
+    "name": "window0-epsilon-v2-final-evidence-2026-10-26T2306.json",
+    "bytes": 210147,
+    "sha256": "57c301d621add903897e08b15b3bcf1d9d2e5d4c0cb8497393424a64ab4143bc",
+    "kind": "Selected returned read_thread evidence, not a fresh independent rehash of remote payloads.",
+    "parent_turn_completed": "completed",
+    "source_sections": [
+      "parent",
+      "numeric",
+      "training",
+      "execution",
+      "final_report_binding"
+    ]
+  },
+  "evidence_boundary": "Selected returned read_thread outputs and independent remote saved-JSON reviews. Local snapshot hash and pooled arithmetic checked; remote tensor payloads, all per-record rows and full archive were not independently loaded or rehashed locally. No code/model/test rerun was performed for this publication.",
+  "decision": {
+    "provisional_decoder_epsilon": 1e-09,
+    "scope": "This fixed window0 recipe only; not a universal or repository-default change",
+    "head_optimizer_epsilon_unchanged": 1e-08,
+    "next_question": "Separately bounded original/unrotated-head/rotated-head resource and correctness preflight",
+    "automatic_full_model_run_endpoint_fit_or_grid_authorized": false
+  },
+  "limitations": [
+    "No full32-window recovery, NLL, ARC, generation or unused final confirmation result.",
+    "No pretrained endpoint calibration, all202matrix composition, packed-model size or acceleration claim.",
+    "Not a BF16 fine-tune; reliable compression of user fine-tunes remains unproved.",
+    "B and C late moments differ; optimizer norm summaries cannot allocate the gain to a factor family.",
+    "This historical BF16-cast run is not reproduced merely by invoking the newer preserve-checkpoint staged CLI.",
+    "The useful approximately2GB ternary goal remains unachieved."
+  ],
+  "preserved_v1_scientific_source_bindings": {
+    "checkout/openbonsai/trainer.py": {
+      "bytes": 39037,
+      "sha256": "159b1b9299f2cb86a1cb910f3b73d1b6ede4a9ebce415122b47dd62a30465fa5"
+    },
+    "checkout/openbonsai/optimizer_diagnostics.py": {
+      "bytes": 15842,
+      "sha256": "eb2821b0ebc39e24ce211362c724cfe87d4a8834eb1e48c8f2b110552de3e942"
+    },
+    "tools/epsilon_driver.py": {
+      "bytes": 26672,
+      "sha256": "24c4001bce6a4821c4ca9f98e0c87b32b370fefd29a68a48dbac91f0725bc0c7"
+    },
+    "source": "Returned v1 source-review command exec-d0e90f5f-ab94-435c-9f3f-5021b728760d. These are preserved v1 scientific-file bindings; the separate v2 runtime-source-freeze is authoritative for final executed paths and operational changes."
+  }
+}

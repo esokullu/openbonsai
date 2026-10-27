@@ -1,0 +1,13 @@
+{
+ "stage": "export",
+ "config_hash": "9718eeac9dfca17488eb144dd8f3475eb7f3c9a39af9d46819f370b90884831f",
+ "output_sha256": "836efa3f0f9310435bcac909069cf31cd626a3b36b2e8bc1611466dd077946c3",
+ "result": {
+  "output": "runs\\accept-shared\\export\\OpenBonsai-Qwen3.5-9B-PTQ1_0.gguf",
+  "source": "distill",
+  "file_size": 1997486976,
+  "distilled_f32": 0,
+  "verified": true,
+  "checks_passed": 14
+ }
+}
