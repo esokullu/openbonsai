@@ -1,1 +1,1 @@
-"""Pipeline stages: traces -> calibrate -> quantize -> endpoints -> distill -> export -> eval."""
+"""Pipeline stages: traces -> calibrate -> quantize -> endpoints -> [refine] -> distill -> export -> eval."""

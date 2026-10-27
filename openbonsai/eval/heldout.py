@@ -23,6 +23,12 @@ to be scored (data built before a guard existed, or without the full splits).
 A problem is contained when its whitespace-normalized text is a substring: a
 GSM8K question, or a HumanEval prompt from ``def <entry_point>(`` on.
 
+Trace prompts drawn from training splits (``traces.sources``) are also
+screened for near duplicates (``near_duplicate``): a row that shares a run of
+13 words with a test problem, such as a GSM8K train question written from the
+same template as a test question, is left out of the sampling pool and listed
+in the traces summary; a row that contains a whole test problem is refused.
+
 The ``extended`` suite's chat NLL scores 16 Qwen3.5-9B answers to UltraChat
 first-turn prompts (assets/bonsai-dev/chat-traces16.jsonl, rows below 5,000).
 ``chat_needles`` decodes their prompts and answers with the run's tokenizer,
@@ -31,15 +37,18 @@ refuse data that contains one. A tokenizer that cannot reproduce the suite's
 token ids gets no chat needles: the extended suite refuses such a model, so
 its chat NLL cannot be fitted on.
 
-Future math or code calibration must come from TRAINING splits, e.g.
-``openai/gsm8k`` ``main/train-00000-of-00001.parquet`` (HumanEval has no
-training split; use another dataset's training split, such as MBPP's).
+Math or code calibration must come from TRAINING splits, e.g. ``openai/gsm8k``
+``main/train-00000-of-00001.parquet`` (HumanEval has no training split; use
+another dataset's training split, such as MBPP's). The traces stage's
+``gsm8k_train``, ``math_train``, ``mbpp_train`` and ``opencodeinstruct``
+kinds read pinned training files and refuse a ``file`` that is not one.
 """
 from __future__ import annotations
 
 from functools import lru_cache
 import os
 from pathlib import Path
+import re
 
 
 class ContaminationError(ValueError):
@@ -79,16 +88,55 @@ def _full_split(name: str) -> list[dict] | None:
     return [_problem(name, r, rec) for r, rec in enumerate(rows)]
 
 
+def _test_problems(name: str) -> list[dict]:
+    from .reasoning import load_frozen
+    return _full_split(name) or load_frozen(name)["problems"]
+
+
 @lru_cache(maxsize=None)
 def needles() -> tuple[tuple[str, str], ...]:
     """(normalized text, problem id) of every test problem: the full pinned splits when available
     offline, else the frozen subsets."""
-    from .reasoning import load_frozen
     out = []
     for name in ("gsm8k", "humaneval"):
-        problems = _full_split(name) or load_frozen(name)["problems"]
-        out += problem_needles(name, problems)
+        out += problem_needles(name, _test_problems(name))
     return tuple(out)
+
+
+# Near duplicates: a text sharing a run of NGRAM words with a test problem (the GPT-3 paper's
+# 13-gram rule). Words are lowercase \w+ runs, so spacing, punctuation and case do not matter.
+NGRAM = 13
+_WORD = re.compile(r"\w+")
+
+
+def word_ngrams(text: str, n: int = NGRAM) -> set[tuple[str, ...]]:
+    words = _WORD.findall(str(text).lower())
+    return {tuple(words[i:i + n]) for i in range(len(words) - n + 1)}
+
+
+@lru_cache(maxsize=None)
+def ngram_index() -> dict[tuple[str, ...], str]:
+    """Every NGRAM-word run of every test problem (GSM8K question; HumanEval prompt, signature and
+    docstring) -> its problem id; the same problems as ``needles``."""
+    index: dict[tuple[str, ...], str] = {}
+    for name in ("gsm8k", "humaneval"):
+        for p in _test_problems(name):
+            for gram in word_ngrams(p["question"] if name == "gsm8k" else p["prompt"]):
+                index.setdefault(gram, p["id"])
+    return index
+
+
+def near_duplicate(text: str, where: str) -> str | None:
+    """The id of a test problem ``text`` shares an NGRAM-word run with (None when it shares none).
+    A text that contains a whole test problem is refused (ContaminationError), as ``check_texts`` does;
+    one that only shares a run (a template twin with other numbers, a copied problem description) is
+    the caller's to drop. Trace prompts from training splits use it: GSM8K train holds 4 such rows,
+    OpenCodeInstruct's first shard 3, MBPP and MATH train none."""
+    index = ngram_index()
+    hit = next((index[g] for g in word_ngrams(text) if g in index), None)
+    if hit is not None:
+        check_texts([text], where)
+    return hit
 
 
 def contained(texts, probes=None) -> list[tuple[int, str]]:

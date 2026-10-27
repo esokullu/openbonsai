@@ -1,0 +1,47 @@
+{
+ "D:\\openbonsai\\runs\\2026-10-26-5090-ultrachat-attempt2\\source\\data\\train_sft-00000-of-00003-a3ecf92756993583.parquet": {
+  "size": 243999189,
+  "mtime_ns": 1793020628626558200,
+  "sha256": "afa8fa7426081b2a0e732fb50dbb5cd402a28ad5f0dbe66c0d996d63e7220727"
+ },
+ "D:\\openbonsai\\runs\\2026-10-28-reasoning-mix-refine32\\traces\\traces.jsonl": {
+  "size": 20509237,
+  "mtime_ns": 1793135132353005000,
+  "sha256": "cbffc9df037f9b55ee1532978e13a9cc92a249dbcffe5edfce688b1140c523d5"
+ },
+ "D:\\openbonsai\\runs\\2026-10-28-reasoning-mix-refine32\\calib\\tokens.npy": {
+  "size": 2097280,
+  "mtime_ns": 1793135132372664700,
+  "sha256": "6ba60686fe6bf49d597d4477bb77f031894f3c9a714b948e2346b65a76615739"
+ },
+ "D:\\openbonsai\\runs\\2026-10-28-reasoning-mix-refine32\\quantize\\state.safetensors": {
+  "size": 1836124776,
+  "mtime_ns": 1793135133496862700,
+  "sha256": "c7982fcb777d114424f49322c97e9b2d6491203c93699452479eb2fde15796e0"
+ },
+ "D:\\openbonsai\\runs\\2026-10-28-reasoning-mix-refine32\\endpoints\\state.safetensors": {
+  "size": 540349168,
+  "mtime_ns": 1793135132624113300,
+  "sha256": "c0638655a02dd47eb2102136e23c0e2f4926c297272de50651c85d403434aca5"
+ },
+ "D:\\openbonsai\\runs\\2026-10-28-reasoning-mix-refine32\\refine\\state.safetensors": {
+  "size": 1836125112,
+  "mtime_ns": 1793136114113474500,
+  "sha256": "d7496c418a2ad3d904d335ee49947db6aa48daf9c8a9144aa2cc0f6d68bc8e99"
+ },
+ "D:\\openbonsai\\runs\\2026-10-28-reasoning-mix-refine32\\distill\\scales.safetensors": {
+  "size": 139810192,
+  "mtime_ns": 1793138135809639000,
+  "sha256": "0c4eec43d5bff5a16abd5f3db31c1a2acab073478a4ee1c7b5230b6dece5e9c6"
+ },
+ "D:\\openbonsai\\runs\\2026-10-28-reasoning-mix-refine32\\export\\OpenBonsai-Qwen3.5-9B-PTQ1_0.gguf": {
+  "size": 1997486976,
+  "mtime_ns": 1793138185255939800,
+  "sha256": "86253a46bff4d36b79b59944d85f67ca7b94a1c0273ff2e5be65f6a4fd2da98b"
+ },
+ "D:\\openbonsai\\runs\\2026-10-28-reasoning-mix-refine32\\distill\\teacher\\input_ids.npy": {
+  "size": 12583040,
+  "mtime_ns": 1793135133529316600,
+  "sha256": "896b5a35afa84f38b184c676274eb121d99db961d4ca84b6c0eb3ca46873306b"
+ }
+}

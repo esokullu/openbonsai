@@ -28,6 +28,9 @@ Two phases, both resumable:
 
 ``max_steps`` shortens training: the cosine schedule ends at that step. With
 it unset the schedule spans ``epochs * n_seq / accum`` steps, as in the script.
+
+With the refine stage enabled, distillation starts from refine's codes and
+scales (``StageContext.decoder_state``) and records refine's output digest.
 """
 from __future__ import annotations
 
@@ -349,7 +352,7 @@ def run_train(ctx) -> dict:
     out = ctx.run.stage_dir("distill")
     adapter = ctx.adapter()
     model, _ = ctx.load_model()
-    state = ctx.quantize_state()
+    state = ctx.decoder_state()     # refine's codes and scales when refine is enabled
     if distill_uses_endpoints(ctx.cfg):
         ep = ctx.endpoints_state()
         if ep.tensors:

@@ -1,0 +1,14 @@
+{
+ "stage": "export",
+ "config_hash": "8a6ef6e77789d97932b723188085966e97bb84b08f029e2bf4d9947eba63a95e",
+ "output_sha256": "86253a46bff4d36b79b59944d85f67ca7b94a1c0273ff2e5be65f6a4fd2da98b",
+ "result": {
+  "output": "D:\\openbonsai\\runs\\2026-10-28-reasoning-mix-refine32\\export\\OpenBonsai-Qwen3.5-9B-PTQ1_0.gguf",
+  "format": "ptq1_0-gguf",
+  "source": "distill",
+  "file_size": 1997486976,
+  "distilled_f32": 0,
+  "verified": true,
+  "checks_passed": 13
+ }
+}

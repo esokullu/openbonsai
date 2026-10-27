@@ -15,7 +15,7 @@ from pathlib import Path
 
 import yaml
 
-STAGES = ("traces", "calibrate", "quantize", "endpoints", "distill", "export", "eval")
+STAGES = ("traces", "calibrate", "quantize", "endpoints", "refine", "distill", "export", "eval")
 
 DEFAULTS: dict = {
     "model": {
@@ -36,10 +36,17 @@ DEFAULTS: dict = {
     },
     "traces": {
         "enabled": True,
+        # one prompt source (kind jsonl or ultrachat), answered with max_new_tokens, thinking and batch below
         "prompts": {"kind": "jsonl", "path": None, "n": None},
+        # several prompt sources instead of prompts: a list of mappings, each with its own kind, n, seed,
+        # thinking, max_new_tokens and batch (defaults: the values below); stages/traces.py lists the kinds
+        "sources": None,
         "max_new_tokens": 512,
         "thinking": False,
         "batch": 8,
+        # tokens in flight per batch, rows x (longest prompt + cap); null: no limit (stages/traces.py)
+        "batch_tokens": None,
+        "seed": 0,                 # sources only: seeds the interleaving of the sources in traces.jsonl
     },
     "calibrate": {
         "seq_len": 2048,
@@ -55,6 +62,31 @@ DEFAULTS: dict = {
     # two: a tied table stays high precision; ternary for a tied table is refused)
     "endpoints": {"enabled": True, "head": "auto", "embedding": "auto", "damp": 0.01,
                   "chunk": 16384, "batch": 4},
+    # Optional block-wise training of the codes and scales, layer by layer (docs/refine.md; stages/refine.py).
+    "refine": {
+        "enabled": False,
+        "layers": None,            # [start, stop) of decoder layers; null = all
+        "window": 1,               # layers trained together (stride = window)
+        "blocks": 128,             # training blocks: seeded subset of calibrate's, stratified by source
+        "val_blocks": 8,           # held out: per-layer metrics and rollback
+        "seed": 0,
+        "batch": 1,                # blocks per optimizer step (the layer kwargs are captured at this batch size)
+        "epochs": 4,
+        "target": "original",      # original (original prefix, GPTAQ-style) | quantized (student prefix) | mix
+        "mix": 0.5,                # weight of the quantized-target term under target: mix
+        "assign": "nearest",       # nearest (threshold s/2) | quantile (`zeros` zeros per group)
+        "zeros": 42,               # zeros per group under assign: quantile (Bonsai: 42 of 128)
+        "zero_anneal": 0.25,       # fraction of the steps to move from GPTQ's zero count to `zeros`
+        "init": "center",          # center (latent = input codes) | original (+ clipped residual of the weights)
+        "lr_codes": 5.0e-3,        # latent weights, in units of the group's input scale
+        "lr_scales": 5.0e-4,       # log multipliers of the scales
+        "warmup": 0.05,
+        "freeze_codes_after": 0.8,  # fraction of the steps; 0 = scales only, 1 = never freeze
+        "eps": 1.0e-10,            # AdamW eps
+        "checkpoint": "auto",      # gradient checkpointing per layer: auto = on for window >= 2 or batch > 2
+        "cache": "auto",           # activation streams: auto | cuda | cpu | disk (not part of the hash)
+        "rollback": True,          # a window whose held-out error did not go down keeps its input codes
+    },
     "distill": {
         "enabled": True,
         "teacher": {"n_seq": 2048, "seq_len": 2048, "seed": 1, "shard": 64, "topk": 64, "sources": None},
@@ -100,12 +132,15 @@ DEFAULTS: dict = {
             "max_new_tokens": 512,         # cap with thinking off
             "max_new_tokens_thinking": 4096,  # cap with thinking on; rows reaching a cap are counted
             "batch": 16,                   # prompts per left-padded generate call (KV cache)
+            "batch_thinking": None,        # batch with thinking on (None: batch)
             "batch_check": 0,              # regenerate this many (most padded) rows of the first new batch alone; compare
             "dense": True,                 # ternary sources generate with dense dequantized weights (faster)
             "cache": True,                 # keep generations per batch in eval/generations/ (resume, rescore)
-            "gsm8k": {"n": 100, "path": None},   # first n of the frozen 100; path: local test parquet
+            # first n of the frozen 100; n_thinking: first n with thinking on (None: n); path: local test parquet
+            "gsm8k": {"n": 100, "n_thinking": None, "path": None},
             # timeout: seconds per program; memory_mb: memory of each program and what it starts
-            "humaneval": {"n": 50, "path": None, "timeout": 10.0, "workers": 4, "memory_mb": 2048},
+            "humaneval": {"n": 50, "n_thinking": None, "path": None, "timeout": 10.0, "workers": 4,
+                          "memory_mb": 2048},
         },
     },
 }
@@ -130,8 +165,28 @@ def deep_merge(base: dict, override: dict) -> dict:
 # depends on its ``kind``.
 SOURCE_KEYS = frozenset({"kind", "n", "path", "seed", "min_row", "repo", "revision", "file", "shuffle"})
 PROMPT_KEYS = frozenset({"kind", "path", "n", "rows", "seed", "repo", "revision", "file"})
+# traces.sources entries (stages/traces.py documents each key and kind).
+TRACE_KINDS = ("ultrachat", "gsm8k_train", "math_train", "mbpp_train", "opencodeinstruct", "parquet", "jsonl")
+TRACE_SOURCE_KEYS = frozenset({"kind", "name", "n", "seed", "shuffle", "thinking", "max_new_tokens", "batch",
+                               "path", "repo", "revision", "file", "column", "instruction", "max_chars", "rows",
+                               "subjects", "levels"})
 _SOURCE_LISTS = {("calibrate", "sources"), ("distill", "teacher", "sources"), ("eval", "compare", "sources")}
 _PROMPTS = ("traces", "prompts")
+_TRACE_SOURCES = ("traces", "sources")
+
+
+def _check_trace_sources(value, path: tuple) -> None:
+    where = ".".join(path)
+    if value is None:
+        return
+    if not isinstance(value, list) or not value or not all(isinstance(s, dict) for s in value):
+        raise ConfigError(f"{where} must be a nonempty list of mappings (or null for traces.prompts)")
+    for i, src in enumerate(value):
+        unknown = sorted(set(src) - TRACE_SOURCE_KEYS)
+        if unknown:
+            raise ConfigError(f"unknown keys in {where}.{i}: {unknown}; known: {sorted(TRACE_SOURCE_KEYS)}")
+        if src.get("kind") not in TRACE_KINDS:
+            raise ConfigError(f"{where}.{i}: kind must be one of {list(TRACE_KINDS)}, not {src.get('kind')!r}")
 
 
 def _check_sources(value, path: tuple) -> None:
@@ -162,6 +217,8 @@ def _check_mapping(value, schema: dict, path: tuple) -> None:
         sub = path + (key,)
         if sub in _SOURCE_LISTS:
             _check_sources(item, sub)
+        elif sub == _TRACE_SOURCES:
+            _check_trace_sources(item, sub)
         elif sub == _PROMPTS:
             if item is not None:
                 _check_mapping(item, {}, sub)
@@ -261,6 +318,18 @@ _MODEL_IDENTITY = ("path", "revision", "adapter", "dtype", "attn")
 _UNHASHED = {"distill": ("log_every", "ckpt_every"), "export": ("chunk_rows",)}
 
 
+def refine_hashed(refine: dict) -> dict:
+    """The refine settings that can change its result: not where the streams live (``cache``), and
+    ``mix`` / ``zeros`` / ``zero_anneal`` only under the target and assign rule that use them."""
+    out = {k: v for k, v in refine.items() if k != "cache"}
+    if out.get("target") != "mix":
+        out.pop("mix", None)
+    if out.get("assign") != "quantile":
+        out.pop("zeros", None)
+        out.pop("zero_anneal", None)
+    return out
+
+
 def stage_enabled(cfg: dict, stage: str) -> bool:
     section = cfg.get(stage) or {}
     return section.get("enabled", True) is not False
@@ -274,6 +343,7 @@ def stage_inputs(cfg: dict, stage: str) -> dict:
         "calibrate": ("calibrate",),
         "quantize": ("rotation", "quantize"),
         "endpoints": ("rotation", "endpoints"),
+        "refine": ("rotation", "refine"),
         "distill": ("rotation", "distill"),
         "export": ("export",),
         "eval": ("eval",),
@@ -286,6 +356,14 @@ def stage_inputs(cfg: dict, stage: str) -> dict:
         if s == "distill" and not (value.get("train") or {}).get("small"):
             value.pop("lr_small", None)
             value.pop("lr_small_mat", None)
+        if s == "traces":
+            # Only the form in use: a single-source config hashes as it did before sources existed.
+            for key in (("sources", "seed") if value.get("sources") is None else ("prompts",)):
+                value.pop(key, None)
+            if value.get("batch_tokens") is None:
+                value.pop("batch_tokens", None)
+        if s == "refine":
+            value = refine_hashed(value)
         out[s] = value
     return out
 
@@ -295,14 +373,17 @@ def _source_paths(sources) -> list[str]:
 
 
 def input_paths(cfg: dict, stage: str) -> list[str]:
-    """Local files a stage reads through ``path:`` entries (their contents are part of its hash)."""
+    """Local files (or folders) a stage reads through ``path:`` entries (their contents are part of its hash)."""
     paths = []
     if stage == "traces":
-        prompts = cfg["traces"].get("prompts") or {}
-        paths += [str(prompts["path"])] if prompts.get("path") else []
+        if cfg["traces"].get("sources") is not None:
+            paths += _source_paths(cfg["traces"]["sources"])
+        else:
+            prompts = cfg["traces"].get("prompts") or {}
+            paths += [str(prompts["path"])] if prompts.get("path") else []
     elif stage == "calibrate":
         paths += _source_paths(cfg["calibrate"]["sources"])
-    if stage in ("quantize", "endpoints", "distill"):
+    if stage in ("quantize", "endpoints", "refine", "distill"):
         signs = cfg["rotation"].get("signs") or {}
         paths += [str(signs["path"])] if signs.get("path") else []
     if stage == "distill":
@@ -320,17 +401,23 @@ def distill_uses_endpoints(cfg: dict) -> bool:
 
 
 def upstream(cfg: dict, stage: str) -> tuple[str, ...]:
-    """Stages whose outputs this stage reads under this config."""
+    """Stages whose outputs this stage reads under this config.
+
+    Refine (when enabled) reads quantize's state, the calibration blocks and, when endpoints is on, its
+    ternary embedding; distill and the export then read refine's decoder state instead of quantize's.
+    With refine disabled every other stage's list is what it was before refine existed."""
     teacher_sources = cfg["distill"]["teacher"].get("sources")
     distill_traces = teacher_sources is None or uses_traces(teacher_sources)
+    refine = (("refine",) if stage_enabled(cfg, "refine") else ())
     if stage == "export":
-        return (next((s for s in ("distill", "endpoints") if stage_enabled(cfg, s)), "quantize"),)
+        return (next((s for s in ("distill", "refine", "endpoints") if stage_enabled(cfg, s)), "quantize"),)
     return {
         "traces": (),
         "calibrate": ("traces",) if uses_traces(cfg["calibrate"]["sources"]) else (),
         "quantize": ("calibrate",),
         "endpoints": ("quantize", "calibrate"),
-        "distill": ("quantize",) + (("endpoints",) if distill_uses_endpoints(cfg) else ())
+        "refine": ("quantize", "calibrate") + (("endpoints",) if stage_enabled(cfg, "endpoints") else ()),
+        "distill": ("quantize",) + refine + (("endpoints",) if distill_uses_endpoints(cfg) else ())
                    + (("traces",) if distill_traces else ()),
         "eval": (),
     }[stage]

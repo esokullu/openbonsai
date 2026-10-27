@@ -1,0 +1,14 @@
+[23:44:48] eval: {"source": "endpoints", "suite": "dev", "nll": 3.685795105322666, "ppl": 39.87681611703558, "scored_tokens": 2048, "arc_correct": 13, "arc_total": 20, "arc_preds": "ABAADAAAAAADACABABAB", "manifest_frozen_sha256": "8021d9cc8f54943a3b816af74cbc41d588173d385f51b73a681e979393ef5fdf"}
+[23:44:50] eval: {"source": "endpoints", "suite": "compare", "tokens": 4088, "nll": 3.5226802296324013, "ref_nll": 2.22213217243816, "delta_nll": 1.3005480571942414, "top1_agreement": 0.5464774951076321, "ear_full": 0.5363571332400018, "kl_full": 1.3726703828374323, "ear_top64_lb": 0.5015210298506064, "ear_top64_ub": 0.55647907867017, "kl_top64": 1.2955255767425804, "topk": 64, "vocab": 248320, "full_vocab": true}
+[23:45:08] eval: gsm8k think=off: batch 1/4: 6022 new tokens in 18.4 s = 326.6 tok/s (512 steps, 27.77 steps/s), hit cap 6/16; ETA 0m39s
+[23:45:27] eval: gsm8k think=off: batch 2/4: 5638 new tokens in 18.5 s = 305.0 tok/s (512 steps, 27.70 steps/s), hit cap 5/16; ETA 0m21s
+[23:45:45] eval: gsm8k think=off: batch 3/4: 4465 new tokens in 18.4 s = 243.2 tok/s (512 steps, 27.89 steps/s), hit cap 2/16; ETA 0m02s
+[23:45:57] eval: gsm8k think=off: batch 4/4: 632 new tokens in 12.1 s = 52.1 tok/s (340 steps, 28.04 steps/s), hit cap 0/2; ETA 0m00s
+[23:45:57] eval: gsm8k think=off: 10/50, hit cap 13/50 at 512 tokens, 248.6 tok/s (0/4 batches from the cache)
+[23:53:56] eval: {"source": "refine", "suite": "dev", "nll": 3.395986411040082, "ppl": 29.844077487981817, "scored_tokens": 2048, "arc_correct": 16, "arc_total": 20, "arc_preds": "ABAADAAAACADBCABCBAB", "manifest_frozen_sha256": "8021d9cc8f54943a3b816af74cbc41d588173d385f51b73a681e979393ef5fdf"}
+[23:53:58] eval: {"source": "refine", "suite": "compare", "tokens": 4088, "nll": 3.159306706287342, "ref_nll": 2.22213217243816, "delta_nll": 0.9371745338491819, "top1_agreement": 0.5973581213307241, "ear_full": 0.5974477620978951, "kl_full": 0.9868854029287567, "ear_top64_lb": 0.5610623805022081, "ear_top64_ub": 0.6158688528504124, "kl_top64": 0.9271448515296252, "topk": 64, "vocab": 248320, "full_vocab": true}
+[23:54:17] eval: gsm8k think=off: batch 1/4: 5837 new tokens in 18.9 s = 309.0 tok/s (512 steps, 27.10 steps/s), hit cap 6/16; ETA 0m40s
+[23:54:36] eval: gsm8k think=off: batch 2/4: 5280 new tokens in 19.0 s = 278.3 tok/s (512 steps, 26.99 steps/s), hit cap 3/16; ETA 0m21s
+[23:54:54] eval: gsm8k think=off: batch 3/4: 5000 new tokens in 18.8 s = 266.4 tok/s (512 steps, 27.28 steps/s), hit cap 3/16; ETA 0m02s
+[23:55:12] eval: gsm8k think=off: batch 4/4: 849 new tokens in 17.7 s = 48.0 tok/s (501 steps, 28.30 steps/s), hit cap 0/2; ETA 0m00s
+[23:55:12] eval: gsm8k think=off: 16/50, hit cap 12/50 at 512 tokens, 228.3 tok/s (0/4 batches from the cache)

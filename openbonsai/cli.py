@@ -1,15 +1,16 @@
 """``openbonsai`` command line.
 
     openbonsai run --model Qwen/Qwen3.5-9B --config examples/qwen3_5-9b.yaml --out runs/my-model
-        = traces -> calibrate -> quantize -> endpoints -> distill -> export -> eval
+        = traces -> calibrate -> quantize -> endpoints -> [refine] -> distill -> export -> eval
+        (refine is off by default: refine.enabled=true; docs/refine.md)
 
     openbonsai <stage> --run runs/my-model [--set section.key=value ...] [--force]
-        stages: traces calibrate quantize endpoints distill export eval
+        stages: traces calibrate quantize endpoints refine distill export eval
 
     openbonsai export --run runs/my-model [--out X.gguf|DIR] [--name NAME] [--verify | --no-verify]
         a PTQ1_0 GGUF, or a latent checkpoint folder when the model has no GGUF layout (export.format);
         DIR is the checkpoint folder itself (an existing one is replaced only if it is a latent checkpoint)
-    openbonsai eval --run runs/my-model --from bf16|quantize|endpoints|distill|PATH --suite dev,extended,compare,teacher
+    openbonsai eval --run runs/my-model --from bf16|quantize|endpoints|refine|distill|PATH --suite dev,extended,compare,teacher
         PATH: state.safetensors, legacy .pt[,.pt], or a PTQ1_0 .gguf (ours or the official
         Ternary Bonsai; --run defaults to <gguf>.eval and --model gives the config and tokenizer)
     openbonsai eval --run runs/my-model --from distill --suite gsm8k,humaneval --set 'eval.reasoning.thinking=[off,on]'
@@ -24,7 +25,7 @@ A stage whose output exists with the same config hash is skipped; ``--force``
 reruns it from scratch, discarding its resumable work (with ``run``, also every
 later stage; distill then keeps its teacher shards unless distill itself is
 named, since they depend only on the BF16 model and data, which their own
-input hash covers). Interrupted stages resume: quantize per layer,
+input hash covers). Interrupted stages resume: quantize and refine per layer,
 traces per batch, distill per teacher shard and checkpoint. A stage refuses to
 run on a missing, disabled or stale upstream output; a later stage whose
 inputs changed (another config, or a rerun with a different result) reruns.
@@ -42,17 +43,19 @@ from . import __version__
 from .config import STAGES, ConfigError, load_config, stage_enabled
 from .rundir import RunDir, StageNotReady
 
-# Resumable units that are valid only for the inputs they were made from.
-_RESUMABLE = {"traces": ("parts",), "quantize": ("layers",)}
+# Resumable units that are valid only for the inputs they were made from. (The traces stage keys its
+# cached batches by content in traces/cache/, which survives config edits; parts/ is the old layout.)
+_RESUMABLE = {"traces": ("parts",), "quantize": ("layers",), "refine": ("layers", "streams")}
 # Everything --force discards before rerunning a stage.
-_FORCE_RESET = {**_RESUMABLE, "distill": ("checkpoint.pt", "train.jsonl", "TRAIN_INPUTS.json")}
+_FORCE_RESET = {**_RESUMABLE, "traces": ("parts", "cache"),
+                "distill": ("checkpoint.pt", "train.jsonl", "TRAIN_INPUTS.json")}
 _TEACHER = ("teacher", "TEACHER_INPUTS.json")
 
 
 def _stage_module(stage: str):
-    from .stages import calibrate, distill, endpoints, evaluate, export, quantize, traces
+    from .stages import calibrate, distill, endpoints, evaluate, export, quantize, refine, traces
     return {"traces": traces, "calibrate": calibrate, "quantize": quantize, "endpoints": endpoints,
-            "distill": distill, "export": export, "eval": evaluate}[stage]
+            "refine": refine, "distill": distill, "export": export, "eval": evaluate}[stage]
 
 
 def _overrides(args) -> list[tuple[tuple[str, ...], object]]:
@@ -226,10 +229,16 @@ def preflight(ctx, stages=STAGES) -> None:
     endpoints_on = stage_enabled(ctx.cfg, "endpoints")
     if endpoints_on and "endpoints" in stages:
         ternary_endpoints(ctx.cfg, adapter)    # unknown modes; ternary for a tied table
+    if stage_enabled(ctx.cfg, "refine") and "refine" in stages:
+        from .stages.refine import check_config
+        check_config(ctx.cfg, adapter.n_layers)   # values, layer range, blocks vs the calibration set
     if stage_enabled(ctx.cfg, "traces") and "traces" in stages:
-        from .stages.traces import checked_chat_kwargs
+        from .stages.traces import checked_chat_kwargs, trace_sources
         check_chat_template(ctx)
-        checked_chat_kwargs(adapter, bool(ctx.cfg["traces"].get("thinking")), "traces.thinking")
+        for src in trace_sources(ctx.cfg):        # also every source's kind-specific settings
+            checked_chat_kwargs(adapter, src["thinking"], "traces.thinking" if src["legacy"]
+                                else f"{src['where']}.thinking")
+    check_trace_supply(ctx, stages)
     if stage_enabled(ctx.cfg, "eval") and "eval" in stages:
         from .eval.reasoning import SUITES
         from .stages.evaluate import check_thinking_modes
@@ -253,6 +262,20 @@ def preflight(ctx, stages=STAGES) -> None:
                 raise ConfigError(EXPORT_NEEDS_DISTILLED_ENDPOINTS)
 
 
+def check_trace_supply(ctx, stages) -> None:
+    """The traces, when current, hold the blocks every stage of ``stages`` reads from them (they are
+    never capped; stages/traces.py)."""
+    from .stages.traces import check_trace_supply as check, trace_demands, trace_tokens
+    wanted = [s for s in ("calibrate", "distill") if s in stages]
+    if not wanted or not stage_enabled(ctx.cfg, "traces") or not trace_demands(ctx.cfg, wanted):
+        return
+    if ctx.stale_reason("traces") is not None:
+        return                     # checked again once the traces stage has run
+    tokens = trace_tokens(ctx.run.stage_dir("traces", create=False))
+    if tokens is not None:
+        check(ctx.cfg, tokens, ctx.adapter().bos_id(ctx.load_tokenizer()), stages=wanted)
+
+
 def cmd_run(args) -> int:
     from .stages.common import StageContext
     run = RunDir(args.out)
@@ -261,12 +284,15 @@ def cmd_run(args) -> int:
     preflight(ctx, [s for s in STAGES[:stop + 1] if s not in (args.skip or ())])
     forced = set(args.force or ())
     statuses = {}
+    planned = [s for s in STAGES[:stop + 1] if s not in (args.skip or ())]
     for i, stage in enumerate(STAGES[:stop + 1]):
         if stage in (args.skip or ()):
             statuses[stage] = "skipped by --skip"
             continue
         force = True if stage in forced else ("downstream" if any(STAGES.index(f) < i for f in forced) else False)
         statuses[stage] = execute(ctx, stage, force=force)
+        if stage == "traces":
+            check_trace_supply(ctx, planned[planned.index(stage) + 1:])   # before hours of later stages
     print(json.dumps({"run": str(run.root), "stages": statuses}, indent=1))
     return 0
 
@@ -356,7 +382,7 @@ def build_parser() -> argparse.ArgumentParser:
         s.add_argument("--force", action="store_true", help="rerun even if up to date")
         if stage == "eval":
             s.add_argument("--from", dest="source", default=None,
-                           help="bf16 | quantize | endpoints | distill | state.safetensors | legacy.pt[,more.pt] "
+                           help="bf16 | quantize | endpoints | refine | distill | state.safetensors | legacy.pt[,more.pt] "
                                 "| model.gguf")
             s.add_argument("--suite", default=None, help="comma-separated: dev, extended, compare, teacher, gsm8k, humaneval "
                                 "(the last two: eval.reasoning.*)")

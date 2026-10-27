@@ -192,7 +192,8 @@ runs/<name>/
   run.yaml                 the resolved config (defaults, YAML file, --set overrides)
   signs.safetensors        sign vectors per width
   digests.json             cached SHA256 of input files
-  traces/traces.jsonl      the model's own answers (prompt + generated ids)
+  traces/traces.jsonl      the model's own answers (prompt + generated ids, with source, row, thinking, hit_cap)
+  traces/summary.json      counts per prompt source; traces/cache/ holds each generated batch (resume)
   calib/tokens.npy         calibration blocks, int32 [N, seq_len], and sources.json
   quantize/state.safetensors   (layers/NNNN.safetensors while running)
   endpoints/state.safetensors  the ternary head and embedding (only these two keys)
