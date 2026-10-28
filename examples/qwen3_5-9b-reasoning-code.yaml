@@ -11,6 +11,9 @@
 #   GSM8K on         25/50              32/50         36/50
 #   dev NLL / ARC    2.960 / 17         3.012 / 18    2.423 / 19
 #
+# The 1-epoch setting was picked from four runs scored on these same problems, so 34/50 probably
+# overstates its gain on new problems (research/runs/2026-10-28-humaneval-gap/README.md, Caveats).
+#
 # Changes against the reasoning recipe (everything else is equal):
 #
 #   traces     + opencodeinstruct_2: 280 more OpenCodeInstruct prompts, thinking on, cap 1,536

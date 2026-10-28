@@ -6,7 +6,7 @@ All runs use Prism's llama.cpp CPU build at c9c34bc (Release, 8 threads):
 llama-perplexity -m <model>.gguf -f wiki.test.raw -c 512 --chunks 8 -b 512 -t 8
 ```
 
-The text is `wiki.test.raw` from upstream llama.cpp's `scripts/get-wikitext-2.sh` (`wikitext-2-raw-v1.zip`): 1,290,590 bytes, md5 7c0137fc034ddbc56a296bce31b4f7fb, used unchanged. `-b 512` (one sequence per pass) and the default batch give the same numbers.
+The text is `wiki.test.raw` from upstream llama.cpp's `scripts/get-wikitext-2.sh` (`wikitext-2-raw-v1.zip`): 1,290,590 bytes, md5 7c0137fc034ddbc56a296bce31b4f7fb, used unchanged. `-b 512` (one sequence per pass) and the default batch (4 sequences) give the same numbers, chunk for chunk (`*-default-batch.log`).
 
 | Log | GGUF (sha256) | PPL |
 |---|---|---|

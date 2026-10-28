@@ -43,7 +43,7 @@ Three datasets feed the pipeline, all at pinned revisions. The numbers below are
 
 `examples/qwen3_5-9b-reasoning.yaml` (measured: GSM8K 69/100 and HumanEval 19/50 with thinking off, against 30/100 and 6/50 for the generic-calibration model; this is the Hugging Face model, `research/runs/2026-10-27-reasoning-mix-v1/`) moves the data toward reasoning, as the ScaleQ paper suggests: traces from GSM8K, MATH, MBPP and OpenCodeInstruct *training* prompts answered with thinking on, some GSM8K and MBPP ones without thinking, plus UltraChat without thinking (`traces.sources`), then 128 of 256 calibration blocks and 640 of 1,536 distillation sequences from those traces.
 
-The reasoning suites' test problems, and training rows that share a 13-word run with one, are refused or skipped everywhere; a test task restated in other words is not caught (see [evaluation.md](evaluation.md#keeping-test-data-out)). WikiText-2 *train* in the data makes our WikiText *test* numbers partly in-domain. The measured runs took their traces from a fixed set of 128 prompts, disjoint from the chat-NLL prompts; the example config's sampled prompts are not (see [evaluation.md](evaluation.md#keeping-test-data-out)).
+The reasoning suites' test problems are refused everywhere, and trace prompts that share a 13-word run with one are skipped; a test task restated in other words is not caught (see [evaluation.md](evaluation.md#keeping-test-data-out)). WikiText-2 *train* in the data makes our WikiText *test* numbers partly in-domain. The measured runs took their traces from a fixed set of 128 prompts, disjoint from the chat-NLL prompts; the example config's sampled prompts are not (see [evaluation.md](evaluation.md#keeping-test-data-out)).
 
 ## 1. Rotation
 
