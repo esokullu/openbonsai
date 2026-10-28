@@ -1,0 +1,18 @@
+2026-10-28 06:54:45 launcher start (pid 45924)
+2026-10-28 07:01:24 launcher killed before taking the lock (stale 'run FAILED' line satisfied the wait); relaunching with a last-line wait
+2026-10-28 07:01:28 launcher start (pid 42380)
+2026-10-28 12:29:27 done waiting for the qwen35-0.8b queue (12:19:22 bf16 baseline done; idle checks 20)
+2026-10-28 17:20:09 acquired gpu.lock
+2026-10-28 17:20:09 run start
+2026-10-28 18:34:03 stopped the run at traces gsm8k_train batch 5/25 (24 tok/s: 31 GB VRAM + 6.6 GB spilled to system RAM); keeping gpu.lock for a restart with the allocator capped
+2026-10-28 18:39:19 launcher start (pid 41588)
+2026-10-28 18:39:19 kept gpu.lock from the previous launch
+2026-10-28 18:39:19 run start
+2026-10-29 00:26:39 run done
+2026-10-29 00:26:40 bf16 baseline start
+2026-10-29 01:36:48 bf16 baseline done
+2026-10-29 01:37:50 compare quantize done
+2026-10-29 01:38:57 compare endpoints done
+2026-10-29 01:39:59 compare OpenBonsai-Qwen3-8B-PTQ1_0.gguf done
+2026-10-29 01:39:59 all done
+2026-10-29 01:39:59 released gpu.lock

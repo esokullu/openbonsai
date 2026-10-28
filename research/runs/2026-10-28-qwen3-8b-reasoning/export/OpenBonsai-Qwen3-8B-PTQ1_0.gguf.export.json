@@ -1,0 +1,75 @@
+{
+ "output": "D:\\openbonsai\\runs\\2026-10-28-qwen3-8b-reasoning\\export\\OpenBonsai-Qwen3-8B-PTQ1_0.gguf",
+ "name": "OpenBonsai-Qwen3-8B-PTQ1_0",
+ "notes": [],
+ "reference": false,
+ "write": {
+  "header_end": 6029744,
+  "data_start": 6029760,
+  "file_size": 1798918592,
+  "seconds": 56.83083987236023,
+  "ternary_weights": 8190427136,
+  "neg_scale_groups": 0,
+  "zero_scale_groups": 0,
+  "zero_scale_codes_cleared": 0,
+  "distilled_f32": 0
+ },
+ "verify": [
+  {
+   "ok": true,
+   "check": "GGUF v3, alignment 32",
+   "detail": "3, 32"
+  },
+  {
+   "ok": true,
+   "check": "tensor names, order, types, ne and offsets as planned",
+   "detail": "399 tensors"
+  },
+  {
+   "ok": true,
+   "check": "file size = data start + tensor data",
+   "detail": "1798918592 vs 1798918592"
+  },
+  {
+   "ok": true,
+   "check": "KVs read back equal the KVs written",
+   "detail": "35 KVs"
+  },
+  {
+   "ok": true,
+   "check": "weight_names + inverse_weight_names cover each PTQ1_0 tensor once",
+   "detail": "253 + 1 of 254"
+  },
+  {
+   "ok": true,
+   "check": "sign table covers every PTQ1_0 input width",
+   "detail": "widths [4096, 12288]"
+  },
+  {
+   "ok": true,
+   "check": "general.file_type = 143 (LLAMA_FTYPE_MOSTLY_PTQ1_0)",
+   "detail": ""
+  },
+  {
+   "ok": true,
+   "check": "layout permutations and F32 transforms == the adapter's independent rule",
+   "detail": "399 tensors"
+  },
+  {
+   "ok": true,
+   "check": "decoded PTQ1_0 codes and fp16 scale bits == permuted, canonical state (exact)",
+   "detail": "8,190,427,136 weights in 102s, rows by the adapter's independent row and transform rule"
+  },
+  {
+   "ok": true,
+   "check": "float tensors (F32, and BF16/F16 tables) bit-identical to the transformed sources",
+   "detail": "145 tensors, rows and transforms by the adapter's independent row and transform rule"
+  },
+  {
+   "ok": true,
+   "check": "function check (FP64, runtime transform vs fake-quant source rows)",
+   "detail": "16 tensors in layers [0, 35] + endpoints, worst rel 8.93e-16"
+  }
+ ],
+ "seconds": 161.76217031478882
+}

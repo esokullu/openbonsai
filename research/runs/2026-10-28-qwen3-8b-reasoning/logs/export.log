@@ -1,0 +1,25 @@
+[22:57:00] export: exporting the distill state to D:\openbonsai\runs\2026-10-28-qwen3-8b-reasoning\export\OpenBonsai-Qwen3-8B-PTQ1_0.gguf
+[22:57:01] export: writing D:\openbonsai\runs\2026-10-28-qwen3-8b-reasoning\export\OpenBonsai-Qwen3-8B-PTQ1_0.gguf.tmp (399 tensors, 35 KVs)
+[22:57:06] export:   [1/399] output.weight 136.1 MB t=4s
+[22:57:10] export:   [3/399] token_embd.weight 136.1 MB t=8s
+[22:57:17] export:   [65/399] blk.5.attn_v.weight 0.9 MB t=16s
+[22:57:25] export:   [129/399] blk.11.attn_q.weight 3.7 MB t=24s
+[22:57:32] export:   [193/399] blk.17.attn_norm.weight 0.0 MB t=31s
+[22:57:41] export:   [257/399] blk.23.attn_k.weight 0.9 MB t=39s
+[22:57:48] export:   [321/399] blk.28.ffn_norm.weight 0.0 MB t=47s
+[22:57:56] export:   [385/399] blk.34.ffn_down.weight 11.0 MB t=54s
+[22:57:58] export: wrote 1,798,918,592 B in 57s; 8,190,427,136 ternary weights, 0 negative-scale groups normalized, 0 zero-scale groups (0 had nonzero codes, cleared)
+[22:57:58] export: verify: structure and KVs
+[22:57:58] export:   PASS  GGUF v3, alignment 32: 3, 32
+[22:57:58] export:   PASS  tensor names, order, types, ne and offsets as planned: 399 tensors
+[22:57:58] export:   PASS  file size = data start + tensor data: 1798918592 vs 1798918592
+[22:57:58] export:   PASS  KVs read back equal the KVs written: 35 KVs
+[22:57:58] export:   PASS  weight_names + inverse_weight_names cover each PTQ1_0 tensor once: 253 + 1 of 254
+[22:57:58] export:   PASS  sign table covers every PTQ1_0 input width: widths [4096, 12288]
+[22:57:58] export:   PASS  general.file_type = 143 (LLAMA_FTYPE_MOSTLY_PTQ1_0)
+[22:57:58] export: verify: content
+[22:57:58] export:   PASS  layout permutations and F32 transforms == the adapter's independent rule: 399 tensors
+[22:59:41] export:   PASS  decoded PTQ1_0 codes and fp16 scale bits == permuted, canonical state (exact): 8,190,427,136 weights in 102s, rows by the adapter's independent row and transform rule
+[22:59:41] export:   PASS  float tensors (F32, and BF16/F16 tables) bit-identical to the transformed sources: 145 tensors, rows and transforms by the adapter's independent row and transform rule
+[22:59:42] export:   PASS  function check (FP64, runtime transform vs fake-quant source rows): 16 tensors in layers [0, 35] + endpoints, worst rel 8.93e-16
+[22:59:42] export: verify: 11 passed, 0 failed

@@ -15,6 +15,18 @@
 #              the model against its own BF16 original. GSM8K and HumanEval: the 9B's subsets, thinking
 #              off (100/50, 512-token cap, batch 16) and on (the first 50/25, 4,096-token cap, batch 8)
 # Calibration, GPTQ, endpoints (head and embedding ternary), distillation and export are the 9B's.
+#
+# Measured on one RTX 5090 (research/runs/2026-10-28-qwen3-8b-reasoning/report.md):
+#   traces ~3.4 h (1.71M generated tokens, 140 tokens/s; 921 of 1,520 answers reach their cap, and only
+#   102 of the 420 thinking-on code answers finish thinking) | calibrate 20 s | quantize 19.5 min
+#   endpoints 2.4 min | distill: teacher 5.3 min + training 34 min (192 steps) | export and verify 2.7 min
+#   eval: compare 35 s; gsm8k + humaneval thinking off 8 min, on 78 min
+#   total about 4.5 h to the GGUF (1,798,918,592 bytes), about 6 h with eval
+# Against Qwen3-8B BF16: GSM8K 70/100 off, 41/50 on (BF16 88/100, 44/50); HumanEval 22/50 off, 6/25 on
+# (BF16 41/50, 22/25; 14 of 25 thinking-on answers hit the cap, 12 of them looping). compare: delta NLL
+# +0.317, top-1 0.683, EAR 0.686, KL 0.650. Prism CPU perplexity 14.94 (upstream wiki.test.raw, 8 x 512).
+# Generation runs under a VRAM cap (on Windows the driver otherwise pages to system memory: the first
+# attempt's traces ran at 24 tokens/s with 6.6 GB spilled).
 model:
   path: Qwen/Qwen3-8B
   revision: b968826d9c46dd6066d109eabc6255188de91218

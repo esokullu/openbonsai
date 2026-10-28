@@ -1,0 +1,61 @@
+[23:00:11] eval: compare: keeping the reference logits for ear_full/kl_full in compare-reference-7a4a503265b35f73.logits: 8 x 511 x 151936 in torch.bfloat16 (~1.16 GiB)
+[23:00:45] eval: {"source": "distill", "suite": "compare", "tokens": 4088, "nll": 2.8186502055399547, "ref_nll": 2.5018354205495585, "delta_nll": 0.31681478499039617, "top1_agreement": 0.6827299412915852, "ear_full": 0.6863950499071281, "kl_full": 0.6504315024939242, "ear_top64_lb": 0.6651994807816641, "ear_top64_ub": 0.6954803049508309, "kl_top64": 0.6254124712528054, "topk": 64, "vocab": 151936, "full_vocab": true}
+[23:00:48] eval: reasoning: generating with dense dequantized weights (254 ternary modules replaced)
+[23:00:48] eval: VRAM: 9.0 of 31.8 GiB free; this process is capped at 28.6 GiB (an overflow stops the stage instead of spilling to system RAM)
+[23:01:29] eval: gsm8k think=off: batch 1/7: 4972 new tokens in 40.7 s = 122.2 tok/s (410 steps, 10.08 steps/s), hit cap 0/16; ETA 3m34s
+[23:02:09] eval: gsm8k think=off: batch 2/7: 4528 new tokens in 40.4 s = 112.1 tok/s (408 steps, 10.10 steps/s), hit cap 0/16; ETA 2m52s
+[23:03:00] eval: gsm8k think=off: batch 3/7: 4287 new tokens in 50.5 s = 84.8 tok/s (512 steps, 10.13 steps/s), hit cap 1/16; ETA 2m23s
+[23:03:51] eval: gsm8k think=off: batch 4/7: 4446 new tokens in 51.5 s = 86.4 tok/s (512 steps, 9.95 steps/s), hit cap 1/16; ETA 1m43s
+[23:04:42] eval: gsm8k think=off: batch 5/7: 5073 new tokens in 51.0 s = 99.5 tok/s (512 steps, 10.04 steps/s), hit cap 1/16; ETA 0m59s
+[23:05:32] eval: gsm8k think=off: batch 6/7: 4640 new tokens in 50.0 s = 92.8 tok/s (498 steps, 9.96 steps/s), hit cap 0/16; ETA 0m12s
+[23:05:57] eval: gsm8k think=off: batch 7/7: 850 new tokens in 24.5 s = 34.7 tok/s (243 steps, 9.92 steps/s), hit cap 0/4; ETA 0m00s
+[23:05:57] eval: gsm8k think=off: 70/100, hit cap 3/100 at 512 tokens, 93.3 tok/s (0/7 batches from the cache)
+[23:12:35] eval: gsm8k think=on: batch 1/7: 19476 new tokens in 398.2 s = 48.9 tok/s (4096 steps, 10.29 steps/s), hit cap 2/8; ETA 34m51s
+[23:19:42] eval: gsm8k think=on: batch 2/7: 15743 new tokens in 426.6 s = 36.9 tok/s (4096 steps, 9.60 steps/s), hit cap 1/8; ETA 29m13s
+[23:28:07] eval: gsm8k think=on: batch 3/7: 15867 new tokens in 504.9 s = 31.4 tok/s (4096 steps, 8.11 steps/s), hit cap 1/8; ETA 24m01s
+[23:36:29] eval: gsm8k think=on: batch 4/7: 14762 new tokens in 502.1 s = 29.4 tok/s (4096 steps, 8.16 steps/s), hit cap 1/8; ETA 17m10s
+[23:45:01] eval: gsm8k think=on: batch 5/7: 12708 new tokens in 512.6 s = 24.8 tok/s (4096 steps, 7.99 steps/s), hit cap 1/8; ETA 9m46s
+[23:53:09] eval: gsm8k think=on: batch 6/7: 13477 new tokens in 487.0 s = 27.7 tok/s (4096 steps, 8.41 steps/s), hit cap 1/8; ETA 1m58s
+[23:57:58] eval: gsm8k think=on: batch 7/7: 3587 new tokens in 289.8 s = 12.4 tok/s (2524 steps, 8.71 steps/s), hit cap 0/2; ETA 0m00s
+[23:57:58] eval: gsm8k think=on: 41/50, hit cap 7/50 at 4096 tokens, unfinished thinking 7, 30.6 tok/s (0/7 batches from the cache)
+[23:58:51] eval: humaneval think=off: batch 1/4: 4072 new tokens in 52.8 s = 77.2 tok/s (512 steps, 9.71 steps/s), hit cap 1/16; ETA 1m52s
+[23:59:27] eval: humaneval think=off: batch 2/4: 3083 new tokens in 36.1 s = 85.4 tok/s (345 steps, 9.56 steps/s), hit cap 0/16; ETA 0m50s
+[00:00:06] eval: humaneval think=off: batch 3/4: 2930 new tokens in 38.7 s = 75.8 tok/s (373 steps, 9.65 steps/s), hit cap 0/16; ETA 0m05s
+[00:00:28] eval: humaneval think=off: batch 4/4: 343 new tokens in 21.8 s = 15.7 tok/s (208 steps, 9.55 steps/s), hit cap 0/2; ETA 0m00s
+[00:00:33] eval: humaneval think=off: 22/50, hit cap 1/50 at 512 tokens, 69.8 tok/s (0/4 batches from the cache)
+[00:07:29] eval: humaneval think=on: batch 1/4: 24015 new tokens in 416.6 s = 57.7 tok/s (4096 steps, 9.83 steps/s), hit cap 5/8; ETA 14m45s
+[00:14:26] eval: humaneval think=on: batch 2/4: 21147 new tokens in 416.8 s = 50.7 tok/s (4096 steps, 9.83 steps/s), hit cap 4/8; ETA 7m49s
+[00:21:08] eval: humaneval think=on: batch 3/4: 24125 new tokens in 401.3 s = 60.1 tok/s (4096 steps, 10.21 steps/s), hit cap 4/8; ETA 0m51s
+[00:26:35] eval: humaneval think=on: batch 4/4: 4096 new tokens in 327.0 s = 12.5 tok/s (4096 steps, 12.53 steps/s), hit cap 1/1; ETA 0m00s
+[00:26:38] eval: humaneval think=on: 6/25, hit cap 14/25 at 4096 tokens, unfinished thinking 14, 47.0 tok/s (0/4 batches from the cache)
+[00:27:11] eval: VRAM: 15.0 of 31.8 GiB free; this process is capped at 28.8 GiB (an overflow stops the stage instead of spilling to system RAM)
+[00:28:00] eval: gsm8k think=off: batch 1/7: 5295 new tokens in 49.2 s = 107.7 tok/s (512 steps, 10.42 steps/s), hit cap 2/16; ETA 4m18s
+[00:28:43] eval: gsm8k think=off: batch 2/7: 4365 new tokens in 43.0 s = 101.6 tok/s (444 steps, 10.34 steps/s), hit cap 0/16; ETA 3m16s
+[00:29:24] eval: gsm8k think=off: batch 3/7: 4030 new tokens in 41.3 s = 97.7 tok/s (425 steps, 10.30 steps/s), hit cap 0/16; ETA 2m24s
+[00:30:08] eval: gsm8k think=off: batch 4/7: 4770 new tokens in 43.2 s = 110.5 tok/s (460 steps, 10.66 steps/s), hit cap 0/16; ETA 1m39s
+[00:30:56] eval: gsm8k think=off: batch 5/7: 5550 new tokens in 48.4 s = 114.6 tok/s (512 steps, 10.57 steps/s), hit cap 1/16; ETA 0m56s
+[00:31:41] eval: gsm8k think=off: batch 6/7: 4785 new tokens in 44.8 s = 106.8 tok/s (473 steps, 10.55 steps/s), hit cap 0/16; ETA 0m11s
+[00:32:10] eval: gsm8k think=off: batch 7/7: 960 new tokens in 28.7 s = 33.4 tok/s (302 steps, 10.52 steps/s), hit cap 0/4; ETA 0m00s
+[00:32:10] eval: gsm8k think=off: 88/100, hit cap 3/100 at 512 tokens, 99.7 tok/s (0/7 batches from the cache)
+[00:38:35] eval: gsm8k think=on: batch 1/7: 15356 new tokens in 383.8 s = 40.0 tok/s (4096 steps, 10.67 steps/s), hit cap 1/8; ETA 33m35s
+[00:44:56] eval: gsm8k think=on: batch 2/7: 16636 new tokens in 381.0 s = 43.7 tok/s (4096 steps, 10.75 steps/s), hit cap 1/8; ETA 27m05s
+[00:51:18] eval: gsm8k think=on: batch 3/7: 17043 new tokens in 382.4 s = 44.6 tok/s (4096 steps, 10.71 steps/s), hit cap 1/8; ETA 20m43s
+[00:57:42] eval: gsm8k think=on: batch 4/7: 18347 new tokens in 382.8 s = 47.9 tok/s (4096 steps, 10.70 steps/s), hit cap 2/8; ETA 14m21s
+[01:01:47] eval: gsm8k think=on: batch 5/7: 13142 new tokens in 245.8 s = 53.5 tok/s (2630 steps, 10.70 steps/s), hit cap 0/8; ETA 7m24s
+[01:06:42] eval: gsm8k think=on: batch 6/7: 12850 new tokens in 293.6 s = 43.8 tok/s (3145 steps, 10.71 steps/s), hit cap 0/8; ETA 1m26s
+[01:10:03] eval: gsm8k think=on: batch 7/7: 4055 new tokens in 201.0 s = 20.2 tok/s (2117 steps, 10.53 steps/s), hit cap 0/2; ETA 0m00s
+[01:10:03] eval: gsm8k think=on: 44/50, hit cap 5/50 at 4096 tokens, unfinished thinking 3, 42.9 tok/s (0/7 batches from the cache)
+[01:10:38] eval: humaneval think=off: batch 1/4: 3544 new tokens in 35.0 s = 101.1 tok/s (365 steps, 10.41 steps/s), hit cap 0/16; ETA 1m14s
+[01:11:05] eval: humaneval think=off: batch 2/4: 2924 new tokens in 27.5 s = 106.1 tok/s (289 steps, 10.49 steps/s), hit cap 0/16; ETA 0m35s
+[01:11:45] eval: humaneval think=off: batch 3/4: 3319 new tokens in 39.9 s = 83.3 tok/s (421 steps, 10.56 steps/s), hit cap 0/16; ETA 0m04s
+[01:12:03] eval: humaneval think=off: batch 4/4: 317 new tokens in 17.5 s = 18.1 tok/s (183 steps, 10.47 steps/s), hit cap 0/2; ETA 0m00s
+[01:12:07] eval: humaneval think=off: 41/50, hit cap 0/50 at 512 tokens, 84.2 tok/s (0/4 batches from the cache)
+[01:17:58] eval: humaneval think=on: batch 1/4: 17096 new tokens in 350.5 s = 48.8 tok/s (3704 steps, 10.57 steps/s), hit cap 0/8; ETA 12m25s
+[01:24:30] eval: humaneval think=on: batch 2/4: 17683 new tokens in 391.8 s = 45.1 tok/s (4096 steps, 10.45 steps/s), hit cap 1/8; ETA 6m58s
+[01:31:08] eval: humaneval think=on: batch 3/4: 18917 new tokens in 397.1 s = 47.6 tok/s (4096 steps, 10.32 steps/s), hit cap 1/8; ETA 0m47s
+[01:36:44] eval: humaneval think=on: batch 4/4: 4096 new tokens in 335.8 s = 12.2 tok/s (4096 steps, 12.20 steps/s), hit cap 1/1; ETA 0m00s
+[01:36:46] eval: humaneval think=on: 22/25, hit cap 3/25 at 4096 tokens, unfinished thinking 3, 39.2 tok/s (0/4 batches from the cache)
+[01:37:48] eval: {"source": "quantize", "suite": "compare", "tokens": 4088, "nll": 3.2773699775207885, "ref_nll": 2.5018354205495585, "delta_nll": 0.77553455697123, "top1_agreement": 0.5834148727984344, "ear_full": 0.565416488083897, "kl_full": 1.135461065645627, "ear_top64_lb": 0.5433252663577843, "ear_top64_ub": 0.5735619763857933, "kl_top64": 1.1029714914451945, "topk": 64, "vocab": 151936, "full_vocab": true}
+[01:38:55] eval: {"source": "endpoints", "suite": "compare", "tokens": 4088, "nll": 3.4248605961691734, "ref_nll": 2.5018354205495585, "delta_nll": 0.9230251756196148, "top1_agreement": 0.5565068493150684, "ear_full": 0.5262330473758189, "kl_full": 1.3180740301591456, "ear_top64_lb": 0.5037938411650873, "ear_top64_ub": 0.5344751332668051, "kl_top64": 1.2835230340521162, "topk": 64, "vocab": 151936, "full_vocab": true}
+[01:39:50] eval: read D:/openbonsai/runs/2026-10-28-qwen3-8b-reasoning/export/OpenBonsai-Qwen3-8B-PTQ1_0.gguf: 254 PTQ1_0 tensors, 145 F32 tensors, block 4096
+[01:39:57] eval: {"source": "D:/openbonsai/runs/2026-10-28-qwen3-8b-reasoning/export/OpenBonsai-Qwen3-8B-PTQ1_0.gguf", "suite": "compare", "tokens": 4088, "nll": 2.8186502055399547, "ref_nll": 2.5018354205495585, "delta_nll": 0.31681478499039617, "top1_agreement": 0.6827299412915852, "ear_full": 0.6863950499071281, "kl_full": 0.6504315024939242, "ear_top64_lb": 0.6651994807816641, "ear_top64_ub": 0.6954803049508309, "kl_top64": 0.6254124712528054, "topk": 64, "vocab": 151936, "full_vocab": true}
