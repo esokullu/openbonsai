@@ -56,6 +56,25 @@ permission notices in the datasets' repositories apply).
   Mark Chen et al. "Evaluating Large Language Models Trained on Code", 2021.
   License: MIT.
 
+The reasoning recipes (examples/qwen3_5-9b-reasoning*.yaml) download training
+prompts from the datasets below at pinned revisions (openbonsai/stages/traces.py);
+no rows are included in this repository. Besides GSM8K's train split (above):
+
+  MATH, EleutherAI/hendrycks_math (train), revision
+  21a5633873b6a120296cce3e2df9d5550074f4a3.
+  Dan Hendrycks et al. "Measuring Mathematical Problem Solving With the MATH
+  Dataset", 2021. License: MIT.
+
+  MBPP, google-research-datasets/mbpp (full, train), revision
+  4bb6404fdc6cacfda99d4ac4205087b89d32030c.
+  Jacob Austin et al. "Program Synthesis with Large Language Models", 2021.
+  License: CC BY 4.0.
+
+  OpenCodeInstruct, nvidia/OpenCodeInstruct (first shard), revision
+  8f3ba5bafe4d6e8db46082cf7ae6741bc370604d.
+  Wasi Uddin Ahmad et al. "OpenCodeInstruct: A Large-scale Instruction Tuning
+  Dataset for Code LLMs", 2025. License: CC BY 4.0.
+
 -------------------------------------------------------------------------------
 Qwen3.5
 -------------------------------------------------------------------------------

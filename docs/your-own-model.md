@@ -117,7 +117,7 @@ traces:
     - {kind: jsonl, name: my_task, path: data/my-task-prompts.jsonl, n: 400, seed: 7, thinking: off, max_new_tokens: 1024, batch: 16}
 ```
 
-- **Prompts.** Use prompts like the ones your fine-tune will see: the user side of its training data, or real requests. Leave your evaluation prompts out; nothing checks your own test sets (GSM8K and HumanEval test problems are refused everywhere, in your files too).
+- **Prompts.** Use prompts like the ones your fine-tune will see: the user side of its training data, or real requests. Leave your evaluation prompts out; nothing checks your own test sets (GSM8K and HumanEval test problems and their 13-word near duplicates are refused everywhere, in your files too; reworded versions are not caught).
 - **`n`.** The number of prompts, drawn in a seeded order (`seed`). Duplicates are dropped, so `n` can be at most the number of distinct prompts. `shuffle: false` takes them in file order. Longer prompts can be skipped with `max_chars`.
 - **`thinking`.** Match how the fine-tune is used. If it is used both ways, add the file twice with different `name`s and seeds, one `on` and one `off`, as the recipe does for GSM8K and MBPP.
 - **`max_new_tokens`.** A little above your fine-tune's usual answer length. An answer cut at the cap still counts, but it loses its ending. `traces/summary.json` lists `hit_cap` per source; with thinking on, a cut answer often has no final answer at all.
