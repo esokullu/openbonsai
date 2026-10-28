@@ -1,6 +1,6 @@
 # Prism perplexity on upstream WikiText-2 test (28 October)
 
-All runs use Prism's llama.cpp CPU build at c9c34bc (Release, 8 threads):
+All runs use Prism's llama.cpp CPU build at c9c34bc (Release, 8 threads); all but `shared-v1.log` and the two `*-default-batch.log` files pass `-b 512`:
 
 ```
 llama-perplexity -m <model>.gguf -f wiki.test.raw -c 512 --chunks 8 -b 512 -t 8

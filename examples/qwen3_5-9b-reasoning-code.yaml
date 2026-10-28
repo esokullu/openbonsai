@@ -54,7 +54,7 @@
 # Contamination: the same guards as the reasoning recipe (its comments, and docs/evaluation.md). None
 # of the OpenCodeInstruct rows that share a 13-word run with a HumanEval problem were drawn by the new
 # sources' seeds (traces/summary.json lists none skipped). Tasks restated in other words are not
-# caught; these traces restate 6 of the 50 frozen HumanEval tasks (research/runs/2026-10-28-humaneval-gap/).
+# caught; these traces restate at least 6 of the 50 frozen HumanEval tasks (research/runs/2026-10-28-humaneval-gap/).
 model:
   path: Qwen/Qwen3.5-9B
   revision: c202236235762e1c871ad0ccb60c8ee5ba337b9a
