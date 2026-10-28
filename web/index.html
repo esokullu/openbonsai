@@ -78,11 +78,12 @@
           Measured end to end on Qwen3.5-9B with the research scripts the
           package ports, and reproduced by the package's own end-to-end run. Other
           dense models have an adapter, tested only on tiny random models so
-          far, with no real-model results yet. Math, code and non-English
-          output are the main weakness: on small GSM8K and HumanEval subsets
-          the from-scratch model scores 30/100 and 6/50, against 77/100 and
-          45/50 for Prism's Ternary Bonsai 2 9B. Recalibrating on the model's
-          own math and code answers is the next step.
+          far, with no real-model results yet. Calibrated on its own answers
+          to math and code training prompts, the published model scores
+          69/100 on a GSM8K subset and 19/50 on HumanEval with thinking off,
+          against 77/100 and 45/50 for Prism's Ternary Bonsai 2 9B (with
+          thinking on: 25/50 and 10/25, against 46/50 and 24/25). Code and
+          non-English output are still the main weakness.
         </p>
         <p class="method-links">
           <a href="https://github.com/esokullu/openbonsai/blob/main/README.md#results">Results and caveats</a>
@@ -92,6 +93,30 @@
           <a href="https://github.com/esokullu/openbonsai/blob/main/docs/formats.md">Format</a>
           <span aria-hidden="true"> · </span>
           <a href="https://github.com/esokullu/openbonsai/blob/main/docs/adding-a-model.md">Adding a model</a>
+        </p>
+      </section>
+      <section class="usage" aria-labelledby="usage-title">
+        <h2 id="usage-title">Use your own fine-tune</h2>
+        <p class="usage-description">
+          Prism publishes finished Bonsai models but not the pipeline that
+          makes them, so community fine-tunes so far train on top of Bonsai,
+          mostly as adapters. OpenBonsai compresses the fine-tune itself,
+          with the fine-tune as the teacher: it answers prompts in its own
+          chat template, and its answers become the calibration and
+          distillation data. With a merged Qwen3.5-9B checkpoint and one
+          32&nbsp;GB GPU:
+        </p>
+        <pre class="usage-command" tabindex="0" aria-label="Command"><code>openbonsai run --out runs/mine \
+  --model path/to/my-finetune \
+  --config examples/qwen3_5-9b-reasoning.yaml</code></pre>
+        <p class="usage-description">
+          This is the recipe behind the published model, about 4.5 hours on
+          one RTX 5090. To keep the skill your fine-tune added, add your
+          task's prompts as one more trace source, so the model answers them
+          itself. The tied sizes (0.8B, 2B, 4B) are not supported yet.
+        </p>
+        <p class="method-links">
+          <a href="https://github.com/esokullu/openbonsai/blob/main/docs/your-own-model.md">Step-by-step guide</a>
         </p>
       </section>
       <section class="explainer" aria-labelledby="explainer-title">

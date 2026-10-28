@@ -2,7 +2,7 @@
 
 A small, static landing page for the OpenBonsai research preview. It has no JavaScript, package dependencies, external fonts, or build step.
 
-The page states the project's status (research preview), the four-stage method with links to the docs on GitHub, and the non-affiliation line: "Independent project, not affiliated with or endorsed by Prism ML. Bonsai is Prism ML's product." Keep these in step with the repository README when the method or the results change.
+The page states the project's status (research preview), the four-stage method with links to the docs on GitHub, the command for compressing your own fine-tune with a link to its guide, and the non-affiliation line: "Independent project, not affiliated with or endorsed by Prism ML. Bonsai is Prism ML's product." Keep these in step with the repository README when the method or the results change.
 
 ## Preview
 
@@ -16,7 +16,7 @@ Open <http://127.0.0.1:8080>. The page can also be opened directly as `web/index
 
 ## Files
 
-- `index.html`: page copy (introduction, "How it works", the background video), metadata, and links to GitHub and the docs.
+- `index.html`: page copy (introduction, "How it works", "Use your own fine-tune", the background video), metadata, and links to GitHub and the docs.
 - `styles.css`: responsive layout, type, the research-preview label, and keyboard focus styles.
 - `assets/openbonsai-mark.svg`: original circular bonsai emblem, also used as the favicon.
 - `assets/openbonsai-explainer-en.mp4`: four-minute English video, 1080p H.264/AAC (approximately 8.9 MB), shown as "Background: how ScaleQ works". It explains ScaleQ and CAT-Q, which inspired the project; CAT-Q is not part of the current pipeline.
@@ -29,4 +29,4 @@ The visible pot and compact canopy distinguish the tree as a miniature bonsai. T
 
 Publish the contents of `web/` with any static host. The GitHub link respects the repository's existing access permissions; this page does not change its visibility.
 
-Before publishing: the docs links point to `blob/main/...`, so they resolve only once `framework/v1` is merged into `main`, and the GitHub button and those links work for the public only if the repository is public.
+The docs links point to `blob/main/...`, so a link to a new doc resolves once that doc is on `main`. The GitHub button and those links work for the public only if the repository is public.
