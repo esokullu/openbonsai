@@ -8,7 +8,7 @@ The published model (`examples/qwen3_5-9b-reasoning.yaml`, `../2026-10-27-reason
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Published (`../2026-10-27-reasoning-mix-v1/`) | reasoning mix | 1 | 19/50 / 10/25 | 69/100 / 25/50 | 2.960 | 17 | 2.698 | 84 | 1.439 | 0.554 | 0.706 |
 | `reasoning-mix-2epoch/` | reasoning mix | 2 | 21/50 / 10/25 | 71/100 / 20/50 | 2.945 | 16 | 2.670 | 85 | 1.403 | 0.532 | 0.717 |
-| `code-gap-2epoch/` | more code | 2 | 29/50 / 15/25 | 74/100 / 18/50 | 2.998 | 18 | 2.735 | 90 | 1.422 | 0.582 | 0.702 |
+| `code-gap-2epoch/` | more code | 2 | 29/50 / 15/25 | 74/100 / 18/50 | 2.998 | 18 | 2.735 | 90 | 1.422 | 0.581 | 0.702 |
 | **`code-gap-1epoch/`** (`examples/qwen3_5-9b-reasoning-code.yaml`) | more code | 1 | **34/50 / 14/25** | 65/100 / **32/50** | 3.012 | 18 | 2.763 | 89 | 1.459 | 0.607 | 0.693 |
 | BF16 (`../2026-10-27-reasoning-v1/`) | | | 44/50 / 22/25 | 77/100 / 36/50 | 2.423 | 19 | 2.218 | 97 | 0.554 | | |
 | Ternary Bonsai 2 9B (Prism ML) | | | 45/50 / 24/25 | 77/100 / 46/50 | 3.191 | 17 | | | | | |
@@ -25,13 +25,13 @@ Everything else is the published recipe. The 2-epoch code-gap run was the first 
 
 **The data closes more than half of the gap; the second epoch does not help.** With thinking off, both code-gap runs beat the published model on HumanEval:
 
-- With 1 epoch, 18 problems are solved only by the new run and 3 only by the published one (two-sided sign test p = 0.001).
+- With 1 epoch, 18 problems are solved only by the new run and 3 only by the published one (two-sided sign test p = 0.0015).
 - With 2 epochs, the split is 12 to 2 (p = 0.013).
 - Of the 44 problems BF16 solves, the published model misses 25 and the 1-epoch run 12.
-- The 1-epoch run's failures are mostly wrong answers that run (8 AssertionErrors, against 17). Two syntax errors remain, both cut at the 512-token cap, against 6 before.
+- The 1-epoch run's failures are mostly wrong answers that run: 10 fail an assertion and 3 raise an error inside the tests, against 18 and 6 for the published model (11 against 23 among answers not cut at the cap). Two syntax errors remain, both cut at the 512-token cap, against 6 before.
 - A second epoch on the published data does not do it: 21/50, with 5 problems gained and 3 lost (p = 0.73).
 
-**The second epoch makes thinking run longer, on both data sets.** The code-gap data with two epochs scores 18/50 on GSM8K with thinking on, against 32/50 with one (2 against 16 problems, p = 0.001). The published data with two epochs scores 20/50, against 25/50 with one (3 against 8, p = 0.23).
+**The second epoch makes thinking run longer, on both data sets.** The code-gap data with two epochs scores 18/50 on GSM8K with thinking on, against 32/50 with one (2 against 16 problems, p = 0.0013). The published data with two epochs scores 20/50, against 25/50 with one (3 against 8, p = 0.23).
 
 | Thinking-on GSM8K | Mean generated tokens | Cut at 4,096 | Finished and correct |
 |---|---|---|---|
@@ -51,13 +51,15 @@ Everything else is the published recipe. The 2-epoch code-gap run was the first 
 
 ## Recommendation
 
-`examples/qwen3_5-9b-reasoning-code.yaml` holds the 1-epoch code-gap settings. It improves HumanEval with thinking off by 15 problems and GSM8K with thinking on by 7 at the same model size, but on HumanEval it is still 10 problems short of BF16 and 11 short of Prism's model. It also costs about 1 h more GPU time: the two extra trace sources take 3,744 s, and the larger teacher takes 7 min instead of 6. The published recipe and the Hugging Face model are unchanged. Whether to switch, and whether to publish a new model, is the owner's decision.
+`examples/qwen3_5-9b-reasoning-code.yaml` holds the 1-epoch code-gap settings. On the frozen suites it was picked on, it improves HumanEval with thinking off by 15 problems (p = 0.0015) at the same model size; GSM8K is 7 higher with thinking on (p = 0.09) and 4 lower with thinking off (p = 0.54), both within noise. On HumanEval it is still 10 problems short of BF16 and 11 short of Prism's model. It also costs about 1 h more GPU time: the two extra trace sources take 3,744 s, and the larger teacher takes 7 min instead of 6. The published recipe and the Hugging Face model are unchanged. Whether to switch, and whether to publish a new model, is the owner's decision.
 
 ## Caveats
 
 - Single runs, greedy decoding, small suites: 50 and 25 HumanEval problems, 100 and 50 GSM8K. The sign tests treat each problem as one paired trial and do not account for having looked at several suites.
 - The two ablations ran while two virtual machines took most of the CPU, so their thinking-on evals decoded at 27-51 tokens/s against 89-132 for the published run. This changes time, not results (greedy, same batches).
 - The code-gap traces were screened for HumanEval and GSM8K test problems like the published ones (`docs/evaluation.md`). The new seeds drew none of the 3 OpenCodeInstruct rows (first shard) that share a 13-word run with a test problem (`code-gap-2epoch/traces/summary.json`, `near_duplicates_skipped`).
+- That guard matches text, so it does not catch a task restated in other words. A later screen of the traces (candidate traces picked by TF-IDF and entry-point name, with their functions run against the problem's tests; it can miss restatements with little word overlap) found reworded versions of at least six of the 50 HumanEval tasks. 23 and 61 are in the distillation data of both the published and the code-gap runs; 13, 20, 35 and 90 only in the code-gap runs' distillation data (the published run also generated traces for 13 and 90, but neither reached its calibration or distillation blocks). Two more are related tasks with a different specification (111, 156). Without all eight, the 1-epoch run still beats the published model 28/42 to 15/42 (16 problems against 3, p = 0.0044). No trace shares a 13-word run with the 50 HumanEval or 100 GSM8K problems.
+- `code-gap-1epoch` was picked from these four runs on the same suites it is scored on, so its 34/50 probably overstates the gain on new problems. A comparison with the published model on the problems after the frozen ones in the same seeded order is queued: HumanEval positions 51-164 and GSM8K positions 101-1,319 with thinking off, and HumanEval positions 26-75 with thinking on. Its rule was fixed before any score was read: (1) on HumanEval positions 51-164 the 1-epoch config beats the published model in a one-sided exact sign test at p < 0.05, and (2) it also leads on the problems among those 114 that a same-task screen, run before scoring, does not flag; (3) on GSM8K positions 101-1,319 it is at most 3 percentage points below; (4) with thinking on, on HumanEval positions 26-75 (26-50 were scored with thinking off during the selection), it passes at least the published model's count minus 2. If all four hold, the recommendation is to replace the published model; if (1) and (2) hold but (3) or (4) fails, the trade-off goes to the owner; otherwise the published model stays.
 
 ## Files
 

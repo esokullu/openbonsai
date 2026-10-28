@@ -58,7 +58,7 @@ def main(base_name: str = "published"):
                     f"  finished correct {sum(map(solved, finished))}/{len(finished)}")
             if b is not None and name != base_name:
                 x, y, p = sign_test(b, j)
-                line += f"  only {base_name} {x}, only this {y}, p = {p:.3f}"
+                line += f"  only {base_name} {x}, only this {y}, p = {p:.3f}" if p >= 0.01 else f"  only {base_name} {x}, only this {y}, p = {p:.2g}"
             print(line)
 
 

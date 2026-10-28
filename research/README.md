@@ -90,7 +90,8 @@ The package ports of `experiments/` (core/gptq, stages/quantize, endpoints, dist
 | `runs/2026-10-27-bf16-extended/` | BF16 Qwen3.5-9B: dev 2.423 (ARC 19), extended suite 2.218, ARC 97/100, chat 0.554 |
 | `runs/2026-10-27-e2e-kd-shared-v1/` | Scale distillation of the all-ternary shared-sign state, 4.2M tokens (`log.txt`): 2.892, ARC 19; extended 2.626, ARC 87/100, chat 1.318 |
 | `runs/2026-10-27-e2e-kd-shared-small-v1/` | The same with the small high-precision tensors trained too: 2.884, ARC 19; extended 2.616, ARC 87/100, chat 1.308 |
-| `runs/2026-10-27-gguf-shared-v1/` | The distilled state exported as a PTQ1_0 GGUF (`export.log`, `*.export.json`) and Prism's CPU perplexity (WikiText-2 test, 8 x 512): 11.93, against 16.51 for the official model (`prism_ppl_*.log`). The GGUF itself is not copied |
+| `runs/2026-10-27-gguf-shared-v1/` | The distilled state exported as a PTQ1_0 GGUF (`export.log`, `*.export.json`) and Prism's CPU perplexity (8 x 512) on a copy of WikiText-2 test with the blank lines removed and CRLF line endings: 11.93, against 16.51 for the official model (`prism_ppl_*.log`). On upstream llama.cpp's `wiki.test.raw` they are 12.88 and 17.21 (`runs/2026-10-28-prism-ppl-upstream/`). The GGUF itself is not copied |
+| `runs/2026-10-28-prism-ppl-upstream/` | Prism's CPU perplexity (c9c34bc, 8 x 512) on upstream llama.cpp's `wiki.test.raw`: official Ternary Bonsai 2 9B 17.21, `gguf-shared-v1` 12.88, the reasoning mix 13.61 (its `runs/2026-10-27-reasoning-mix-v1/export/prism_ppl.txt` gives 12.59 on the old copy). The official file on the old copy gives 16.51 (`official-old-copy.log`) |
 | `runs/2026-10-27-accept-256/eval/` | The package's own `openbonsai eval` of `2026-10-27-gptq-ternary-256-norefit`'s state on the GPU (acceptance run): dev 3.293, ARC 14; extended 3.082, ARC 67/100, chat 1.948 |
 
 **Starting from Prism's weights (separate experiment, not a from-scratch result):**
