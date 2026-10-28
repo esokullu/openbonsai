@@ -62,10 +62,13 @@ fails first) and run in batches of its ``batch``. ``traces.batch_tokens`` (both
 forms; null: no limit) also caps a batch's tokens in flight, rows x (its longest
 prompt + the cap): what the left-padded KV cache holds at the last step, so a
 few long prompts (UltraChat has some of 2,000 tokens) get smaller batches
-instead of a batch that does not fit. Set it: on Windows the driver can page
-GPU memory to system memory instead of raising out-of-memory (the CUDA sysmem
-fallback), and generation then crawls instead of failing and splitting.
-Each batch is cached in ``traces/cache/`` under a hash of its prompt ids, cap,
+instead of a batch that does not fit. On Windows the driver can page GPU
+memory to system memory instead of raising out-of-memory (the CUDA sysmem
+fallback), and generation then crawls instead of failing and splitting; so
+from the first generated batch the stage caps its CUDA allocator at the VRAM
+free when the model loads (``common.cap_vram``, lifted when it ends), which
+also makes the allocator return the blocks a growing KV cache leaves behind
+before it would pass the cap. Each batch is cached in ``traces/cache/`` under a hash of its prompt ids, cap,
 decoding, the model's identity and the runtime (torch and transformers
 versions, device), so an
 interrupted run resumes after the last finished batch, and a config edit
@@ -103,6 +106,7 @@ its output is complete either way.
 """
 from __future__ import annotations
 
+from contextlib import ExitStack
 import json
 import random
 import time
@@ -112,6 +116,7 @@ from typing import Any
 import torch
 
 from ..formats.atomic import atomic_write_bytes, atomic_write_json
+from .common import vram_cap
 
 # Training splits at pinned revisions (dataset repos). math_train's file is per subject.
 HUB = {
@@ -837,9 +842,11 @@ def run(ctx) -> dict:
             + (f"; {len(data['screened'])} near duplicates of test problems skipped" if data["screened"] else ""))
     cache = BatchCache(out / "cache", runtime_identity(ctx))
     state: dict = {}
+    vram = ExitStack()
 
     def generate(rows, cap):
         if "model" not in state:
+            vram.enter_context(vram_cap(ctx.device, log))
             state["model"], state["tok"] = ctx.load_model()
             torch.manual_seed(0)
             state["eos"] = adapter.eos_ids(state["tok"], state["model"])
@@ -853,61 +860,62 @@ def run(ctx) -> dict:
     from ..eval import heldout
     probes = heldout.needles() + heldout.chat_needles(tok)
     records_by_source, per_source = [], []
-    for src, picked, data in loaded:
-        i, cap = src["index"], src["max_new_tokens"]
-        rows = encoded[i]
-        gens: list = [None] * len(rows)
-        for b, members in enumerate(plans[i]):
-            batch_rows = [rows[k] for k in members]
-            got, info = cache.get(batch_rows, cap, generate, log)
-            for k, g in zip(members, got):
-                gens[k] = g
-            remaining -= len(members) * cap
-            if info["cached"] == len(members):
-                stats["cached_batches"] += 1
-                continue
-            stats["seconds"] += info["seconds"]
-            stats["fresh_tokens"] += info["tokens"]
-            done_units += len(members) * cap
-            eta = stats["seconds"] / max(done_units, 1) * remaining
-            log(f"{src['name']}: batch {b + 1}/{len(plans[i])}: {info['tokens']} new tokens in "
-                f"{info['seconds']:.1f} s = {info['tokens'] / max(info['seconds'], 1e-9):.1f} tok/s, hit cap "
-                f"{sum(h for _, h in got)}/{len(got)}; ETA {_clock(eta)}")
-        recs = []
-        for (row, msgs, ident), ids, (gen, hit) in zip(picked, rows, gens):
-            meta = {"source": src["name"], "kind": src["kind"], "row": row, **({"id": ident} if ident is not None else {}),
-                    "thinking": src["thinking"], "max_new_tokens": cap}
-            rec = _record(ids, gen, hit, msgs, **meta)
-            completion = tok.decode(gen, skip_special_tokens=False)
-            if src["thinking"] and think_end:
-                rec["finished_thinking"] = think_end in completion
-            rec["completion"] = completion
-            recs.append(rec)
-        # The prompts were checked; an answer that repeats an evaluation item is dropped here, since
-        # calibrate and the distillation teacher refuse blocks that contain one.
-        hits = heldout.contained([r["completion"] for r in recs], probes)
-        dropped = [{"row": recs[k]["row"], "items": sorted({pid for j, pid in hits if j == k})}
-                   for k in sorted({j for j, _ in hits})]
-        if dropped:
-            log(f"WARNING: {src['name']}: {len(dropped)} answers repeat an evaluation item and are left out: "
-                + ", ".join(f"row {d['row']} ({', '.join(d['items'])})" for d in dropped[:5]))
-            recs = [r for k, r in enumerate(recs) if k not in {j for j, _ in hits}]
-        records_by_source.append(recs)
-        gen_tokens = sum(r["generated_token_count"] for r in recs)
-        per_source.append({
-            "name": src["name"], "kind": src["kind"], "where": src["where"], "n": len(recs), "seed": src["seed"],
-            "thinking": src["thinking"], "max_new_tokens": cap, "batch": src["batch"],
-            "batches": len(plans[i]), "batch_tokens": src["batch_tokens"],
-            "instruction": src.get("instruction"), "max_chars": src.get("max_chars"),
-            **({"levels": src.get("levels"), "subjects": data["parts"]} if src["kind"] == "math_train" else {}),
-            **({"rows": list(src.get("rows") or (5000, 6000))} if src["kind"] == "ultrachat" else {}),
-            "records": len(recs), "prompt_tokens": sum(r["prompt_token_count"] for r in recs),
-            "generated_tokens": gen_tokens, "mean_generated_tokens": round(gen_tokens / max(len(recs), 1), 1),
-            "hit_cap": sum(r["hit_cap"] for r in recs),
-            **({"finished_thinking": sum(r.get("finished_thinking", False) for r in recs)}
-               if src["thinking"] and think_end else {}),
-            "data": data["files"], "near_duplicates_skipped": data["screened"],
-            "answers_dropped": dropped})
+    with vram:            # capped from the first generated batch to the last
+        for src, picked, data in loaded:
+            i, cap = src["index"], src["max_new_tokens"]
+            rows = encoded[i]
+            gens: list = [None] * len(rows)
+            for b, members in enumerate(plans[i]):
+                batch_rows = [rows[k] for k in members]
+                got, info = cache.get(batch_rows, cap, generate, log)
+                for k, g in zip(members, got):
+                    gens[k] = g
+                remaining -= len(members) * cap
+                if info["cached"] == len(members):
+                    stats["cached_batches"] += 1
+                    continue
+                stats["seconds"] += info["seconds"]
+                stats["fresh_tokens"] += info["tokens"]
+                done_units += len(members) * cap
+                eta = stats["seconds"] / max(done_units, 1) * remaining
+                log(f"{src['name']}: batch {b + 1}/{len(plans[i])}: {info['tokens']} new tokens in "
+                    f"{info['seconds']:.1f} s = {info['tokens'] / max(info['seconds'], 1e-9):.1f} tok/s, hit cap "
+                    f"{sum(h for _, h in got)}/{len(got)}; ETA {_clock(eta)}")
+            recs = []
+            for (row, msgs, ident), ids, (gen, hit) in zip(picked, rows, gens):
+                meta = {"source": src["name"], "kind": src["kind"], "row": row,
+                        **({"id": ident} if ident is not None else {}), "thinking": src["thinking"], "max_new_tokens": cap}
+                rec = _record(ids, gen, hit, msgs, **meta)
+                completion = tok.decode(gen, skip_special_tokens=False)
+                if src["thinking"] and think_end:
+                    rec["finished_thinking"] = think_end in completion
+                rec["completion"] = completion
+                recs.append(rec)
+            # The prompts were checked; an answer that repeats an evaluation item is dropped here, since
+            # calibrate and the distillation teacher refuse blocks that contain one.
+            hits = heldout.contained([r["completion"] for r in recs], probes)
+            dropped = [{"row": recs[k]["row"], "items": sorted({pid for j, pid in hits if j == k})}
+                       for k in sorted({j for j, _ in hits})]
+            if dropped:
+                log(f"WARNING: {src['name']}: {len(dropped)} answers repeat an evaluation item and are left out: "
+                    + ", ".join(f"row {d['row']} ({', '.join(d['items'])})" for d in dropped[:5]))
+                recs = [r for k, r in enumerate(recs) if k not in {j for j, _ in hits}]
+            records_by_source.append(recs)
+            gen_tokens = sum(r["generated_token_count"] for r in recs)
+            per_source.append({
+                "name": src["name"], "kind": src["kind"], "where": src["where"], "n": len(recs), "seed": src["seed"],
+                "thinking": src["thinking"], "max_new_tokens": cap, "batch": src["batch"],
+                "batches": len(plans[i]), "batch_tokens": src["batch_tokens"],
+                "instruction": src.get("instruction"), "max_chars": src.get("max_chars"),
+                **({"levels": src.get("levels"), "subjects": data["parts"]} if src["kind"] == "math_train" else {}),
+                **({"rows": list(src.get("rows") or (5000, 6000))} if src["kind"] == "ultrachat" else {}),
+                "records": len(recs), "prompt_tokens": sum(r["prompt_token_count"] for r in recs),
+                "generated_tokens": gen_tokens, "mean_generated_tokens": round(gen_tokens / max(len(recs), 1), 1),
+                "hit_cap": sum(r["hit_cap"] for r in recs),
+                **({"finished_thinking": sum(r.get("finished_thinking", False) for r in recs)}
+                   if src["thinking"] and think_end else {}),
+                "data": data["files"], "near_duplicates_skipped": data["screened"],
+                "answers_dropped": dropped})
     if any(s["legacy"] for s in sources):
         rows_out = records_by_source[0]
     else:

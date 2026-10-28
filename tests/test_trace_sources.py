@@ -287,6 +287,38 @@ def test_a_batch_out_of_gpu_memory_is_generated_in_halves(make_ctx, tmp_path, da
     assert execute(ctx, "traces") == "ran" and sizes == []   # the markers lead straight to the cached halves
 
 
+def test_generation_runs_under_a_vram_cap_that_is_lifted_after(make_ctx, tmp_path, data, monkeypatch):
+    from contextlib import contextmanager
+    from openbonsai.cli import execute
+    events = []
+
+    @contextmanager
+    def cap(device, log):
+        events.append("cap")
+        try:
+            yield 30.0
+        finally:
+            events.append("lift")
+
+    real = T.generate_encoded
+    monkeypatch.setattr(T, "vram_cap", cap)
+    monkeypatch.setattr(T, "generate_encoded", lambda model, rows, **kw: (events.append("batch"), real(model, rows, **kw))[1])
+    ctx = make_ctx(tmp_path / "run", *sources_sets(mixed_sources(data)[:2]))
+    assert execute(ctx, "traces") == "ran"
+    assert events[0] == "cap" and events[-1] == "lift" and set(events[1:-1]) == {"batch"}
+    events.clear()
+    ctx.run.clear_done("traces")
+    assert execute(ctx, "traces") == "ran" and events == []      # every batch cached: no model, no cap
+
+    def crash(model, rows, **kw):
+        raise KeyboardInterrupt("power cut")
+
+    monkeypatch.setattr(T, "generate_encoded", crash)
+    with pytest.raises(KeyboardInterrupt):
+        execute(ctx, "traces", force=True)
+    assert events == ["cap", "lift"]
+
+
 # -- config ----------------------------------------------------------------------------------
 
 def test_trace_sources_config_is_checked_and_filled_in(data):

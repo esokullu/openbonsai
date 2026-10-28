@@ -13,24 +13,30 @@ trap release EXIT
 
 log "launcher start (pid $WINPID)"
 until grep -q '^DONE' $R/qwen3-8b/download.log 2>/dev/null; do sleep 30; done
-# Let the qwen35-0.8b queue finish: the LAST line of its log is a final state for 10 minutes while no qwen35
-# job holds gpu.lock (a relaunch appends a new start line after an old FAILED). If the GPU sits idle and
-# unlocked for 10 minutes, that queue is gone anyway.
-final() { tail -1 $R/qwen35_08b.log 2>/dev/null | grep -qE 'bf16 baseline (done|FAILED)|run FAILED'; }
-stable=0; idle=0
-while [ $stable -lt 20 ] && [ $idle -lt 20 ]; do
-  if final && ! grep -qs qwen35 $LOCK/owner.txt; then stable=$((stable + 1)); else stable=0; fi
-  if [ "$(gpu_used)" -lt 2048 ] && [ ! -d $LOCK ]; then idle=$((idle + 1)); else idle=0; fi
-  sleep 30
-done
-log "done waiting for the qwen35-0.8b queue ($(tail -1 $R/qwen35_08b.log); idle checks $idle)"
-while true; do
-  if [ "$(gpu_used)" -lt 2048 ] && mkdir $LOCK 2>/dev/null; then
-    echo "$WINPID qwen3-8b-session qwen3-8b $(date '+%Y-%m-%d %H:%M:%S')" > $LOCK/owner.txt; HAVE=1; break
-  fi
-  sleep 15
-done
-log "acquired gpu.lock"
+if grep -qs qwen3-8b-session $LOCK/owner.txt; then
+  # A restart (after a crash or a manual stop) keeps the lock this job still holds.
+  echo "$WINPID qwen3-8b-session qwen3-8b $(date '+%Y-%m-%d %H:%M:%S')" > $LOCK/owner.txt; HAVE=1
+  log "kept gpu.lock from the previous launch"
+else
+  # Let the qwen35-0.8b queue finish: the LAST line of its log is a final state for 10 minutes while no qwen35
+  # job holds gpu.lock (a relaunch appends a new start line after an old FAILED). If the GPU sits idle and
+  # unlocked for 10 minutes, that queue is gone anyway.
+  final() { tail -1 $R/qwen35_08b.log 2>/dev/null | grep -qE 'bf16 baseline (done|FAILED)|run FAILED'; }
+  stable=0; idle=0
+  while [ $stable -lt 20 ] && [ $idle -lt 20 ]; do
+    if final && ! grep -qs qwen35 $LOCK/owner.txt; then stable=$((stable + 1)); else stable=0; fi
+    if [ "$(gpu_used)" -lt 2048 ] && [ ! -d $LOCK ]; then idle=$((idle + 1)); else idle=0; fi
+    sleep 30
+  done
+  log "done waiting for the qwen35-0.8b queue ($(tail -1 $R/qwen35_08b.log); idle checks $idle)"
+  while true; do
+    if [ "$(gpu_used)" -lt 2048 ] && mkdir $LOCK 2>/dev/null; then
+      echo "$WINPID qwen3-8b-session qwen3-8b $(date '+%Y-%m-%d %H:%M:%S')" > $LOCK/owner.txt; HAVE=1; break
+    fi
+    sleep 15
+  done
+  log "acquired gpu.lock"
+fi
 
 cd /d/openbonsai/work/qwen3-8b-snapshot
 export PYTHONPATH=D:/openbonsai/work/qwen3-8b-snapshot HF_HOME=$R/hf-cache HF_HUB_OFFLINE=1 \

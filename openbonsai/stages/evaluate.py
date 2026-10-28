@@ -63,7 +63,7 @@ from ..eval import suites as S
 from ..formats.atomic import atomic_write_json
 from ..formats.state import load_legacy_pt, load_state
 from . import calibrate
-from .common import apply_dense, apply_small, densify, free, has_ternary, install_ternary, legacy_records
+from .common import apply_dense, apply_small, densify, free, has_ternary, install_ternary, legacy_records, vram_cap
 
 STAGE_SOURCES = ("bf16", "quantize", "endpoints", "refine", "distill")
 
@@ -392,6 +392,7 @@ def run(ctx, source: str | None = None, suites=None, install_mode: str = "auto",
             free(ctx.device)
             weights = "dense"
             log(f"reasoning: generating with dense dequantized weights ({replaced} ternary modules replaced)")
-        results.update(run_reasoning(ctx, model, tok, source, label, generating, weights=weights,
-                                     identity=weights_identity(ctx, source, weights, gguf_small_fp32)))
+        with vram_cap(ctx.device, log):    # a KV cache grown a token per step must not spill to system RAM
+            results.update(run_reasoning(ctx, model, tok, source, label, generating, weights=weights,
+                                         identity=weights_identity(ctx, source, weights, gguf_small_fp32)))
     return results

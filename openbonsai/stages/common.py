@@ -1,6 +1,7 @@
 """Shared stage plumbing: config access, model loading, signs, state install."""
 from __future__ import annotations
 
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 import gc
 from pathlib import Path
@@ -19,6 +20,7 @@ from ..formats.state import (TernaryState, TernaryTensor, load_signs, load_state
 from ..rundir import RunDir, StageNotReady
 
 _DTYPES = {"bfloat16": torch.bfloat16, "float16": torch.float16, "float32": torch.float32}
+VRAM_MARGIN = 3 * 2**29            # left free under the allocator cap (CUDA context growth, other processes)
 
 
 @dataclass
@@ -360,3 +362,44 @@ def free(device=None) -> None:
     gc.collect()
     if getattr(device, "type", device) == "cuda" or (device is None and torch.cuda.is_initialized()):
         torch.cuda.empty_cache()
+
+
+def cuda_index(device) -> torch.device:
+    """``device`` with an explicit index: ``set_per_process_memory_fraction`` refuses a bare ``cuda``."""
+    device = torch.device(device)
+    if device.type == "cuda" and device.index is None:
+        device = torch.device("cuda", torch.cuda.current_device())
+    return device
+
+
+def cap_vram(device, log) -> float | None:
+    """Cap this process's CUDA caching allocator at the memory free now (plus what it already holds) less
+    ``VRAM_MARGIN``; returns the cap in GiB (None off CUDA). On Windows the driver pages an allocation that
+    does not fit to system RAM instead of failing, and the stage then runs many times slower while it holds
+    the GPU; with the cap it stops with out-of-memory instead. The cap also makes the allocator return the
+    blocks it cached before it allocates past the cap: without one it never meets out-of-memory, so it never
+    does, and a KV cache that grows a token per step leaves a trail of blocks too small for the next step
+    (Qwen3-8B trace generation reserved 37 GB, 6.6 GB of it in system RAM, for weights and a KV cache of
+    about 21 GB). ``set_per_process_memory_fraction(1.0)`` lifts it."""
+    device = cuda_index(device)
+    if device.type != "cuda":
+        return None
+    free_b, total_b = torch.cuda.mem_get_info(device)
+    held = torch.cuda.memory_reserved(device)      # this process's own cache counts against the cap too
+    fraction = min(1.0, max(0.05, (free_b + held - VRAM_MARGIN) / total_b))
+    torch.cuda.set_per_process_memory_fraction(fraction, device)
+    cap = fraction * total_b / 2**30
+    log(f"VRAM: {free_b / 2**30:.1f} of {total_b / 2**30:.1f} GiB free; this process is capped at {cap:.1f} GiB "
+        "(an overflow stops the stage instead of spilling to system RAM)")
+    return cap
+
+
+@contextmanager
+def vram_cap(device, log):
+    """``cap_vram`` for the duration of the block, lifted after; yields the cap in GiB (None off CUDA)."""
+    cap = cap_vram(device, log)
+    try:
+        yield cap
+    finally:
+        if cap is not None:
+            torch.cuda.set_per_process_memory_fraction(1.0, cuda_index(device))
