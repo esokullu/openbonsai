@@ -6,7 +6,7 @@ Independent project, not affiliated with or endorsed by Prism ML. Bonsai is Pris
 
 OpenBonsai is an open (Apache-2.0) framework that compresses a dense language model to ternary weights in the format of Prism ML's Ternary Bonsai models: Prism's PTQ1_0 GGUF, which runs in Prism's llama.cpp fork. For Qwen3.5-9B the output is a file of about 2 GB, with the same tensor layout as Ternary-Bonsai-2-9B.
 
-**Why.** Prism publishes finished Bonsai weights and an inference runtime. As far as we know, Prism has not published a pipeline to compress a model of your own. OpenBonsai is such a pipeline, in the open: you can bonsai-fy your own model or your own fine-tune with its own tokenizer and chat template, and measure what compression cost against your own BF16 model.
+**Why.** Prism publishes finished Bonsai weights for the base models it chooses, and an inference runtime. It has described the format (ternary weights, FP16 group scales, a blockwise Hadamard rotation) but, as far as we know, not a pipeline to compress a model of your own, and Ternary Bonsai 2 ships packed ternary files only, with no BF16 weights. So community fine-tunes adapt Bonsai itself: LoRA adapters on the frozen ternary base, tuning of its scales and norms, ternary quantization-aware training ([overview](docs/your-own-model.md#other-ways-to-adapt-a-bonsai-model)). They keep Prism's stronger compression, but the fine-tune has to be redone on Bonsai, and an adapter adds FP16 weights at inference. OpenBonsai is the other route, in the open: it compresses your own BF16 model or fine-tune, with its own tokenizer and chat template, to a fully ternary file in Bonsai's format, and measures what compression cost against your own BF16 model. The same pipeline can reach models Prism has not compressed, such as Meta's Muse Glimmer 30B, once they have an adapter ([Other models](#other-models)).
 
 **Status.**
 - Qwen3.5-9B: measured end to end, with the research scripts and with the package's own `openbonsai run` (results below).
@@ -115,27 +115,14 @@ The same pipeline, with traces from several prompt sources (`traces.sources`), e
 ### Your own fine-tune
 
 ```
-openbonsai run --model path/to/my-finetune --config examples/qwen3_5-9b.yaml --out runs/mine
+openbonsai run --model path/to/my-finetune --config examples/qwen3_5-9b-reasoning.yaml --out runs/mine
 ```
 
-Your model is the teacher. It writes its own traces with its own chat template, it is the BF16 reference for every metric, and its tokenizer and chat template go into the GGUF. For a Hugging Face id instead of a local folder, also pass `--set model.revision=null` (or your commit), because the example pins Qwen's commit. To mix your own data into calibration, copy the example config and add a source such as `- {kind: jsonl, path: my-data.jsonl, n: 32}` (one JSON object per line with `messages`, `text` or `input_ids`).
+Start from the reasoning recipe: it made the Hugging Face model (two settings differed; the guide lists them). Your model is the teacher: it writes its own traces with its own chat template, it is the BF16 reference for every metric, and its tokenizer and chat template go into the GGUF. To keep the skill your fine-tune added, copy the recipe and add your task's prompts as one more trace source, such as `- {kind: jsonl, name: my_task, path: my-prompts.jsonl, n: 400, thinking: off, max_new_tokens: 1024}`. Your model then answers them itself, and those answers go into calibration and distillation.
 
-What the fine-tune needs, and what to expect:
-- **A full, merged Qwen3.5 checkpoint** (`model_type` `qwen3_5` or `qwen3_5_text`, untied embedding and head) in safetensors. A LoRA adapter folder is not enough: merge it into the base weights first. The GGUF export reads `model.safetensors` or its index, so a run with a `.bin`-only checkpoint is refused before the first stage (`export.format: auto` writes a latent checkpoint instead). A Hugging Face repo whose only weights are a single `pytorch_model.bin` is not detected until the export stage; convert it to safetensors first. A checkpoint that is already quantized (`quantization_config`) is refused.
-- **Text only.** The vision tower is dropped; the GGUF holds the language model.
-- **Private or gated repositories** need `hf auth login` first.
-- **Calibration size.** `n` counts blocks of `calibrate.seq_len` tokens (2,048 in the example), so `n: 32` needs about 65K tokens of your data; calibrate refuses a source that is too short. The total `n` of `calibrate.sources` must be a multiple of `quantize.batch` (4). The example's 256 blocks plus `n: 32` is 288, which works; `n: 10` is refused before the first stage, with the `--set` that fixes it.
-- **Evaluation.** Use `--set 'eval.suites=[compare]'`, which scores the compressed model against your own BF16 model. `dev` and `extended` run only if your tokenizer is Qwen3.5's, unchanged, and `extended`'s chat NLL scores base Qwen3.5-9B's answers, not your model's.
-- **Keeping a skill.** Distillation only sees its data. To keep a skill your fine-tune added, put data for it in `distill.teacher.sources` as well as in `calibrate.sources`. Setting `distill.teacher.sources` replaces the default mix (512 WikiText-2, 1,512 UltraChat and 24 trace sequences of 2,048 tokens), so list that mix in full plus your `{kind: jsonl, ...}` entry, for example:
-  ```yaml
-  distill:
-    teacher:
-      sources:
-        - {kind: wikitext2, n: 512}
-        - {kind: ultrachat, n: 1384, min_row: 6000}
-        - {kind: traces, n: 24}
-        - {kind: jsonl, path: my-data.jsonl, n: 128}
-  ```
+It needs a full, merged Qwen3.5-9B checkpoint in safetensors (not a LoRA adapter, not quantized), one 32 GB GPU and about 4.5 hours. The tied sizes (0.8B, 2B, 4B) cannot be written as a GGUF yet. For a Hugging Face id instead of a local folder, also pass `--set model.revision=null` (or your commit), because the recipe pins Qwen's commit. `compare` scores the result against your own BF16 model; `gsm8k` and `humaneval` work for any model with a chat template.
+
+Step by step, from the checkpoint to the model card: [docs/your-own-model.md](docs/your-own-model.md).
 
 ### Run the GGUF in Prism's llama.cpp
 
@@ -249,6 +236,8 @@ The pipeline does not know about any one architecture. An adapter says which lin
 
 A latent checkpoint is a Hugging Face folder with the dequantized weights plus the exact codes and scales, for when Prism cannot run the architecture. A dense model of a known type needs no code, but it needs a few settings on top of the 9B example config (revision, evaluation suites, tied endpoints): see [the dense worked example](docs/adding-a-model.md#worked-example-2-a-dense-llamananbeige-style-model). A new dense type is one table row; a new architecture is one adapter file. How, and how to choose what stays in high precision with a sensitivity scan: [docs/adding-a-model.md](docs/adding-a-model.md).
 
+**Models Prism has not compressed.** This is where an open pipeline matters most. Meta's [Muse Glimmer 30B](https://huggingface.co/meta-models/Muse-Glimmer-30B) (Apache-2.0) is one: a dense decoder with an untied head, whose language model would be about 5.8 GB as PTQ1_0 against about 53 GB in BF16 (our estimate from its config). It is not supported yet. It needs an adapter (`model_type` `muse_glimmer`, sliding-window attention in three of every four layers). Its BF16 weights do not fit one 32 GB card, and quantize keeps the whole model on the GPU. Its widths (6,656 and 19,968) give a Hadamard block of 512, untested on real weights. And the GGUF needs a Prism runtime that knows the architecture; until then, the export would be a latent checkpoint.
+
 **Base model without a chat template.** The traces stage cannot run: the model has no chat template to answer prompts in, so `openbonsai run` refuses it before the first stage and shows these settings. Turn traces off and replace the trace data with UltraChat, whose conversations are then joined as plain text. Add to the command:
 
 ```
@@ -265,7 +254,7 @@ A latent checkpoint is a Hugging Face folder with the dequantized weights plus t
 |---|---|
 | `openbonsai/` | the package: `adapters/` (Qwen3.5, dense), `core/` (Hadamard, GPTQ, ternary modules, losses), `stages/` (one module per stage), `formats/` (run state, PTQ1_0 codec, GGUF reader and writer), `eval/` (suites, frozen inputs), `cli.py` |
 | `examples/` | `qwen3_5-9b.yaml` (closest to the measured settings; the differences, such as the trace prompts and the head's calibration blocks, are in its comments), tiny CPU configs, sample prompts and data |
-| `docs/` | [method](docs/method.md), [formats](docs/formats.md), [adding a model](docs/adding-a-model.md), [evaluation](docs/evaluation.md) |
+| `docs/` | [your own fine-tune](docs/your-own-model.md), [method](docs/method.md), [formats](docs/formats.md), [adding a model](docs/adding-a-model.md), [evaluation](docs/evaluation.md) |
 | `tests/` | CPU tests; tiny random models run the whole pipeline |
 | `tools/prism/` | optional worker that scores the frozen dev suite inside Prism's llama.cpp |
 | `scripts/setup_linux.sh` | Linux setup, optional Prism build |

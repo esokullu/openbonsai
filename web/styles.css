@@ -266,14 +266,16 @@ footer a:hover {
   margin-top: 16px;
 }
 
-.method {
+.method,
+.usage {
   width: 100%;
   max-width: 640px;
   padding-top: 40px;
   border-top: 1px solid #e4eae5;
 }
 
-.method h2 {
+.method h2,
+.usage h2 {
   margin: 0;
   font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
   font-size: clamp(27px, 4vw, 36px);
@@ -286,7 +288,8 @@ footer a:hover {
 
 .method-description,
 .method-status,
-.method-links {
+.method-links,
+.usage-description {
   max-width: 540px;
   margin: 16px auto 0;
   color: var(--text);
@@ -321,19 +324,50 @@ footer a:hover {
   font-size: 13px;
 }
 
-.method a {
+.method a,
+.usage a {
   color: inherit;
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
 }
 
-.method a:hover {
+.method a:hover,
+.usage a:hover {
   color: var(--ink);
 }
 
-.method a:focus-visible {
+.method a:focus-visible,
+.usage a:focus-visible,
+.usage-command:focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 5px;
+}
+
+/* "Use your own fine-tune": the one command; it scrolls inside its box on narrow screens */
+
+.usage-command {
+  max-width: 540px;
+  margin: 24px auto 0;
+  padding: 14px 18px;
+  overflow-x: auto;
+  border: 1px solid #e4eae5;
+  border-radius: 4px;
+  color: var(--ink);
+  background: #f6f8f6;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.usage-command code {
+  font: inherit;
+}
+
+@media (max-width: 480px) {
+  .usage-command {
+    padding: 12px;
+    font-size: 12px;
+  }
 }
 
 footer p + p {
