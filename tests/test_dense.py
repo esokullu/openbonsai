@@ -119,6 +119,37 @@ def test_tied_tables_stay_high_precision_and_ternary_is_refused():
     assert hp["output.weight"].gtype == hp["token_embd.weight"].gtype == GGML_BF16
 
 
+def test_the_qwen3_8b_example_is_the_reasoning_recipe_at_block_4096():
+    """examples/qwen3-8b-reasoning.yaml is the 9B reasoning recipe except its documented differences (model,
+    trace batch budget, eval suites), and Qwen3-8B's shape (its config.json, 2 of 36 layers) derives Hadamard
+    block 4096 with a ternary head and embedding in a qwen3 GGUF."""
+    from transformers import Qwen3Config
+    eight = load_config(ROOT / "examples" / "qwen3-8b-reasoning.yaml")
+    nine = load_config(ROOT / "examples" / "qwen3_5-9b-reasoning.yaml")
+    assert eight["model"]["path"] == "Qwen/Qwen3-8B" and len(eight["model"]["revision"]) == 40
+    for section in ("rotation", "calibrate", "quantize", "endpoints", "distill", "export"):
+        assert eight[section] == nine[section], section
+    differ = {"traces": "batch_tokens", "eval": "suites"}
+    for section, key in differ.items():
+        assert {k: v for k, v in eight[section].items() if k != key} == \
+               {k: v for k, v in nine[section].items() if k != key}, section
+    assert eight["traces"]["batch_tokens"] == 28000 and eight["eval"]["suites"] == ["compare", "gsm8k", "humaneval"]
+    cli.check_calibration_batch(eight)
+    config = Qwen3Config(vocab_size=151936, hidden_size=4096, intermediate_size=12288, num_hidden_layers=2,
+                         num_attention_heads=32, num_key_value_heads=8, head_dim=128, max_position_embeddings=40960,
+                         rms_norm_eps=1e-6, rope_theta=1000000, tie_word_embeddings=False, bos_token_id=151643,
+                         eos_token_id=151645)
+    adapter = adapter_for_config(config)
+    geo = derive_geometry(adapter.quantized_widths(adapter.empty_model()), adapter.hidden_size)
+    assert geo.widths == (4096, 12288) and geo.block == 4096 and block_note(geo.block) is None
+    assert not adapter.tied and ternary_endpoints(eight, adapter) == (True, True)
+    assert adapter.chat_kwargs(thinking=True) == {"enable_thinking": True} and adapter.gguf_unsupported() is None
+    plan = {t.name: t for t in adapter.gguf_tensors()}
+    assert plan["output.weight"].gtype == plan["token_embd.weight"].gtype == GGML_PTQ1_0
+    assert plan["token_embd.weight"].role == "inverse" and plan["blk.1.attn_k.weight"].ne == (4096, 1024)
+    assert plan["blk.0.ffn_down.weight"].ne == (12288, 4096) and plan["blk.0.attn_q.weight"].perm is None
+
+
 def test_llama_rope_permutation_matches_prisms_converter_and_the_independent_rule():
     def permute(w, n_head, n_head_kv):   # Prism conversion/llama.py LlamaModel.permute, transcribed
         if n_head_kv is not None and n_head != n_head_kv:

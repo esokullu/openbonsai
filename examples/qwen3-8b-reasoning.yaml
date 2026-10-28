@@ -1,0 +1,92 @@
+# Qwen3-8B -> ternary with the reasoning recipe of the Qwen3.5-9B model
+# (examples/qwen3_5-9b-reasoning.yaml): the second real model, and the first dense one, through the
+# `dense` adapter. Qwen3-8B (model_type qwen3, 36 layers, hidden 4096, MLP 12288, untied head, vocabulary
+# 151,936) has the 9B's rotated widths, so the Hadamard block is 4096, the only block Prism's runtime has
+# run on real weights. Its chat template has the enable_thinking switch, so the traces are the 9B's.
+#
+#   openbonsai run --config examples/qwen3-8b-reasoning.yaml --out runs/qwen3-8b-reasoning
+#
+# What differs from the 9B recipe, and why:
+#   model      Qwen/Qwen3-8B at a pinned commit; the dense adapter (no code, model_type qwen3)
+#   traces     the same 1,520 prompts, thinking switches and caps; batch_tokens 28,000 instead of 14,000:
+#              a dense Qwen3 KV cache is ~144 KB per token, so 16 thinking rows (~27K tokens) take ~4 GB
+#              next to the 16.4 GB model
+#   eval       compare, gsm8k, humaneval: dev and extended need the Qwen3.5 tokenizer, and compare scores
+#              the model against its own BF16 original. GSM8K and HumanEval: the 9B's subsets, thinking
+#              off (100/50, 512-token cap, batch 16) and on (the first 50/25, 4,096-token cap, batch 8)
+# Calibration, GPTQ, endpoints (head and embedding ternary), distillation and export are the 9B's.
+model:
+  path: Qwen/Qwen3-8B
+  revision: b968826d9c46dd6066d109eabc6255188de91218
+  dtype: bfloat16
+  device: auto
+  attn: sdpa
+rotation:
+  group: 128
+  max_block: 4096          # derived block for Qwen3-8B (widths 4096, 12288): 4096
+  signs: {mode: seeded, seed: width}
+  impl: dense
+traces:
+  # The 9B recipe's sources (its comments list the pinned dataset files and the contamination guard).
+  seed: 0
+  batch_tokens: 28000      # rows x (longest prompt + cap) per batch
+  sources:
+    - {kind: gsm8k_train, n: 400, seed: 1, thinking: on, max_new_tokens: 1536, batch: 16}
+    - {kind: math_train, n: 240, seed: 2, levels: [1, 2, 3], thinking: on, max_new_tokens: 1536, batch: 16}
+    - {kind: mbpp_train, n: 140, seed: 3, thinking: on, max_new_tokens: 1536, batch: 16}
+    - {kind: opencodeinstruct, n: 280, seed: 4, max_chars: 2000, thinking: on, max_new_tokens: 1536, batch: 16}
+    - {kind: ultrachat, n: 200, rows: [5000, 6000], seed: 5090, thinking: off, max_new_tokens: 512, batch: 32}
+    - {kind: gsm8k_train, name: gsm8k_train_off, n: 160, seed: 5, thinking: off, max_new_tokens: 768, batch: 16}
+    - {kind: mbpp_train, name: mbpp_train_off, n: 100, seed: 6, thinking: off, max_new_tokens: 768, batch: 16}
+calibrate:
+  seq_len: 2048
+  seed: 0
+  sources:
+    - {kind: wikitext2, n: 64}
+    - {kind: ultrachat, n: 64, min_row: 6000}
+    - {kind: traces, n: 128}
+quantize:
+  damp: 0.01
+  batch: 4
+endpoints:
+  head: ternary            # untied: GPTQ with the final-hidden-state Hessian
+  embedding: ternary       # GPTQ weighted by layer 0's w^2 norm gain (Qwen3's norm is w * x_hat)
+  damp: 0.01
+  chunk: 16384
+  batch: 4
+distill:
+  teacher:
+    n_seq: 1536
+    seq_len: 2048
+    seed: 1
+    shard: 64
+    topk: 64
+    sources:
+      - {kind: wikitext2, n: 256}
+      - {kind: ultrachat, n: 640, min_row: 6000}
+      - {kind: traces, n: 640}
+  train: {scales: true, small: false}
+  lr: 1.0e-3
+  lr_small: 1.0e-4
+  lr_small_mat: 2.0e-5
+  epochs: 1
+  accum: 8
+  warmup: 10
+  chunk: 512
+  log_every: 5
+  ckpt_every: 16
+export:
+  format: ptq1_0-gguf      # Prism's qwen3 architecture
+  verify: true
+eval:
+  from: auto
+  suites: [compare, gsm8k, humaneval]
+  reasoning:
+    thinking: [off, on]
+    max_new_tokens: 512
+    max_new_tokens_thinking: 4096
+    batch: 16
+    batch_thinking: 8
+    gsm8k: {n: 100, n_thinking: 50}
+    humaneval: {n: 50, n_thinking: 25}
+  generations: true
