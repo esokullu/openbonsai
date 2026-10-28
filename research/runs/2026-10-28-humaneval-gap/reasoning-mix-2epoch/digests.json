@@ -1,0 +1,42 @@
+{
+ "D:\\openbonsai\\runs\\2026-10-26-5090-ultrachat-attempt2\\source\\data\\train_sft-00000-of-00003-a3ecf92756993583.parquet": {
+  "size": 243999189,
+  "mtime_ns": 1793020628626558200,
+  "sha256": "afa8fa7426081b2a0e732fb50dbb5cd402a28ad5f0dbe66c0d996d63e7220727"
+ },
+ "D:\\openbonsai\\.claude\\worktrees\\bonsai-start-distill-002447\\runs\\2026-10-28-reasoning-mix-2epoch\\traces\\traces.jsonl": {
+  "size": 20509237,
+  "mtime_ns": 1793158317637088700,
+  "sha256": "cbffc9df037f9b55ee1532978e13a9cc92a249dbcffe5edfce688b1140c523d5"
+ },
+ "D:\\openbonsai\\.claude\\worktrees\\bonsai-start-distill-002447\\runs\\2026-10-28-reasoning-mix-2epoch\\calib\\tokens.npy": {
+  "size": 2097280,
+  "mtime_ns": 1793158317689986200,
+  "sha256": "6ba60686fe6bf49d597d4477bb77f031894f3c9a714b948e2346b65a76615739"
+ },
+ "D:\\openbonsai\\.claude\\worktrees\\bonsai-start-distill-002447\\runs\\2026-10-28-reasoning-mix-2epoch\\quantize\\state.safetensors": {
+  "size": 1836124776,
+  "mtime_ns": 1793158321321928200,
+  "sha256": "c7982fcb777d114424f49322c97e9b2d6491203c93699452479eb2fde15796e0"
+ },
+ "D:\\openbonsai\\.claude\\worktrees\\bonsai-start-distill-002447\\runs\\2026-10-28-reasoning-mix-2epoch\\endpoints\\state.safetensors": {
+  "size": 540349168,
+  "mtime_ns": 1793158318447095400,
+  "sha256": "c0638655a02dd47eb2102136e23c0e2f4926c297272de50651c85d403434aca5"
+ },
+ "D:\\openbonsai\\.claude\\worktrees\\bonsai-start-distill-002447\\runs\\2026-10-28-reasoning-mix-2epoch\\distill\\scales.safetensors": {
+  "size": 139810112,
+  "mtime_ns": 1793191620825732300,
+  "sha256": "c51a326afec8bd6970af944d542233220c53d56731b35fa1bd633f01682bd835"
+ },
+ "D:\\openbonsai\\.claude\\worktrees\\bonsai-start-distill-002447\\runs\\2026-10-28-reasoning-mix-2epoch\\export\\OpenBonsai-Qwen3.5-9B-PTQ1_0.gguf": {
+  "size": 1997486976,
+  "mtime_ns": 1793191711350282400,
+  "sha256": "ca946ce17ebb121838685d8eb81cd5e3b80868bab5edc16d24ef39cd6c48798b"
+ },
+ "D:\\openbonsai\\.claude\\worktrees\\bonsai-start-distill-002447\\runs\\2026-10-28-reasoning-mix-2epoch\\distill\\teacher\\input_ids.npy": {
+  "size": 12583040,
+  "mtime_ns": 1793158321405109100,
+  "sha256": "896b5a35afa84f38b184c676274eb121d99db961d4ca84b6c0eb3ca46873306b"
+ }
+}

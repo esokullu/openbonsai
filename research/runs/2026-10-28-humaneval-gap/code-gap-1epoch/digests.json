@@ -1,0 +1,42 @@
+{
+ "D:\\openbonsai\\runs\\2026-10-26-5090-ultrachat-attempt2\\source\\data\\train_sft-00000-of-00003-a3ecf92756993583.parquet": {
+  "size": 243999189,
+  "mtime_ns": 1793020628626558200,
+  "sha256": "afa8fa7426081b2a0e732fb50dbb5cd402a28ad5f0dbe66c0d996d63e7220727"
+ },
+ "D:\\openbonsai\\.claude\\worktrees\\bonsai-start-distill-002447\\runs\\2026-10-28-code-gap-1epoch\\traces\\traces.jsonl": {
+  "size": 30110802,
+  "mtime_ns": 1793158312745291100,
+  "sha256": "87b8f2b829911258310bc9b40552605d96677b1f7ba80a877816b52c696dcf90"
+ },
+ "D:\\openbonsai\\.claude\\worktrees\\bonsai-start-distill-002447\\runs\\2026-10-28-code-gap-1epoch\\calib\\tokens.npy": {
+  "size": 2097280,
+  "mtime_ns": 1793158312783936300,
+  "sha256": "24b9c341762874ed85c610b2c7a3237c31ae5e3971dea2edd3f09422aea6710d"
+ },
+ "D:\\openbonsai\\.claude\\worktrees\\bonsai-start-distill-002447\\runs\\2026-10-28-code-gap-1epoch\\quantize\\state.safetensors": {
+  "size": 1836124776,
+  "mtime_ns": 1793158314706380600,
+  "sha256": "83ebf6ccceb2bbf6ac7e7a38a1da8026de3e07dd048ebf3090f708b91d4235a3"
+ },
+ "D:\\openbonsai\\.claude\\worktrees\\bonsai-start-distill-002447\\runs\\2026-10-28-code-gap-1epoch\\endpoints\\state.safetensors": {
+  "size": 540349168,
+  "mtime_ns": 1793158313206525700,
+  "sha256": "d591d73377908ba88be637f961c72ea2b13eb0390f1803682b0b9580fc9e197c"
+ },
+ "D:\\openbonsai\\.claude\\worktrees\\bonsai-start-distill-002447\\runs\\2026-10-28-code-gap-1epoch\\distill\\scales.safetensors": {
+  "size": 139810112,
+  "mtime_ns": 1793182261724012600,
+  "sha256": "044c665b93dc42ae17ccca08e65f9e1c04b54f6968e47d0e83b82cdbf3286cf5"
+ },
+ "D:\\openbonsai\\.claude\\worktrees\\bonsai-start-distill-002447\\runs\\2026-10-28-code-gap-1epoch\\export\\OpenBonsai-Qwen3.5-9B-PTQ1_0.gguf": {
+  "size": 1997486976,
+  "mtime_ns": 1793182356235207400,
+  "sha256": "818d8783bc39d92b2777a0333d38f7a25021a7b906f47344b83b7109eba6f7a0"
+ },
+ "D:\\openbonsai\\.claude\\worktrees\\bonsai-start-distill-002447\\runs\\2026-10-28-code-gap-1epoch\\distill\\teacher\\input_ids.npy": {
+  "size": 15204480,
+  "mtime_ns": 1793158314770807200,
+  "sha256": "d127e4b6eb2250dc81c91d3d8ab0d2fa7020bb3400cae5f0565496f2d5d8b381"
+ }
+}
