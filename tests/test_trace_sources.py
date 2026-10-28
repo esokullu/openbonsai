@@ -356,20 +356,21 @@ def test_examples_include_the_reasoning_config():
     assert (math, code, srcs[4]["n"]) == (640, 420, 200) and srcs[1]["levels"] == [1, 2, 3]
     assert srcs[4]["rows"] == [5000, 6000] and srcs[3]["max_chars"] == 2000
     assert [s["name"] for s in srcs[5:]] == ["gsm8k_train_off", "mbpp_train_off"]
-    assert {s["batch_tokens"] for s in srcs} == {32768}
-    # The budget the config documents: the longest prompts measured with the Qwen3.5 tokenizer (UltraChat
-    # 2,049, MATH 883, OpenCodeInstruct 603 tokens) fit in it only in smaller batches.
-    for longest, src in ((2049, srcs[4]), (883, srcs[1]), (603, srcs[3])):
-        assert src["batch"] * (longest + src["max_new_tokens"]) > 32768
+    assert {s["batch_tokens"] for s in srcs} == {14000}
+    # The budget the config documents (the published run's): the longest prompts measured with the Qwen3.5
+    # tokenizer (UltraChat 2,049, MATH 883, OpenCodeInstruct 603 tokens) fit in it only in smaller batches,
+    # and a thinking batch of short GSM8K prompts holds 8.
+    for longest, src in ((2049, srcs[4]), (883, srcs[1]), (603, srcs[3]), (120, srcs[0])):
+        assert src["batch"] * (longest + src["max_new_tokens"]) > 14000
         assert T.plan_batches([longest] + [10] * 40, src["batch"], sort=True, cap=src["max_new_tokens"],
-                              budget=32768)[0] == list(range({2049: 12, 883: 13, 603: 15}[longest]))
+                              budget=14000)[0] == list(range({2049: 5, 883: 5, 603: 6, 120: 8}[longest]))
     cli.check_calibration_batch(cfg)
     calib = {s["kind"]: s["n"] for s in cfg["calibrate"]["sources"]}
     assert calib == {"wikitext2": 64, "ultrachat": 64, "traces": 128}
     teacher = cfg["distill"]["teacher"]
     counts = {s["kind"]: s["n"] for s in teacher["sources"]}
     assert sum(counts.values()) == teacher["n_seq"] and 0.4 <= counts["traces"] / teacher["n_seq"] <= 0.5
-    assert cfg["distill"]["train"] == {"scales": True, "small": True}
+    assert cfg["distill"]["train"] == {"scales": True, "small": False}
     r = cfg["eval"]["reasoning"]
     assert cfg["eval"]["suites"] == ["dev", "extended", "compare", "gsm8k", "humaneval"]
     assert R.thinking_modes(r["thinking"]) == ["off", "on"]
