@@ -77,10 +77,10 @@ model:
   revision: null
 ```
 
-Two settings differ between the example and the run that made the published model (`research/runs/2026-10-27-reasoning-mix-v1/run.yaml`):
+The recipe holds the settings of the run that made the published model (`research/runs/2026-10-27-reasoning-mix-v1/run.yaml`). Two of them depend on the hardware or are worth knowing about:
 
-- `traces.batch_tokens: 14000` in the run, 32,768 in the example. At 32,768 the first GSM8K batches held 16 prompts and decoded at about 113 tokens/s. The run was restarted with 14,000: its GSM8K batches held 8 prompts and decoded at 127-215 tokens/s (mean 173). Use 14,000 on a 32 GB card.
-- `distill.train.small: false` in the run: it trained only the group scales. The example's `true` also trains the small high-precision tensors (norms, `conv1d`, `A_log`, `dt_bias`, `in_proj_a/b`); on the generic recipe that moved dev NLL from 2.892 to 2.884, within noise. Set `false` to match the published model.
+- `traces.batch_tokens: 14000` caps the tokens in flight per generation batch. The published run first tried 32,768: its GSM8K thinking batches held 16 prompts and decoded at about 113 tokens/s. At 14,000 they held 8 and decoded at 127-215 tokens/s (mean 173). Keep 14,000 on a 32 GB card.
+- `distill.train.small: false` trains only the group scales. `true` also trains the small high-precision tensors (norms, `conv1d`, `A_log`, `dt_bias`, `in_proj_a/b`). On the generic recipe that moved dev NLL from 2.892 to 2.884, within noise; it has not been tried on this recipe.
 
 The rest of the recipe (rotation, GPTQ, endpoints, distillation schedule, export) applies to a fine-tune unchanged. Read the comments at the top of the recipe: they explain every data choice below.
 
