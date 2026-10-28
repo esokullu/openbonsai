@@ -1,0 +1,30 @@
+[05:12:17] eval: {"source": "distill", "suite": "dev", "nll": 2.997512874938197, "ppl": 20.035643751923626, "scored_tokens": 2048, "arc_correct": 18, "arc_total": 20, "arc_preds": "DBABDAAAACADBCCBCBBB", "manifest_frozen_sha256": "8021d9cc8f54943a3b816af74cbc41d588173d385f51b73a681e979393ef5fdf"}
+[05:12:48] eval: {"source": "distill", "suite": "extended", "wiki16k_nll": 2.734657854987619, "arc100": 90, "chat_nll": 1.422350557357102}
+[05:12:53] eval: {"source": "distill", "suite": "compare", "tokens": 4088, "nll": 2.7146933284023995, "ref_nll": 2.22213217243816, "delta_nll": 0.49256115596423955, "top1_agreement": 0.690068493150685, "ear_full": 0.7023010272371196, "kl_full": 0.5814992039189197, "ear_top64_lb": 0.6659409783938154, "ear_top64_ub": 0.7206626034416859, "kl_top64": 0.5302443130189226, "topk": 64, "vocab": 248320, "full_vocab": true}
+[05:12:56] eval: reasoning: generating with dense dequantized weights (202 ternary modules replaced)
+[05:13:54] eval: gsm8k think=off: batch 1/7: 6180 new tokens in 57.7 s = 107.1 tok/s (512 steps, 8.88 steps/s), hit cap 4/16; ETA 5m03s
+[05:14:45] eval: gsm8k think=off: batch 2/7: 5804 new tokens in 50.9 s = 114.1 tok/s (512 steps, 10.07 steps/s), hit cap 1/16; ETA 3m51s
+[05:15:37] eval: gsm8k think=off: batch 3/7: 5697 new tokens in 52.9 s = 107.8 tok/s (512 steps, 9.69 steps/s), hit cap 2/16; ETA 2m55s
+[05:16:29] eval: gsm8k think=off: batch 4/7: 6031 new tokens in 51.3 s = 117.6 tok/s (512 steps, 9.98 steps/s), hit cap 4/16; ETA 2m00s
+[05:17:20] eval: gsm8k think=off: batch 5/7: 6550 new tokens in 50.9 s = 128.8 tok/s (512 steps, 10.07 steps/s), hit cap 5/16; ETA 1m06s
+[05:18:12] eval: gsm8k think=off: batch 6/7: 6627 new tokens in 52.1 s = 127.2 tok/s (512 steps, 9.83 steps/s), hit cap 7/16; ETA 0m13s
+[05:18:53] eval: gsm8k think=off: batch 7/7: 1195 new tokens in 41.1 s = 29.1 tok/s (374 steps, 9.11 steps/s), hit cap 0/4; ETA 0m00s
+[05:18:53] eval: gsm8k think=off: 74/100, hit cap 23/100 at 512 tokens, 106.8 tok/s (0/7 batches from the cache)
+[05:25:47] eval: gsm8k think=on: batch 1/7: 29398 new tokens in 414.5 s = 70.9 tok/s (4096 steps, 9.88 steps/s), hit cap 7/8; ETA 36m16s
+[05:32:47] eval: gsm8k think=on: batch 2/7: 23955 new tokens in 419.2 s = 57.1 tok/s (4096 steps, 9.77 steps/s), hit cap 4/8; ETA 29m32s
+[05:40:40] eval: gsm8k think=on: batch 3/7: 20699 new tokens in 472.9 s = 43.8 tok/s (4096 steps, 8.66 steps/s), hit cap 4/8; ETA 23m36s
+[05:48:24] eval: gsm8k think=on: batch 4/7: 18674 new tokens in 464.6 s = 40.2 tok/s (4096 steps, 8.82 steps/s), hit cap 3/8; ETA 16m36s
+[05:55:46] eval: gsm8k think=on: batch 5/7: 26778 new tokens in 442.2 s = 60.6 tok/s (4096 steps, 9.26 steps/s), hit cap 6/8; ETA 9m13s
+[06:03:01] eval: gsm8k think=on: batch 6/7: 27131 new tokens in 434.5 s = 62.4 tok/s (4096 steps, 9.43 steps/s), hit cap 6/8; ETA 1m50s
+[06:10:24] eval: gsm8k think=on: batch 7/7: 8192 new tokens in 442.7 s = 18.5 tok/s (4096 steps, 9.25 steps/s), hit cap 2/2; ETA 0m00s
+[06:10:24] eval: gsm8k think=on: 18/50, hit cap 32/50 at 4096 tokens, unfinished thinking 32, 50.1 tok/s (0/7 batches from the cache)
+[06:11:14] eval: humaneval think=off: batch 1/4: 4334 new tokens in 49.8 s = 87.0 tok/s (512 steps, 10.28 steps/s), hit cap 3/16; ETA 1m46s
+[06:11:50] eval: humaneval think=off: batch 2/4: 3167 new tokens in 36.3 s = 87.1 tok/s (364 steps, 10.02 steps/s), hit cap 0/16; ETA 0m48s
+[06:12:31] eval: humaneval think=off: batch 3/4: 3107 new tokens in 40.5 s = 76.6 tok/s (364 steps, 8.98 steps/s), hit cap 0/16; ETA 0m05s
+[06:12:48] eval: humaneval think=off: batch 4/4: 297 new tokens in 17.6 s = 16.9 tok/s (161 steps, 9.15 steps/s), hit cap 0/2; ETA 0m00s
+[06:13:01] eval: humaneval think=off: 29/50, hit cap 3/50 at 512 tokens, 75.6 tok/s (0/4 batches from the cache)
+[06:20:31] eval: humaneval think=on: batch 1/4: 12892 new tokens in 449.6 s = 28.7 tok/s (4096 steps, 9.11 steps/s), hit cap 2/8; ETA 15m55s
+[06:27:41] eval: humaneval think=on: batch 2/4: 13740 new tokens in 429.2 s = 32.0 tok/s (4096 steps, 9.54 steps/s), hit cap 2/8; ETA 8m14s
+[06:35:12] eval: humaneval think=on: batch 3/4: 22300 new tokens in 451.8 s = 49.4 tok/s (4096 steps, 9.07 steps/s), hit cap 4/8; ETA 0m55s
+[06:36:13] eval: humaneval think=on: batch 4/4: 597 new tokens in 60.6 s = 9.9 tok/s (597 steps, 9.86 steps/s), hit cap 0/1; ETA 0m00s
+[06:36:16] eval: humaneval think=on: 15/25, hit cap 8/25 at 4096 tokens, unfinished thinking 8, 35.6 tok/s (0/4 batches from the cache)

@@ -1,0 +1,16 @@
+{
+ "stage": "distill",
+ "config_hash": "90084a986de4ee990588d85c0fba4736281f8f47c97084e95d4657557bee32ff",
+ "output_sha256": "71a0c51440f00b0d233d0640552b9b2871284b3ae3553f287329d26f7276946e",
+ "result": {
+  "teacher": {
+   "rows": 1856,
+   "seq_len": 2048
+  },
+  "train": {
+   "scales": 202,
+   "small": 0,
+   "steps_this_run": 416
+  }
+ }
+}

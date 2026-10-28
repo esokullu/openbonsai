@@ -1,0 +1,130 @@
+# Qwen3.5-9B -> ternary: the reasoning recipe (examples/qwen3_5-9b-reasoning.yaml, the run behind
+# the Hugging Face model) with more code in the traces, the calibration and the distillation data.
+# That recipe scores HumanEval 19/50 with thinking off, against 44/50 for BF16 and 45/50 for Prism's
+# Ternary Bonsai 2 9B. Its failures are logic and syntax errors in well-formed answers, not format.
+# This config scored 34/50 (research/runs/2026-10-28-humaneval-gap, the "code-gap data, 1 epoch" run):
+#
+#                    reasoning recipe   this config   BF16
+#   HumanEval off    19/50              34/50         44/50
+#   HumanEval on     10/25              14/25         22/25
+#   GSM8K off        69/100             65/100        77/100
+#   GSM8K on         25/50              32/50         36/50
+#   dev NLL / ARC    2.960 / 17         3.012 / 18    2.423 / 19
+#
+# Changes against the reasoning recipe (everything else is equal):
+#
+#   traces     + opencodeinstruct_2: 280 more OpenCodeInstruct prompts, thinking on, cap 1,536
+#              + opencodeinstruct_off: 600 OpenCodeInstruct prompts, thinking off, cap 768
+#              2,400 prompts in all; code is 50% of the generated tokens (was 32%), math 46%, chat 4%
+#   calibrate  traces 128 -> 192 of the 256 blocks (WikiText-2 64 -> 32, UltraChat 64 -> 32)
+#   distill    1,856 teacher sequences (was 1,536): traces 640 -> 1,088 (59%), UltraChat 640 -> 512,
+#              WikiText-2 256; still one epoch (232 steps)
+#
+# One epoch is deliberate. The same data with two epochs (464 steps) scored HumanEval 29/50 and
+# GSM8K 74/100 with thinking off, but 18/50 on GSM8K with thinking on: its thinking ran longer (mean
+# 3,097 generated tokens against 2,346 here) and 32 of 50 answers hit the 4,096-token cap.
+#
+#   openbonsai run --config examples/qwen3_5-9b-reasoning-code.yaml --out runs/qwen3_5-9b-reasoning-code
+#
+# These are the settings of the measured run, research/runs/2026-10-28-humaneval-gap/code-gap-1epoch/
+# run.yaml (it read UltraChat from a local copy of the same pinned file, offline; every stage hash
+# but that path's matches).
+#
+# The first seven trace sources are the reasoning recipe's, with the same seeds, so a run that starts
+# from a copy of that recipe's traces/ reuses its 167 cached batches and generates only the two new
+# sources (84 batches). The traces then hold 2,510,623 tokens, 1,225 blocks of 2,048; the teacher
+# reads the first 1,088 of them.
+#
+# Trace volume (measured):
+#
+#   source                 n   thinking  cap    generated
+#   first seven sources  1,520  (the reasoning recipe's)  1.54M
+#   opencodeinstruct_2     280   on        1536     326K   (80 of 280 hit the cap)
+#   opencodeinstruct_off   600   off        768     235K   (73 of 600)
+#   generated                                     2.10M
+#
+# GPU time on one RTX 5090: the traces take about 3.6 h (the reasoning recipe's 9,213 s of generation
+# plus 3,744 s for the two new sources); calibrate <1 min | quantize 15 min | endpoints 2 min | distill:
+# teacher 7 min + training 41 min (232 steps of ~10.5 s) | export and verify 3 min | eval ~30 min.
+# About 5 h in all, against 4.1 h for the reasoning recipe.
+#
+# Contamination: the same guards as the reasoning recipe (its comments, and docs/evaluation.md). None
+# of the OpenCodeInstruct rows that share a 13-word run with a HumanEval problem were drawn by the new
+# sources' seeds (traces/summary.json lists none skipped).
+model:
+  path: Qwen/Qwen3.5-9B
+  revision: c202236235762e1c871ad0ccb60c8ee5ba337b9a
+  dtype: bfloat16
+  device: auto
+  attn: sdpa
+rotation:
+  group: 128
+  max_block: 4096
+  signs: {mode: seeded, seed: width}
+  impl: dense
+traces:
+  seed: 0                  # interleaving of the sources in traces.jsonl
+  batch_tokens: 14000      # rows x (longest prompt + cap) per batch (see examples/qwen3_5-9b-reasoning.yaml)
+  sources:
+    - {kind: gsm8k_train, n: 400, seed: 1, thinking: on, max_new_tokens: 1536, batch: 16}
+    - {kind: math_train, n: 240, seed: 2, levels: [1, 2, 3], thinking: on, max_new_tokens: 1536, batch: 16}
+    - {kind: mbpp_train, n: 140, seed: 3, thinking: on, max_new_tokens: 1536, batch: 16}
+    - {kind: opencodeinstruct, n: 280, seed: 4, max_chars: 2000, thinking: on, max_new_tokens: 1536, batch: 16}
+    - {kind: ultrachat, n: 200, rows: [5000, 6000], seed: 5090, thinking: off, max_new_tokens: 512, batch: 32}
+    - {kind: gsm8k_train, name: gsm8k_train_off, n: 160, seed: 5, thinking: off, max_new_tokens: 768, batch: 16}
+    - {kind: mbpp_train, name: mbpp_train_off, n: 100, seed: 6, thinking: off, max_new_tokens: 768, batch: 16}
+    # The code additions: other seeds over the same OpenCodeInstruct shard (mostly other prompts).
+    - {kind: opencodeinstruct, name: opencodeinstruct_2, n: 280, seed: 7, max_chars: 2000, thinking: on, max_new_tokens: 1536, batch: 16}
+    - {kind: opencodeinstruct, name: opencodeinstruct_off, n: 600, seed: 8, max_chars: 2000, thinking: off, max_new_tokens: 768, batch: 16}
+calibrate:
+  seq_len: 2048
+  seed: 0
+  sources:
+    - {kind: wikitext2, n: 32}
+    - {kind: ultrachat, n: 32, min_row: 6000}
+    - {kind: traces, n: 192}                   # the first 192 blocks of traces/traces.jsonl
+quantize:
+  damp: 0.01
+  batch: 4
+endpoints:
+  head: ternary
+  embedding: ternary
+  damp: 0.01
+  chunk: 16384
+  batch: 4
+distill:
+  teacher:
+    n_seq: 1856            # the sources below sum to it
+    seq_len: 2048
+    seed: 1
+    shard: 64
+    topk: 64
+    sources:
+      - {kind: wikitext2, n: 256}
+      - {kind: ultrachat, n: 512, min_row: 6000}
+      - {kind: traces, n: 1088}                # the first 1,088 blocks of traces.jsonl (~2.23M tokens)
+  train: {scales: true, small: false}
+  lr: 1.0e-3
+  lr_small: 1.0e-4         # used with small: true (vector-like tensors)
+  lr_small_mat: 2.0e-5     # used with small: true (conv1d, in_proj_a/b)
+  epochs: 1                # two epochs lengthen the thinking (above)
+  accum: 8
+  warmup: 10
+  chunk: 512
+  log_every: 5
+  ckpt_every: 16
+export:
+  format: ptq1_0-gguf
+  verify: true
+eval:
+  from: auto
+  suites: [dev, extended, compare, gsm8k, humaneval]
+  reasoning:
+    thinking: [off, on]
+    max_new_tokens: 512
+    max_new_tokens_thinking: 4096
+    batch: 16
+    batch_thinking: 8
+    gsm8k: {n: 100, n_thinking: 50}
+    humaneval: {n: 50, n_thinking: 25}
+  generations: true

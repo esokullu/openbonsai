@@ -1,0 +1,29 @@
+[13:11:23] export: exporting the distill state to D:\openbonsai\.claude\worktrees\bonsai-start-distill-002447\runs\2026-10-28-code-gap-1epoch\export\OpenBonsai-Qwen3.5-9B-PTQ1_0.gguf
+[13:11:24] export: note: layout equals the reference file's (Ternary-Bonsai-2-9B): tensor names, order, types, ne, offsets and the runtime KVs; other KVs differ (tokenizer or descriptive metadata): ['general.name']
+[13:11:24] export: writing D:\openbonsai\.claude\worktrees\bonsai-start-distill-002447\runs\2026-10-28-code-gap-1epoch\export\OpenBonsai-Qwen3.5-9B-PTQ1_0.gguf.tmp (427 tensors, 49 KVs)
+[13:11:32] export:   [1/427] output.weight 222.5 MB t=8s
+[13:11:41] export:   [3/427] token_embd.weight 222.5 MB t=16s
+[13:11:49] export:   [65/427] blk.4.ssm_alpha.weight 0.5 MB t=25s
+[13:11:58] export:   [129/427] blk.9.ffn_up.weight 11.0 MB t=34s
+[13:12:05] export:   [193/427] blk.14.attn_qkv.weight 7.3 MB t=41s
+[13:12:13] export:   [257/427] blk.18.ssm_out.weight 3.7 MB t=49s
+[13:12:22] export:   [321/427] blk.23.post_attention_norm.weight 0.0 MB t=58s
+[13:12:30] export:   [385/427] blk.28.ssm_conv1d.weight 0.1 MB t=66s
+[13:12:36] export: wrote 1,997,486,976 B in 72s; 8,946,450,432 ternary weights, 0 negative-scale groups normalized, 0 zero-scale groups (0 had nonzero codes, cleared)
+[13:12:36] export: verify: structure and KVs
+[13:12:36] export:   PASS  GGUF v3, alignment 32: 3, 32
+[13:12:36] export:   PASS  tensor names, order, types, ne and offsets as planned: 427 tensors
+[13:12:36] export:   PASS  file size = data start + tensor data: 1997486976 vs 1997486976
+[13:12:36] export:   PASS  KVs read back equal the KVs written: 49 KVs
+[13:12:36] export:   PASS  weight_names + inverse_weight_names cover each PTQ1_0 tensor once: 201 + 1 of 202
+[13:12:36] export:   PASS  sign table covers every PTQ1_0 input width: widths [4096, 12288]
+[13:12:36] export:   PASS  general.file_type = 143 (LLAMA_FTYPE_MOSTLY_PTQ1_0)
+[13:12:36] export: verify: against the reference file's header
+[13:12:36] export:   PASS  tensor names, order, types, ne and offsets identical to the reference file: data section at 11039616 (reference 11039616)
+[13:12:36] export:   PASS  runtime KVs (architecture, hyperparameters, prism.hadamard.*, file type) equal the reference file's, by key: other differences (expected: general.name; a fine-tune may change tokenizer KVs): ['general.name']
+[13:12:36] export: verify: content
+[13:12:36] export:   PASS  layout permutations and F32 transforms == the adapter's independent rule: 427 tensors
+[13:14:31] export:   PASS  decoded PTQ1_0 codes and fp16 scale bits == permuted, canonical state (exact): 8,946,450,432 weights in 115s, rows by the adapter's independent row and transform rule
+[13:14:31] export:   PASS  float tensors (F32, and BF16/F16 tables) bit-identical to the transformed sources: 225 tensors, rows and transforms by the adapter's independent row and transform rule
+[13:14:33] export:   PASS  function check (FP64, runtime transform vs fake-quant source rows): 22 tensors in layers [0, 3, 31] + endpoints, worst rel 1.12e-15
+[13:14:33] export: verify: 13 passed, 0 failed

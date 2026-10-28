@@ -1,0 +1,90 @@
+# Code-gap run (2026-10-28): the published reasoning-mix recipe (examples/qwen3_5-9b-reasoning.yaml,
+# research/runs/2026-10-27-reasoning-mix-v1) with more code data and longer distillation. The
+# published model scores HumanEval 19/50 (BF16 44, Prism's model 45); its failures are logic and
+# syntax errors in well-formed answers (format is fine), so the lever is more distillation on code.
+#
+# Changes against the reasoning-mix run (everything else equal, including the run's --set values:
+# traces.batch_tokens 14000, distill.train.small false):
+#   traces     + opencodeinstruct_2: 280 more OpenCodeInstruct prompts, thinking on, cap 1536
+#              + opencodeinstruct_off: 600 OpenCodeInstruct prompts, thinking off, cap 768
+#              The first seven sources are unchanged, so their 1,520 traces come from the copied cache.
+#              Code goes from ~32% to ~50% of generated trace tokens (estimate).
+#   calibrate  traces 128 -> 192 of 256 blocks (WikiText-2 64 -> 32, UltraChat 64 -> 32)
+#   distill    teacher 1,536 -> 1,856 sequences: traces 640 -> 1,088, UltraChat 640 -> 512,
+#              WikiText-2 256; 2 epochs instead of 1 (464 steps instead of 192)
+model:
+  path: Qwen/Qwen3.5-9B
+  revision: c202236235762e1c871ad0ccb60c8ee5ba337b9a
+  dtype: bfloat16
+  device: auto
+  attn: sdpa
+rotation:
+  group: 128
+  max_block: 4096
+  signs: {mode: seeded, seed: width}
+  impl: dense
+traces:
+  seed: 0
+  batch_tokens: 14000
+  sources:
+    - {kind: gsm8k_train, n: 400, seed: 1, thinking: on, max_new_tokens: 1536, batch: 16}
+    - {kind: math_train, n: 240, seed: 2, levels: [1, 2, 3], thinking: on, max_new_tokens: 1536, batch: 16}
+    - {kind: mbpp_train, n: 140, seed: 3, thinking: on, max_new_tokens: 1536, batch: 16}
+    - {kind: opencodeinstruct, n: 280, seed: 4, max_chars: 2000, thinking: on, max_new_tokens: 1536, batch: 16}
+    - {kind: ultrachat, n: 200, rows: [5000, 6000], seed: 5090, thinking: off, max_new_tokens: 512, batch: 32}
+    - {kind: gsm8k_train, name: gsm8k_train_off, n: 160, seed: 5, thinking: off, max_new_tokens: 768, batch: 16}
+    - {kind: mbpp_train, name: mbpp_train_off, n: 100, seed: 6, thinking: off, max_new_tokens: 768, batch: 16}
+    - {kind: opencodeinstruct, name: opencodeinstruct_2, n: 280, seed: 7, max_chars: 2000, thinking: on, max_new_tokens: 1536, batch: 16}
+    - {kind: opencodeinstruct, name: opencodeinstruct_off, n: 600, seed: 8, max_chars: 2000, thinking: off, max_new_tokens: 768, batch: 16}
+calibrate:
+  seq_len: 2048
+  seed: 0
+  sources:
+    - {kind: wikitext2, n: 32}
+    - {kind: ultrachat, n: 32, min_row: 6000}
+    - {kind: traces, n: 192}
+quantize:
+  damp: 0.01
+  batch: 4
+endpoints:
+  head: ternary
+  embedding: ternary
+  damp: 0.01
+  chunk: 16384
+  batch: 4
+distill:
+  teacher:
+    n_seq: 1856
+    seq_len: 2048
+    seed: 1
+    shard: 64
+    topk: 64
+    sources:
+      - {kind: wikitext2, n: 256}
+      - {kind: ultrachat, n: 512, min_row: 6000}
+      - {kind: traces, n: 1088}
+  train: {scales: true, small: false}
+  lr: 1.0e-3
+  lr_small: 1.0e-4
+  lr_small_mat: 2.0e-5
+  epochs: 2
+  accum: 8
+  warmup: 10
+  chunk: 512
+  log_every: 5
+  ckpt_every: 16
+export:
+  format: ptq1_0-gguf
+  verify: true
+eval:
+  from: auto
+  suites: [dev, extended, compare, gsm8k, humaneval]
+  reasoning:
+    thinking: [off, on]
+    max_new_tokens: 512
+    max_new_tokens_thinking: 4096
+    batch: 16
+    batch_thinking: 8
+    gsm8k: {n: 100, n_thinking: 50}
+    humaneval: {n: 50, n_thinking: 25}
+  generations: true

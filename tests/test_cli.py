@@ -59,7 +59,8 @@ def test_stage_hash_ignores_device_but_not_numerics():
 
 
 def test_examples_are_valid_configs():
-    for name in ("qwen3_5-9b.yaml", "qwen3_5-9b-reasoning.yaml", "tiny-qwen3_5.yaml", "tiny-dense.yaml"):
+    for name in ("qwen3_5-9b.yaml", "qwen3_5-9b-reasoning.yaml", "qwen3_5-9b-reasoning-code.yaml",
+                 "tiny-qwen3_5.yaml", "tiny-dense.yaml"):
         cfg = load_config(ROOT / "examples" / name)
         assert cfg["rotation"]["group"] == 128
     big = load_config(ROOT / "examples" / "qwen3_5-9b.yaml")

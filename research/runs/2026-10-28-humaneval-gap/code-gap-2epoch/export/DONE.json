@@ -1,0 +1,14 @@
+{
+ "stage": "export",
+ "config_hash": "2ebe4cbc61a1a138249874c5a2d894aea7a965dbf6a4cb051d1fce1a8e6d25b2",
+ "output_sha256": "f26e74bc7a2b6ea7b5e6ec1d077fd82c1e9f3662e34f033af6e09173abcc4c76",
+ "result": {
+  "output": "D:\\openbonsai\\runs\\2026-10-28-code-gap\\export\\OpenBonsai-Qwen3.5-9B-PTQ1_0.gguf",
+  "format": "ptq1_0-gguf",
+  "source": "distill",
+  "file_size": 1997486976,
+  "distilled_f32": 0,
+  "verified": true,
+  "checks_passed": 13
+ }
+}
