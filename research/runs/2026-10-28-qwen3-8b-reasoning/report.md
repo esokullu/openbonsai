@@ -76,7 +76,7 @@ Greedy decoding with the model's chat template. Thinking off: the frozen 100 GSM
 | Qwen3-8B BF16 | 88/100 | 44/50 | 41/50 | 22/25 |
 | **Qwen3-8B ternary (this run)** | **70/100** | **41/50** | **22/50** | **6/25** |
 | Qwen3.5-9B BF16 | 77/100 | 36/50 | 44/50 | 22/25 |
-| Qwen3.5-9B ternary, same recipe (the Hugging Face model) | 69/100 | 25/50 | 19/50 | 10/25 |
+| Qwen3.5-9B ternary, same recipe (the previous Hugging Face model) | 69/100 | 25/50 | 19/50 | 10/25 |
 
 How often the 4,096-token cap cut an answer off with thinking on, and how many of those cut-off answers loop (their last 300 characters begin with text that already appeared earlier):
 
@@ -89,7 +89,7 @@ With thinking off, 3 of 100 GSM8K answers hit the 512-token cap for each model, 
 
 - **Math holds up better than code.** The ternary model keeps 80% of BF16's GSM8K with thinking off and 93% with thinking on, but 54% of HumanEval with thinking off. The 9B showed the same pattern with the same recipe (90%, 69% and 43%).
 - **HumanEval with thinking on fails by looping.** 14 of 25 answers run out of tokens mid-thought, 12 of them repeating earlier passages verbatim, and an answer cut off mid-thought has no code to test. All 7 capped GSM8K answers loop too. BF16 loops once in each suite. On the 9B the same recipe left 5 of 25 HumanEval answers capped.
-- **The code traces are mostly unfinished.** With thinking on and a 1,536-token cap, Qwen3-8B finished thinking in 48 of 280 OpenCodeInstruct answers and 54 of 140 MBPP answers; the 9B finished 215 and 138. So most of the 8B's code calibration and distillation data is reasoning without a final program. We have not tested whether this causes the code gap; a longer trace cap for the code sources is the obvious experiment, and the 9B's more-code config (`examples/qwen3_5-9b-reasoning-code.yaml`, which took the 9B's HumanEval from 19/50 to 34/50; `../2026-10-28-humaneval-gap/`) is another.
+- **The code traces are mostly unfinished.** With thinking on and a 1,536-token cap, Qwen3-8B finished thinking in 48 of 280 OpenCodeInstruct answers and 54 of 140 MBPP answers; the 9B finished 215 and 138. So most of the 8B's code calibration and distillation data is reasoning without a final program. We have not tested whether this causes the code gap; a longer trace cap for the code sources is the obvious experiment, and the 9B's more-code config (`examples/qwen3_5-9b-reasoning-code.yaml`, which took the 9B's HumanEval from 19/50 to 34/50, probably an optimistic score: the setting was picked from four runs scored on those same problems, and its traces restate at least 6 of them in other words; `../2026-10-28-humaneval-gap/`) is another.
 
 ## In Prism's runtime
 

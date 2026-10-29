@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#ffffff">
-    <meta name="description" content="OpenBonsai is an open framework that compresses a dense language model, or your own fine-tune of one, to ternary weights in Prism ML's PTQ1_0 (Bonsai) format. Research preview, measured so far on Qwen3.5-9B.">
+    <meta name="description" content="OpenBonsai is an open framework that compresses a dense language model, or your own fine-tune of one, to ternary weights in Prism ML's PTQ1_0 (Bonsai) format. Research preview, measured so far on Qwen3.5-9B and Qwen3-8B.">
     <meta property="og:type" content="website">
     <meta property="og:title" content="OpenBonsai — Open research in ternary compression">
     <meta property="og:description" content="Compress Qwen3.5-9B, or your own fine-tune of it, to a 2 GB ternary file that runs in Prism's llama.cpp. An independent research preview.">
@@ -76,13 +76,21 @@
         </ol>
         <p class="method-status">
           Measured end to end on Qwen3.5-9B with the research scripts the
-          package ports, and reproduced by the package's own end-to-end run. Other
-          dense models have an adapter, tested only on tiny random models so
-          far, with no real-model results yet. Calibrated on its own answers
-          to math and code training prompts, the published model scores
-          69/100 on a GSM8K subset and 19/50 on HumanEval with thinking off,
-          against 77/100 and 45/50 for Prism's Ternary Bonsai 2 9B (with
-          thinking on: 25/50 and 10/25, against 46/50 and 24/25). Code and
+          package ports, and reproduced by the package's own end-to-end run.
+          Qwen3-8B has also been compressed and measured, through the generic
+          dense adapter; other dense models (Llama, Mistral, Qwen2) have been
+          tested only on tiny random models so far. Calibrated on its own
+          answers to math and code training prompts, with extra code, the
+          Qwen3.5-9B model on Hugging Face scores 65/100 on a GSM8K subset and
+          34/50 on HumanEval with thinking off, against 77/100 and 45/50 for
+          Prism's Ternary Bonsai 2 9B (with thinking on, the chat template's
+          default: 32/50 and 14/25, against 46/50 and 24/25). The HumanEval
+          score is probably
+          optimistic: the setting was picked from four runs scored on the
+          same 50 problems, and its training prompts restate some of them in
+          other words. All of these scores come from OpenBonsai's PyTorch
+          harness, not Prism's runtime. It replaced the first release
+          (69/100 and 19/50 with thinking off) on 29 October 2026. Code and
           non-English output are still the main weakness.
         </p>
         <p class="method-links">
@@ -110,8 +118,10 @@
   --model path/to/my-finetune \
   --config examples/qwen3_5-9b-reasoning.yaml</code></pre>
         <p class="usage-description">
-          This is the recipe behind the published model, 4 to 4.5 hours on
-          one RTX 5090. To keep the skill your fine-tune added, add your
+          This is the recipe behind the first published model, 4 to 4.5 hours
+          on one RTX 5090. The current one adds more code traces
+          (<code>examples/qwen3_5-9b-reasoning-code.yaml</code>, about
+          5 hours). To keep the skill your fine-tune added, add your
           task's prompts as one more trace source, so the model answers them
           itself. The tied sizes (0.8B, 2B, 4B) are not supported yet.
         </p>

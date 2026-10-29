@@ -253,7 +253,7 @@ Qwen3.5-9B, starting from the GPTQ state and ternary endpoints of the self-gener
 
 | After distillation | Dev NLL | ARC /20 | Wiki 16K NLL | ARC /100 | Chat NLL | Full-vocab KL vs BF16 | EAR | GSM8K off / on | HumanEval off / on |
 |---|---|---|---|---|---|---|---|---|---|
-| No refine (the Hugging Face model) | 2.960 | 17 | 2.698 | 84 | **1.439** | 0.554 | 0.706 | **69/100** / **25/50** | **19/50** / **10/25** |
+| No refine (the previous Hugging Face model) | 2.960 | 17 | 2.698 | 84 | **1.439** | 0.554 | 0.706 | **69/100** / **25/50** | **19/50** / **10/25** |
 | All 32 layers refined | **2.950** | **18** | **2.694** | **89** | 1.443 | **0.543** | **0.710** | 66/100 / 24/50 | **19/50** / **10/25** |
 
 After distillation the two models are within noise of each other on reasoning: on GSM8K with thinking off, 13 problems were solved only without refine and 10 only with it; with thinking on, 7 and 6; on HumanEval, 2 and 2 (off) and 4 and 4 (on). The other differences are small and, except chat NLL, nominally favor refine, by margins one run cannot separate from noise. Before distillation, the 32-layer refine was 0.28 dev NLL ahead; after it, 0.01. Distillation, which trains every scale end to end, brought the model without refine almost to the same point. **Decision:** refine stays off by default. It costs 16 minutes on one RTX 5090 and did not improve the reasoning suites, which were the gate.
