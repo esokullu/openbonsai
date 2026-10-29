@@ -1,0 +1,1499 @@
+{
+ "topk": 40,
+ "results": [
+  {
+   "id": "HumanEval/8",
+   "entry_point": "sum_product",
+   "candidates": 40,
+   "tried": 39,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/59",
+   "entry_point": "largest_prime_factor",
+   "candidates": 40,
+   "tried": 35,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/128",
+   "entry_point": "prod_signs",
+   "candidates": 40,
+   "tried": 21,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/24",
+   "entry_point": "largest_divisor",
+   "candidates": 40,
+   "tried": 16,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/2",
+   "entry_point": "truncate_number",
+   "candidates": 40,
+   "tried": 25,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/121",
+   "entry_point": "solution",
+   "candidates": 40,
+   "tried": 37,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/31",
+   "entry_point": "is_prime",
+   "candidates": 42,
+   "tried": 42,
+   "passes": [
+    {
+     "trace": 1046,
+     "source": "opencodeinstruct_off",
+     "row": 49711,
+     "in_P": false,
+     "in_A1": true,
+     "files": [
+      "A1:1046"
+     ],
+     "thinking": false,
+     "function": "is_prime",
+     "tfidf": 0.4745,
+     "prompt_head": "You are given a positive integer `n`. Your task is to determine whether `n` is a prime number. A prime number is a natural number greater than 1 that has no positive divisors other than 1 and itself. Write a function `is_prime(n)` that returns `True` if `n` is prime and `False` otherwise.\n\n**Sample "
+    },
+    {
+     "trace": 2331,
+     "source": "opencodeinstruct_off",
+     "row": 30185,
+     "in_P": false,
+     "in_A1": true,
+     "files": [
+      "A1:2331"
+     ],
+     "thinking": false,
+     "function": "is_prime",
+     "tfidf": 0.4103,
+     "prompt_head": "You are given a positive integer `n`. Your task is to determine whether `n` is a prime number. A prime number is defined as a natural number greater than 1 that has no positive divisors other than 1 and itself. Your solution should be efficient and handle edge cases, such as numbers less than 2.\n\n**"
+    },
+    {
+     "trace": 735,
+     "source": "opencodeinstruct_off",
+     "row": 41391,
+     "in_P": false,
+     "in_A1": true,
+     "files": [
+      "A1:735"
+     ],
+     "thinking": false,
+     "function": "is_prime",
+     "tfidf": 0.3733,
+     "prompt_head": "You are given a list of integers. Your task is to write a Python function that identifies and returns the largest prime number from the list. If there are no prime numbers in the list, the function should return `None`.\n\n**Input:**\n- A list of integers `numbers` (1 ≤ len(numbers) ≤ 10^3), where each"
+    },
+    {
+     "trace": 1493,
+     "source": "opencodeinstruct",
+     "row": 41322,
+     "in_P": true,
+     "in_A1": true,
+     "files": [
+      "A1:1493",
+      "P:281"
+     ],
+     "thinking": true,
+     "function": "is_prime",
+     "tfidf": 0.3356,
+     "prompt_head": "You are given a list of integers. Your task is to implement a function `find_prime_numbers(numbers)` that returns a list containing all the prime numbers from the input list. To assist you, you must also implement a helper function `is_prime(number)` that determines whether a given number is prime.\n"
+    },
+    {
+     "trace": 1636,
+     "source": "mbpp_train",
+     "row": 4,
+     "in_P": true,
+     "in_A1": true,
+     "files": [
+      "A1:1636",
+      "P:1380"
+     ],
+     "thinking": true,
+     "function": "prime_num",
+     "tfidf": 0.2828,
+     "prompt_head": "You are an expert Python programmer, and here is your task: Write a function to check if the given integer is a prime number. Your code should pass this test:\n\nassert prime_num(13)==True"
+    },
+    {
+     "trace": 1667,
+     "source": "opencodeinstruct_off",
+     "row": 39454,
+     "in_P": false,
+     "in_A1": true,
+     "files": [
+      "A1:1667"
+     ],
+     "thinking": false,
+     "function": "is_prime",
+     "tfidf": 0.2513,
+     "prompt_head": "You are given two integers, `start` and `end`, representing a range [start, end]. Your task is to write a Python program that identifies all prime numbers within this range, inclusive. The program should output the prime numbers in ascending order.\n\n**Input:**\n- Two integers `start` and `end` (1 ≤ s"
+    },
+    {
+     "trace": 259,
+     "source": "opencodeinstruct",
+     "row": 20909,
+     "in_P": true,
+     "in_A1": true,
+     "files": [
+      "A1:259",
+      "P:43"
+     ],
+     "thinking": true,
+     "function": "is_prime",
+     "tfidf": 0.2302,
+     "prompt_head": "You are given a list of integers. Your task is to write a Python program that filters out the prime numbers from this list. Implement a helper function `is_prime(n)` to determine if a number `n` is prime. The main function `filter_primes(numbers)` should utilize `is_prime` to create a new list conta"
+    },
+    {
+     "trace": 1735,
+     "source": "opencodeinstruct_off",
+     "row": 73324,
+     "in_P": false,
+     "in_A1": true,
+     "files": [
+      "A1:1735"
+     ],
+     "thinking": false,
+     "function": "is_prime",
+     "tfidf": 0.2181,
+     "prompt_head": "You are given a list of integers representing the daily sales of a store over a period. Your task is to compute the Root Mean Square (RMS) of the sales figures, excluding any sales that are prime numbers, as these are considered anomalies. Implement a function `average_sales` that takes a list of in"
+    },
+    {
+     "trace": 874,
+     "source": "opencodeinstruct_off",
+     "row": 73609,
+     "in_P": false,
+     "in_A1": true,
+     "files": [
+      "A1:874"
+     ],
+     "thinking": false,
+     "function": "is_prime",
+     "tfidf": 0.179,
+     "prompt_head": "You are given a 2D list `matrix` where each sublist represents a 3D vector with integer coordinates `[x, y, z]`. Your task is to compute the Euclidean lengths of vectors whose `z`-coordinate is a prime number. Return the lengths as a tuple.\n\n**Input:**\n- A 2D list `matrix` of size `n x 3` where `n` "
+    },
+    {
+     "trace": 2325,
+     "source": "opencodeinstruct",
+     "row": 79727,
+     "in_P": true,
+     "in_A1": true,
+     "files": [
+      "A1:2325",
+      "P:476"
+     ],
+     "thinking": true,
+     "function": "is_prime",
+     "tfidf": 0.0642,
+     "prompt_head": "You are developing a function to validate request objects for an IoT device management system. Each request object is a dictionary with specific rules. Your task is to implement a function `validate_request` that returns a tuple `(valid, message)`, where `valid` is a boolean indicating the request's"
+    },
+    {
+     "trace": 2325,
+     "source": "opencodeinstruct",
+     "row": 79727,
+     "in_P": true,
+     "in_A1": true,
+     "files": [
+      "A1:2325",
+      "P:476"
+     ],
+     "thinking": true,
+     "function": "is_prime",
+     "tfidf": 0.0642,
+     "prompt_head": "You are developing a function to validate request objects for an IoT device management system. Each request object is a dictionary with specific rules. Your task is to implement a function `validate_request` that returns a tuple `(valid, message)`, where `valid` is a boolean indicating the request's"
+    }
+   ]
+  },
+  {
+   "id": "HumanEval/34",
+   "entry_point": "unique",
+   "candidates": 40,
+   "tried": 23,
+   "passes": [
+    {
+     "trace": 964,
+     "source": "opencodeinstruct_off",
+     "row": 29603,
+     "in_P": false,
+     "in_A1": true,
+     "files": [
+      "A1:964"
+     ],
+     "thinking": false,
+     "function": "unique_sorted_filenames",
+     "tfidf": 0.16,
+     "prompt_head": "You are given a list of strings representing filenames. Your task is to write a Python function that returns a list of unique filenames sorted in ascending order. The input list may contain duplicate filenames, but the output list should not contain any duplicates.\n\n**Input:**\n- A list of strings `f"
+    },
+    {
+     "trace": 1487,
+     "source": "opencodeinstruct_off",
+     "row": 58091,
+     "in_P": false,
+     "in_A1": true,
+     "files": [
+      "A1:1487"
+     ],
+     "thinking": false,
+     "function": "unique_integers",
+     "tfidf": 0.1588,
+     "prompt_head": "You are given a list of integers `input_list`. Your task is to write a function that returns a list of unique integers from `input_list` in any order. The function should be optimized for performance. \n\n**Constraints:**\n- The length of `input_list` is between 1 and 10^6.\n- Each integer in `input_lis"
+    }
+   ]
+  },
+  {
+   "id": "HumanEval/155",
+   "entry_point": "even_odd_count",
+   "candidates": 40,
+   "tried": 31,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/87",
+   "entry_point": "get_row",
+   "candidates": 41,
+   "tried": 7,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/113",
+   "entry_point": "odd_count",
+   "candidates": 40,
+   "tried": 28,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/41",
+   "entry_point": "car_race_collision",
+   "candidates": 40,
+   "tried": 10,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/95",
+   "entry_point": "check_dict_case",
+   "candidates": 40,
+   "tried": 47,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/71",
+   "entry_point": "triangle_area",
+   "candidates": 40,
+   "tried": 2,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/159",
+   "entry_point": "eat",
+   "candidates": 40,
+   "tried": 0,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/51",
+   "entry_point": "remove_vowels",
+   "candidates": 40,
+   "tried": 30,
+   "passes": [
+    {
+     "trace": 1095,
+     "source": "opencodeinstruct_off",
+     "row": 39128,
+     "in_P": false,
+     "in_A1": true,
+     "files": [
+      "A1:1095"
+     ],
+     "thinking": false,
+     "function": "remove_vowels",
+     "tfidf": 0.2797,
+     "prompt_head": "You are given a string `s` consisting of uppercase and lowercase English letters. Your task is to implement a function that removes all vowels from the string and returns the resulting string. Vowels are defined as 'a', 'e', 'i', 'o', 'u' (both lowercase and uppercase).\n\n**Input:**\n- A single string"
+    },
+    {
+     "trace": 613,
+     "source": "opencodeinstruct_off",
+     "row": 88707,
+     "in_P": false,
+     "in_A1": true,
+     "files": [
+      "A1:613"
+     ],
+     "thinking": false,
+     "function": "filter_vowels",
+     "tfidf": 0.2081,
+     "prompt_head": "You are given a string `s`. Your task is to implement a function `filter_vowels` that removes all vowels from the string, regardless of their case. The function should return the resulting string.\n\n**Input:**\n- A single string `s` (1 ≤ |s| ≤ 10^5), consisting of uppercase and lowercase English lette"
+    }
+   ]
+  },
+  {
+   "id": "HumanEval/30",
+   "entry_point": "get_positive",
+   "candidates": 40,
+   "tried": 16,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/101",
+   "entry_point": "words_string",
+   "candidates": 40,
+   "tried": 38,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/22",
+   "entry_point": "filter_integers",
+   "candidates": 40,
+   "tried": 37,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/28",
+   "entry_point": "concatenate",
+   "candidates": 40,
+   "tried": 33,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/5",
+   "entry_point": "intersperse",
+   "candidates": 40,
+   "tried": 12,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/7",
+   "entry_point": "filter_by_substring",
+   "candidates": 40,
+   "tried": 7,
+   "passes": [
+    {
+     "trace": 135,
+     "source": "opencodeinstruct_off",
+     "row": 35440,
+     "in_P": false,
+     "in_A1": true,
+     "files": [
+      "A1:135"
+     ],
+     "thinking": false,
+     "function": "find_strings_containing_substring",
+     "tfidf": 0.1874,
+     "prompt_head": "You are given a list of strings `S` and a target string `T`. Your task is to write a function that returns a list of all strings in `S` that contain `T` as a substring, ignoring case sensitivity. The function should be efficient and handle up to 10^3 strings, each with a length of up to 10^3 charact"
+    }
+   ]
+  },
+  {
+   "id": "HumanEval/92",
+   "entry_point": "any_int",
+   "candidates": 40,
+   "tried": 5,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/67",
+   "entry_point": "fruit_distribution",
+   "candidates": 40,
+   "tried": 6,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/118",
+   "entry_point": "get_closest_vowel",
+   "candidates": 40,
+   "tried": 33,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/125",
+   "entry_point": "split_words",
+   "candidates": 40,
+   "tried": 32,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/104",
+   "entry_point": "unique_digits",
+   "candidates": 40,
+   "tried": 32,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/154",
+   "entry_point": "cycpattern_check",
+   "candidates": 40,
+   "tried": 6,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/72",
+   "entry_point": "will_it_fly",
+   "candidates": 40,
+   "tried": 4,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/123",
+   "entry_point": "get_odd_collatz",
+   "candidates": 40,
+   "tried": 30,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/132",
+   "entry_point": "is_nested",
+   "candidates": 40,
+   "tried": 27,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/16",
+   "entry_point": "count_distinct_characters",
+   "candidates": 40,
+   "tried": 27,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/146",
+   "entry_point": "specialFilter",
+   "candidates": 40,
+   "tried": 16,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/119",
+   "entry_point": "match_parens",
+   "candidates": 40,
+   "tried": 33,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/140",
+   "entry_point": "fix_spaces",
+   "candidates": 40,
+   "tried": 36,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/65",
+   "entry_point": "circular_shift",
+   "candidates": 40,
+   "tried": 7,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/29",
+   "entry_point": "filter_by_prefix",
+   "candidates": 40,
+   "tried": 11,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/126",
+   "entry_point": "is_sorted",
+   "candidates": 40,
+   "tried": 36,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/151",
+   "entry_point": "double_the_difference",
+   "candidates": 40,
+   "tried": 36,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/68",
+   "entry_point": "pluck",
+   "candidates": 40,
+   "tried": 31,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/39",
+   "entry_point": "prime_fib",
+   "candidates": 40,
+   "tried": 41,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/84",
+   "entry_point": "solve",
+   "candidates": 58,
+   "tried": 29,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/11",
+   "entry_point": "string_xor",
+   "candidates": 40,
+   "tried": 8,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/38",
+   "entry_point": "decode_cyclic",
+   "candidates": 40,
+   "tried": 17,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/81",
+   "entry_point": "numerical_letter_grade",
+   "candidates": 40,
+   "tried": 6,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/78",
+   "entry_point": "hex_key",
+   "candidates": 40,
+   "tried": 32,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/40",
+   "entry_point": "triples_sum_to_zero",
+   "candidates": 40,
+   "tried": 22,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/47",
+   "entry_point": "median",
+   "candidates": 40,
+   "tried": 21,
+   "passes": [
+    {
+     "trace": 1663,
+     "source": "opencodeinstruct_2",
+     "row": 32924,
+     "in_P": false,
+     "in_A1": true,
+     "files": [
+      "A1:1663"
+     ],
+     "thinking": true,
+     "function": "calculate_median",
+     "tfidf": 0.5805,
+     "prompt_head": "You are tasked with implementing a function `calculate_median` that computes the median of a list of integers. The median is defined as the middle element of a sorted list if the list has an odd number of elements, or the average of the two middle elements if the list has an even number of elements."
+    },
+    {
+     "trace": 526,
+     "source": "opencodeinstruct",
+     "row": 1737,
+     "in_P": true,
+     "in_A1": true,
+     "files": [
+      "A1:526",
+      "P:1167"
+     ],
+     "thinking": true,
+     "function": "find_median",
+     "tfidf": 0.5385,
+     "prompt_head": "You are given a list of integers. Your task is to implement a function that calculates and returns the median of the list. The function should correctly handle both lists with an odd number of elements and lists with an even number of elements.\n\n**Input:**\n- A list of integers `lst` (1 ≤ len(lst) ≤ "
+    },
+    {
+     "trace": 2159,
+     "source": "opencodeinstruct",
+     "row": 41346,
+     "in_P": true,
+     "in_A1": true,
+     "files": [
+      "A1:2159",
+      "P:59"
+     ],
+     "thinking": true,
+     "function": "calculate_median",
+     "tfidf": 0.4109,
+     "prompt_head": "You are given a list of integers. Your task is to implement a function `calculate_median(numbers)` that computes the median of the list. The function should not utilize any external libraries and should only use basic Python operations. The function should be able to handle both even and odd lengths"
+    },
+    {
+     "trace": 958,
+     "source": "opencodeinstruct_off",
+     "row": 87517,
+     "in_P": false,
+     "in_A1": true,
+     "files": [
+      "A1:958"
+     ],
+     "thinking": false,
+     "function": "calculate_median",
+     "tfidf": 0.3075,
+     "prompt_head": "You are given a list of integers. Your task is to implement a function `calculate_median` that computes the median of the list. If the list is empty, the function should raise a `ValueError` with the message \"The list is empty\". The function should handle both odd and even length lists correctly.\n\n*"
+    }
+   ]
+  },
+  {
+   "id": "HumanEval/48",
+   "entry_point": "is_palindrome",
+   "candidates": 40,
+   "tried": 27,
+   "passes": [
+    {
+     "trace": 1656,
+     "source": "opencodeinstruct_off",
+     "row": 99950,
+     "in_P": false,
+     "in_A1": true,
+     "files": [
+      "A1:1656"
+     ],
+     "thinking": false,
+     "function": "is_palindrome",
+     "tfidf": 0.2965,
+     "prompt_head": "You are given a string `s`. Your task is to determine if it is a palindrome, considering only alphanumeric characters and ignoring cases. A palindrome is a string that reads the same forward and backward. Return `True` if the string is a palindrome, otherwise return `False`.\n\n**Sample Input:**\n```\n\""
+    },
+    {
+     "trace": 983,
+     "source": "opencodeinstruct_off",
+     "row": 6071,
+     "in_P": false,
+     "in_A1": true,
+     "files": [
+      "A1:983"
+     ],
+     "thinking": false,
+     "function": "is_palindrome",
+     "tfidf": 0.2805,
+     "prompt_head": "You are given a string `s`. Your task is to determine if `s` is a palindrome, considering only alphanumeric characters and ignoring cases. A string is a palindrome if it reads the same forward and backward.\n\n**Input:**\n- A single string `s` (1 ≤ |s| ≤ 10^5), where `s` consists of ASCII characters.\n\n"
+    },
+    {
+     "trace": 1462,
+     "source": "opencodeinstruct_2",
+     "row": 44241,
+     "in_P": false,
+     "in_A1": true,
+     "files": [
+      "A1:1462"
+     ],
+     "thinking": true,
+     "function": "isPalindrome",
+     "tfidf": 0.2795,
+     "prompt_head": "You are given a string `s`. Your task is to determine if `s` is a palindrome, considering only alphanumeric characters and ignoring cases. A string is a palindrome if it reads the same forward and backward. Return `True` if `s` is a palindrome, otherwise return `False`.\n\n**Input:**\n- A single string"
+    },
+    {
+     "trace": 1462,
+     "source": "opencodeinstruct_2",
+     "row": 44241,
+     "in_P": false,
+     "in_A1": true,
+     "files": [
+      "A1:1462"
+     ],
+     "thinking": true,
+     "function": "isPalindrome",
+     "tfidf": 0.2795,
+     "prompt_head": "You are given a string `s`. Your task is to determine if `s` is a palindrome, considering only alphanumeric characters and ignoring cases. A string is a palindrome if it reads the same forward and backward. Return `True` if `s` is a palindrome, otherwise return `False`.\n\n**Input:**\n- A single string"
+    },
+    {
+     "trace": 1915,
+     "source": "opencodeinstruct_off",
+     "row": 28579,
+     "in_P": false,
+     "in_A1": true,
+     "files": [
+      "A1:1915"
+     ],
+     "thinking": false,
+     "function": "is_palindrome",
+     "tfidf": 0.2719,
+     "prompt_head": "You are given a string `s`. Your task is to determine whether the string is a palindrome, considering only alphanumeric characters and ignoring cases. A palindrome is a string that reads the same forward and backward.\n\n**Input:**\n- A single string `s` (1 ≤ |s| ≤ 10^5), where |s| denotes the length o"
+    },
+    {
+     "trace": 260,
+     "source": "opencodeinstruct_2",
+     "row": 2875,
+     "in_P": false,
+     "in_A1": true,
+     "files": [
+      "A1:260"
+     ],
+     "thinking": true,
+     "function": "isPalindrome",
+     "tfidf": 0.2503,
+     "prompt_head": "You are given a string `word`. Your task is to determine if it is a palindrome, considering only alphanumeric characters and ignoring cases. A palindrome is a string that reads the same forward and backward.\n\n**Input:**\n- A single string `word` (1 ≤ len(word) ≤ 10^5), which may contain uppercase and"
+    },
+    {
+     "trace": 260,
+     "source": "opencodeinstruct_2",
+     "row": 2875,
+     "in_P": false,
+     "in_A1": true,
+     "files": [
+      "A1:260"
+     ],
+     "thinking": true,
+     "function": "isPalindrome",
+     "tfidf": 0.2503,
+     "prompt_head": "You are given a string `word`. Your task is to determine if it is a palindrome, considering only alphanumeric characters and ignoring cases. A palindrome is a string that reads the same forward and backward.\n\n**Input:**\n- A single string `word` (1 ≤ len(word) ≤ 10^5), which may contain uppercase and"
+    },
+    {
+     "trace": 260,
+     "source": "opencodeinstruct_2",
+     "row": 2875,
+     "in_P": false,
+     "in_A1": true,
+     "files": [
+      "A1:260"
+     ],
+     "thinking": true,
+     "function": "isPalindrome",
+     "tfidf": 0.2503,
+     "prompt_head": "You are given a string `word`. Your task is to determine if it is a palindrome, considering only alphanumeric characters and ignoring cases. A palindrome is a string that reads the same forward and backward.\n\n**Input:**\n- A single string `word` (1 ≤ len(word) ≤ 10^5), which may contain uppercase and"
+    },
+    {
+     "trace": 260,
+     "source": "opencodeinstruct_2",
+     "row": 2875,
+     "in_P": false,
+     "in_A1": true,
+     "files": [
+      "A1:260"
+     ],
+     "thinking": true,
+     "function": "isPalindrome",
+     "tfidf": 0.2503,
+     "prompt_head": "You are given a string `word`. Your task is to determine if it is a palindrome, considering only alphanumeric characters and ignoring cases. A palindrome is a string that reads the same forward and backward.\n\n**Input:**\n- A single string `word` (1 ≤ len(word) ≤ 10^5), which may contain uppercase and"
+    },
+    {
+     "trace": 2195,
+     "source": "opencodeinstruct_2",
+     "row": 46481,
+     "in_P": false,
+     "in_A1": true,
+     "files": [
+      "A1:2195"
+     ],
+     "thinking": true,
+     "function": "is_palindrome",
+     "tfidf": 0.2187,
+     "prompt_head": "You are tasked with implementing a function `is_palindrome` that determines whether a given string is a palindrome. A string is considered a palindrome if it reads the same forwards and backwards, disregarding spaces, punctuation, and case sensitivity. Your function should manually iterate over the "
+    },
+    {
+     "trace": 2399,
+     "source": "opencodeinstruct_2",
+     "row": 96592,
+     "in_P": false,
+     "in_A1": true,
+     "files": [
+      "A1:2399"
+     ],
+     "thinking": true,
+     "function": "is_palindrome",
+     "tfidf": 0.0962,
+     "prompt_head": "You are given an array of integers. Your task is to determine how many of these integers are palindromes. A palindrome is a number that reads the same backward as forward. For example, 121 and 131 are palindromes.\n\n**Input:**\n- The first line contains an integer `n` (1 ≤ n ≤ 10^3), the number of int"
+    }
+   ]
+  },
+  {
+   "id": "HumanEval/103",
+   "entry_point": "rounded_avg",
+   "candidates": 40,
+   "tried": 9,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/18",
+   "entry_point": "how_many_times",
+   "candidates": 40,
+   "tried": 13,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/86",
+   "entry_point": "anti_shuffle",
+   "candidates": 40,
+   "tried": 36,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/145",
+   "entry_point": "order_by_points",
+   "candidates": 40,
+   "tried": 35,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/141",
+   "entry_point": "file_name_check",
+   "candidates": 40,
+   "tried": 30,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/107",
+   "entry_point": "even_odd_palindrome",
+   "candidates": 40,
+   "tried": 34,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/27",
+   "entry_point": "flip_case",
+   "candidates": 40,
+   "tried": 38,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/88",
+   "entry_point": "sort_array",
+   "candidates": 40,
+   "tried": 24,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/10",
+   "entry_point": "make_palindrome",
+   "candidates": 40,
+   "tried": 28,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/54",
+   "entry_point": "same_chars",
+   "candidates": 40,
+   "tried": 11,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/36",
+   "entry_point": "fizz_buzz",
+   "candidates": 41,
+   "tried": 19,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/98",
+   "entry_point": "count_upper",
+   "candidates": 40,
+   "tried": 27,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/106",
+   "entry_point": "f",
+   "candidates": 41,
+   "tried": 35,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/152",
+   "entry_point": "compare",
+   "candidates": 41,
+   "tried": 12,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/112",
+   "entry_point": "reverse_delete",
+   "candidates": 40,
+   "tried": 8,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/150",
+   "entry_point": "x_or_y",
+   "candidates": 40,
+   "tried": 0,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/76",
+   "entry_point": "is_simple_power",
+   "candidates": 40,
+   "tried": 6,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/158",
+   "entry_point": "find_max",
+   "candidates": 40,
+   "tried": 41,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/56",
+   "entry_point": "correct_bracketing",
+   "candidates": 40,
+   "tried": 27,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/129",
+   "entry_point": "minPath",
+   "candidates": 40,
+   "tried": 9,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/26",
+   "entry_point": "remove_duplicates",
+   "candidates": 41,
+   "tried": 32,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/91",
+   "entry_point": "is_bored",
+   "candidates": 40,
+   "tried": 34,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/120",
+   "entry_point": "maximum",
+   "candidates": 40,
+   "tried": 15,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/114",
+   "entry_point": "minSubArraySum",
+   "candidates": 40,
+   "tried": 16,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/163",
+   "entry_point": "generate_integers",
+   "candidates": 40,
+   "tried": 12,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/137",
+   "entry_point": "compare_one",
+   "candidates": 40,
+   "tried": 10,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/17",
+   "entry_point": "parse_music",
+   "candidates": 40,
+   "tried": 20,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/144",
+   "entry_point": "simplify",
+   "candidates": 40,
+   "tried": 2,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/124",
+   "entry_point": "valid_date",
+   "candidates": 40,
+   "tried": 27,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/46",
+   "entry_point": "fib4",
+   "candidates": 40,
+   "tried": 35,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/58",
+   "entry_point": "common",
+   "candidates": 40,
+   "tried": 23,
+   "passes": [
+    {
+     "trace": 1700,
+     "source": "opencodeinstruct_off",
+     "row": 12748,
+     "in_P": false,
+     "in_A1": true,
+     "files": [
+      "A1:1700"
+     ],
+     "thinking": false,
+     "function": "find_common_elements",
+     "tfidf": 0.4508,
+     "prompt_head": "You are given two lists of integers, `list1` and `list2`. Your task is to implement a function `find_common_elements` that returns a list of integers representing the common elements between the two input lists. The returned list should not contain any duplicate elements and must be sorted in ascend"
+    },
+    {
+     "trace": 478,
+     "source": "opencodeinstruct_off",
+     "row": 97812,
+     "in_P": false,
+     "in_A1": true,
+     "files": [
+      "A1:478"
+     ],
+     "thinking": false,
+     "function": "common_elements",
+     "tfidf": 0.4142,
+     "prompt_head": "You are given two lists of integers. Your task is to write a function that returns a list containing the unique elements that are present in both input lists. The order of elements in the output list does not matter.\n\n**Sample Input:**\n```\nlist1 = [1, 2, 2, 3]\nlist2 = [2, 3, 4]\n```\n\n**Sample Output:"
+    },
+    {
+     "trace": 1788,
+     "source": "opencodeinstruct_off",
+     "row": 21740,
+     "in_P": false,
+     "in_A1": true,
+     "files": [
+      "A1:1788"
+     ],
+     "thinking": false,
+     "function": "common_sorted_unique",
+     "tfidf": 0.4083,
+     "prompt_head": "You are given two lists of integers. Your task is to write a function that returns a sorted list of unique integers that are common to both input lists. \n\n**Input:**\n- Two lists of integers, `list1` and `list2`.\n\n**Output:**\n- A sorted list of integers that are present in both `list1` and `list2`, w"
+    }
+   ]
+  },
+  {
+   "id": "HumanEval/94",
+   "entry_point": "skjkasdkd",
+   "candidates": 40,
+   "tried": 30,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/130",
+   "entry_point": "tri",
+   "candidates": 40,
+   "tried": 35,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/32",
+   "entry_point": "find_zero",
+   "candidates": 40,
+   "tried": 25,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/63",
+   "entry_point": "fibfib",
+   "candidates": 40,
+   "tried": 32,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/79",
+   "entry_point": "decimal_to_binary",
+   "candidates": 40,
+   "tried": 31,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/82",
+   "entry_point": "prime_length",
+   "candidates": 40,
+   "tried": 38,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/42",
+   "entry_point": "incr_list",
+   "candidates": 40,
+   "tried": 19,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/53",
+   "entry_point": "add",
+   "candidates": 41,
+   "tried": 5,
+   "passes": [
+    {
+     "trace": 1938,
+     "source": "opencodeinstruct_2",
+     "row": 91369,
+     "in_P": false,
+     "in_A1": true,
+     "files": [
+      "A1:1938"
+     ],
+     "thinking": true,
+     "function": "add",
+     "tfidf": 0.2177,
+     "prompt_head": "You are given a Python script with two functions, `add` and `multiply`. Your task is to modify the script to include logging for each function call. The log should include the function name and the arguments passed to the function. Implement a decorator to achieve this. \n\n**Sample Input:**\n```python"
+    }
+   ]
+  },
+  {
+   "id": "HumanEval/60",
+   "entry_point": "sum_to_n",
+   "candidates": 40,
+   "tried": 19,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/108",
+   "entry_point": "count_nums",
+   "candidates": 40,
+   "tried": 24,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/64",
+   "entry_point": "vowels_count",
+   "candidates": 40,
+   "tried": 45,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/49",
+   "entry_point": "modp",
+   "candidates": 40,
+   "tried": 2,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/100",
+   "entry_point": "make_a_pile",
+   "candidates": 40,
+   "tried": 34,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/131",
+   "entry_point": "digits",
+   "candidates": 40,
+   "tried": 27,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/19",
+   "entry_point": "sort_numbers",
+   "candidates": 41,
+   "tried": 23,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/83",
+   "entry_point": "starts_one_ends",
+   "candidates": 40,
+   "tried": 17,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/14",
+   "entry_point": "all_prefixes",
+   "candidates": 40,
+   "tried": 20,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/147",
+   "entry_point": "get_max_triples",
+   "candidates": 40,
+   "tried": 18,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/21",
+   "entry_point": "rescale_to_unit",
+   "candidates": 40,
+   "tried": 28,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/122",
+   "entry_point": "add_elements",
+   "candidates": 40,
+   "tried": 16,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/85",
+   "entry_point": "add",
+   "candidates": 50,
+   "tried": 33,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/70",
+   "entry_point": "strange_sort_list",
+   "candidates": 40,
+   "tried": 29,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/25",
+   "entry_point": "factorize",
+   "candidates": 40,
+   "tried": 29,
+   "passes": [
+    {
+     "trace": 1179,
+     "source": "opencodeinstruct_off",
+     "row": 45124,
+     "in_P": false,
+     "in_A1": true,
+     "files": [
+      "A1:1179"
+     ],
+     "thinking": false,
+     "function": "prime_factors",
+     "tfidf": 0.4672,
+     "prompt_head": "You are given a positive integer `n`. Your task is to write an efficient function to find all the prime factors of `n`. The function should return a list of prime factors in ascending order. Note that each prime factor should appear in the list as many times as it divides `n`.\n\n**Input:**\n- A single"
+    },
+    {
+     "trace": 1410,
+     "source": "opencodeinstruct_2",
+     "row": 41572,
+     "in_P": false,
+     "in_A1": true,
+     "files": [
+      "A1:1410"
+     ],
+     "thinking": true,
+     "function": "find_prime_factors",
+     "tfidf": 0.3885,
+     "prompt_head": "You are given a positive integer `n`. Your task is to write a function `find_prime_factors` that returns a list of all prime factors of `n` in ascending order. The function should be optimized to handle large values of `n` efficiently.\n\n**Input:**\n- An integer `n` (1 ≤ n ≤ 10^12)\n\n**Output:**\n- A li"
+    }
+   ]
+  },
+  {
+   "id": "HumanEval/149",
+   "entry_point": "sorted_list_sum",
+   "candidates": 40,
+   "tried": 27,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/62",
+   "entry_point": "derivative",
+   "candidates": 40,
+   "tried": 18,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/157",
+   "entry_point": "right_angle_triangle",
+   "candidates": 40,
+   "tried": 2,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/160",
+   "entry_point": "do_algebra",
+   "candidates": 40,
+   "tried": 6,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/133",
+   "entry_point": "sum_squares",
+   "candidates": 40,
+   "tried": 24,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/43",
+   "entry_point": "pairs_sum_to_zero",
+   "candidates": 40,
+   "tried": 20,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/109",
+   "entry_point": "move_one_ball",
+   "candidates": 40,
+   "tried": 16,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/55",
+   "entry_point": "fib",
+   "candidates": 40,
+   "tried": 34,
+   "passes": [
+    {
+     "trace": 2287,
+     "source": "mbpp_train",
+     "row": 272,
+     "in_P": true,
+     "in_A1": true,
+     "files": [
+      "A1:2287",
+      "P:961"
+     ],
+     "thinking": true,
+     "function": "fibonacci",
+     "tfidf": 0.3697,
+     "prompt_head": "You are an expert Python programmer, and here is your task: Write a function to solve the fibonacci sequence using recursion. Your code should pass this test:\n\nassert fibonacci(7) == 13"
+    },
+    {
+     "trace": 750,
+     "source": "opencodeinstruct_off",
+     "row": 30787,
+     "in_P": false,
+     "in_A1": true,
+     "files": [
+      "A1:750"
+     ],
+     "thinking": false,
+     "function": "fib",
+     "tfidf": 0.337,
+     "prompt_head": "Write a recursive function in Python to generate the nth Fibonacci number. Your function should return the nth Fibonacci number when given an integer n as input. The Fibonacci sequence is defined as follows: F(0) = 0, F(1) = 1, and F(n) = F(n-1) + F(n-2) for n > 1.\n\n**Sample Input:**\n```\n10\n```\n\n**S"
+    },
+    {
+     "trace": 2238,
+     "source": "opencodeinstruct",
+     "row": 15684,
+     "in_P": true,
+     "in_A1": true,
+     "files": [
+      "A1:2238",
+      "P:595"
+     ],
+     "thinking": true,
+     "function": "fibonacci",
+     "tfidf": 0.2836,
+     "prompt_head": "You are tasked with implementing an efficient algorithm to compute the nth Fibonacci number. To optimize the performance, use memoization to store previously computed Fibonacci numbers. Your function should handle large values of n efficiently.\n\n**Input:**\n- An integer `n` (0 ≤ n ≤ 50).\n\n**Output:**"
+    },
+    {
+     "trace": 2238,
+     "source": "opencodeinstruct",
+     "row": 15684,
+     "in_P": true,
+     "in_A1": true,
+     "files": [
+      "A1:2238",
+      "P:595"
+     ],
+     "thinking": true,
+     "function": "fibonacci",
+     "tfidf": 0.2836,
+     "prompt_head": "You are tasked with implementing an efficient algorithm to compute the nth Fibonacci number. To optimize the performance, use memoization to store previously computed Fibonacci numbers. Your function should handle large values of n efficiently.\n\n**Input:**\n- An integer `n` (0 ≤ n ≤ 50).\n\n**Output:**"
+    },
+    {
+     "trace": 1320,
+     "source": "opencodeinstruct",
+     "row": 57987,
+     "in_P": true,
+     "in_A1": true,
+     "files": [
+      "A1:1320",
+      "P:496"
+     ],
+     "thinking": true,
+     "function": "fibonacci",
+     "tfidf": 0.2755,
+     "prompt_head": "In this problem, you are required to implement a function `fibonacci(n)` that calculates the nth Fibonacci number using a recursive approach. However, to achieve an efficient solution, you must utilize matrix exponentiation to ensure the function runs in O(log n) time complexity. The Fibonacci seque"
+    },
+    {
+     "trace": 598,
+     "source": "opencodeinstruct_off",
+     "row": 97283,
+     "in_P": false,
+     "in_A1": true,
+     "files": [
+      "A1:598"
+     ],
+     "thinking": false,
+     "function": "fibonacci_recursive",
+     "tfidf": 0.2691,
+     "prompt_head": "You are tasked with writing a Python program that generates a Fibonacci sequence up to a specified number of terms. Your program must include a recursive function to compute Fibonacci numbers. The Fibonacci sequence is defined as follows: F(0) = 0, F(1) = 1, and F(n) = F(n-1) + F(n-2) for n > 1.\n\n**"
+    },
+    {
+     "trace": 122,
+     "source": "opencodeinstruct_off",
+     "row": 32463,
+     "in_P": false,
+     "in_A1": true,
+     "files": [
+      "A1:122"
+     ],
+     "thinking": false,
+     "function": "fib",
+     "tfidf": 0.2681,
+     "prompt_head": "In a programming competition, you are tasked with writing an efficient function to compute the nth Fibonacci number. The naive recursive approach is too slow for large values of n. Your goal is to implement an iterative solution that computes the nth Fibonacci number in O(n) time complexity.\n\n**Inpu"
+    },
+    {
+     "trace": 945,
+     "source": "opencodeinstruct",
+     "row": 21937,
+     "in_P": true,
+     "in_A1": true,
+     "files": [
+      "A1:945",
+      "P:558"
+     ],
+     "thinking": true,
+     "function": "fib",
+     "tfidf": 0.2551,
+     "prompt_head": "In this problem, you are required to implement an efficient function to compute the nth Fibonacci number. The naive recursive approach is inefficient due to its exponential time complexity. Your task is to design an iterative solution that computes the nth Fibonacci number in linear time.\n\n**Input:*"
+    },
+    {
+     "trace": 1511,
+     "source": "opencodeinstruct",
+     "row": 23500,
+     "in_P": true,
+     "in_A1": true,
+     "files": [
+      "A1:1511",
+      "P:377"
+     ],
+     "thinking": true,
+     "function": "fibonacci",
+     "tfidf": 0.2546,
+     "prompt_head": "Implement a function to compute the nth Fibonacci number using memoization to optimize the calculation. Your function should efficiently handle large values of n.\n\n**Input:**\n- An integer `n` (0 ≤ n ≤ 100)\n\n**Output:**\n- The nth Fibonacci number.\n\n**Sample Input:**\n```\n10\n50\n```\n\n**Sample Output:**\n"
+    },
+    {
+     "trace": 577,
+     "source": "opencodeinstruct",
+     "row": 14441,
+     "in_P": true,
+     "in_A1": true,
+     "files": [
+      "A1:577",
+      "P:1331"
+     ],
+     "thinking": true,
+     "function": "fibonacci",
+     "tfidf": 0.2499,
+     "prompt_head": "You are tasked with writing a Python function to compute the nth Fibonacci number using a recursive approach with memoization. The Fibonacci sequence is defined as follows: F(0) = 0, F(1) = 1, and F(n) = F(n-1) + F(n-2) for n > 1. Your function should efficiently handle large values of n by utilizin"
+    },
+    {
+     "trace": 553,
+     "source": "opencodeinstruct_off",
+     "row": 43655,
+     "in_P": false,
+     "in_A1": true,
+     "files": [
+      "A1:553"
+     ],
+     "thinking": false,
+     "function": "fib",
+     "tfidf": 0.2327,
+     "prompt_head": "You are tasked with implementing an efficient algorithm to compute the nth Fibonacci number. Your solution should utilize dynamic programming with a bottom-up approach to ensure optimal performance. The function should handle large values of n efficiently, adhering to time and space constraints.\n\n**"
+    }
+   ]
+  },
+  {
+   "id": "HumanEval/69",
+   "entry_point": "search",
+   "candidates": 43,
+   "tried": 26,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/116",
+   "entry_point": "sort_array",
+   "candidates": 40,
+   "tried": 36,
+   "passes": []
+  },
+  {
+   "id": "HumanEval/93",
+   "entry_point": "encode",
+   "candidates": 40,
+   "tried": 29,
+   "passes": []
+  }
+ ]
+}

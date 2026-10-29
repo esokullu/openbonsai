@@ -1,0 +1,164 @@
+{
+ "checks": [
+  {
+   "model": "P",
+   "result": "humaneval164.think-off",
+   "n": 50,
+   "stored_score": "19/50",
+   "new_on_prefix": 19,
+   "differs": [],
+   "differs_outside_rebatched": [],
+   "cached_batches": "3/11"
+  },
+  {
+   "model": "A1",
+   "result": "humaneval164.think-off",
+   "n": 50,
+   "stored_score": "34/50",
+   "new_on_prefix": 34,
+   "differs": [],
+   "differs_outside_rebatched": [],
+   "cached_batches": "3/11"
+  },
+  {
+   "model": "P",
+   "result": "gsm8k1319.think-off",
+   "n": 100,
+   "stored_score": "69/100",
+   "new_on_prefix": 69,
+   "differs": [],
+   "differs_outside_rebatched": [],
+   "cached_batches": "6/83"
+  },
+  {
+   "model": "A1",
+   "result": "gsm8k1319.think-off",
+   "n": 100,
+   "stored_score": "65/100",
+   "new_on_prefix": 65,
+   "differs": [],
+   "differs_outside_rebatched": [],
+   "cached_batches": "6/83"
+  },
+  {
+   "model": "P",
+   "result": "humaneval75.think-on",
+   "n": 25,
+   "stored_score": "10/25",
+   "new_on_prefix": 10,
+   "differs": [],
+   "differs_outside_rebatched": [],
+   "cached_batches": "3/10"
+  },
+  {
+   "model": "A1",
+   "result": "humaneval75.think-on",
+   "n": 25,
+   "stored_score": "14/25",
+   "new_on_prefix": 14,
+   "differs": [],
+   "differs_outside_rebatched": [],
+   "cached_batches": "3/10"
+  }
+ ],
+ "gate": {
+  "a": {
+   "fresh_51_164": {
+    "n": 114,
+    "A1": 62,
+    "P": 45,
+    "only_A1": 24,
+    "only_P": 7,
+    "sign_p_one_sided": 0.001663,
+    "diff": 0.1491,
+    "ci95": [
+     0.0574,
+     0.2409
+    ]
+   },
+   "unflagged": {
+    "n": 80,
+    "A1": 38,
+    "P": 26,
+    "only_A1": 16,
+    "only_P": 4,
+    "sign_p_one_sided": 0.005909,
+    "diff": 0.15,
+    "ci95": [
+     0.0455,
+     0.2545
+    ]
+   },
+   "excluding_A1_only_flags": {
+    "n": 97,
+    "A1": 52,
+    "P": 35,
+    "only_A1": 21,
+    "only_P": 4,
+    "sign_p_one_sided": 0.000455,
+    "diff": 0.1753,
+    "ci95": [
+     0.0804,
+     0.2701
+    ]
+   },
+   "pass": true,
+   "nominally_ahead": true
+  },
+  "b": {
+   "fresh_101_1319": {
+    "n": 1219,
+    "A1": 881,
+    "P": 871,
+    "only_A1": 140,
+    "only_P": 130,
+    "sign_p_one_sided": 0.291982,
+    "diff": 0.0082,
+    "ci95": [
+     -0.0182,
+     0.0346
+    ],
+    "hit_cap": {
+     "A1": 250,
+     "P": 204
+    }
+   },
+   "pass": true
+  },
+  "c": {
+   "fresh_on_26_75": {
+    "n": 50,
+    "A1": 27,
+    "P": 27,
+    "only_A1": 13,
+    "only_P": 13,
+    "sign_p_one_sided": 0.577491,
+    "diff": 0.0,
+    "ci95": [
+     -0.1999,
+     0.1999
+    ],
+    "hit_cap_A1": 21,
+    "unfinished_A1": 20,
+    "hit_cap_P": 8,
+    "unfinished_P": 8
+   },
+   "pass": true
+  }
+ },
+ "missing": [],
+ "pooled_humaneval164_includes_selection_set": {
+  "n": 164,
+  "A1": 96,
+  "P": 64,
+  "only_A1": 42,
+  "only_P": 10,
+  "sign_p_one_sided": 5e-06,
+  "diff": 0.1951,
+  "ci95": [
+   0.1143,
+   0.276
+  ]
+ },
+ "outcome": "all pass: recommend replacing the HF GGUF with A1 (tag 40964de first; user's decision)"
+}
