@@ -1,0 +1,116 @@
+model:
+  path: Qwen/Qwen3.5-9B
+  revision: c202236235762e1c871ad0ccb60c8ee5ba337b9a
+  adapter: auto
+  dtype: bfloat16
+  device: auto
+  attn: sdpa
+  keep_vision: false
+  local_files_only: true
+rotation:
+  group: 128
+  max_block: 4096
+  signs:
+    mode: seeded
+    seed: width
+    path: null
+  impl: dense
+traces:
+  enabled: true
+  prompts:
+    kind: ultrachat
+    path: null
+    n: 160
+    rows:
+    - 5000
+    - 6000
+    seed: 5090
+  max_new_tokens: 512
+  thinking: false
+  batch: 8
+calibrate:
+  seq_len: 2048
+  seed: 0
+  sources:
+  - kind: wikitext2
+    n: 128
+  - kind: ultrachat
+    n: 96
+    min_row: 6000
+  - kind: traces
+    n: 32
+quantize:
+  damp: 0.01
+  batch: 4
+endpoints:
+  enabled: true
+  head: ternary
+  embedding: ternary
+  damp: 0.01
+  chunk: 16384
+  batch: 4
+distill:
+  enabled: true
+  teacher:
+    n_seq: 2048
+    seq_len: 2048
+    seed: 1
+    shard: 64
+    topk: 64
+    sources: null
+  train:
+    scales: true
+    small: false
+  endpoints: true
+  lr: 0.001
+  lr_small: 0.0001
+  lr_small_mat: 2.0e-05
+  epochs: 1
+  accum: 8
+  warmup: 10
+  chunk: 512
+  log_every: 5
+  ckpt_every: 16
+  max_steps: null
+export:
+  enabled: true
+  format: ptq1_0-gguf
+  out: null
+  name: null
+  size_label: null
+  verify: true
+  chunk_rows: 16384
+eval:
+  from: auto
+  suites:
+  - dev
+  - extended
+  - compare
+  generations: true
+  compare:
+    seq_len: 512
+    n: 8
+    seed: 7
+    topk: 64
+    full: true
+    sources: null
+  teacher:
+    rows: 8
+  reasoning:
+    thinking:
+    - 'off'
+    max_new_tokens: 512
+    max_new_tokens_thinking: 4096
+    batch: 16
+    batch_check: 0
+    dense: true
+    cache: true
+    gsm8k:
+      n: 100
+      path: null
+    humaneval:
+      n: 50
+      path: null
+      timeout: 10.0
+      workers: 4
+      memory_mb: 2048

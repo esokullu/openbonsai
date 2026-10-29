@@ -1,10 +1,10 @@
 # Compressing your own Qwen3.5-9B fine-tune
 
-This guide takes a fine-tune of Qwen3.5-9B to a ternary PTQ1_0 GGUF of about 2 GB that runs in Prism's llama.cpp fork. It uses the recipe behind the published model, [webbrain-one/openbonsai-qwen-3.5-9b](https://huggingface.co/webbrain-one/openbonsai-qwen-3.5-9b): `examples/qwen3_5-9b-reasoning.yaml`.
+This guide takes a fine-tune of Qwen3.5-9B to a ternary PTQ1_0 GGUF of about 2 GB that runs in Prism's llama.cpp fork. It uses `examples/qwen3_5-9b-reasoning.yaml`, the recipe behind the first model published at [webbrain-one/openbonsai-qwen-3.5-9b](https://huggingface.co/webbrain-one/openbonsai-qwen-3.5-9b) (still at revision `40964de` there, tag `reasoning-mix-v1`). The current model there was made with `examples/qwen3_5-9b-reasoning-code.yaml`, which adds more code traces and takes about 1 h more ([README](../README.md#more-code-in-the-data)); the numbers in this guide are for the reasoning recipe.
 
 Independent project, not affiliated with or endorsed by Prism ML. Bonsai is Prism ML's product.
 
-**Research preview.** Only base Qwen3.5-9B has been compressed and measured so far. No fine-tune has been run yet, so the numbers below are for the base model and the published recipe, and what your fine-tune keeps is for you to measure (step 5).
+**Research preview.** Only base Qwen3.5-9B has been compressed and measured so far. No fine-tune has been run yet, so the numbers below are for the base model and the reasoning recipe, and what your fine-tune keeps is for you to measure (step 5).
 
 Your model is the teacher at every step. It answers prompts in its own chat template (the traces), those answers become calibration and distillation data, it is the BF16 reference for every metric, and its tokenizer and chat template go into the GGUF.
 
@@ -19,14 +19,14 @@ Prism publishes Ternary Bonsai 2 as packed ternary files only (GGUF and MLX), an
 | Ternary quantization-aware training | [ternary_QAT](https://pypi.org/project/ternary-QAT/) on Prism's `-unpacked` checkpoints (first-generation Ternary Bonsai, 1.7B to 27B; none exist for Bonsai 2) | ternary weights trained further; its README advises a learning rate 10-50× the usual |
 | Compress your own BF16 fine-tune | this guide | the whole fine-tune as a ternary PTQ1_0 file, no adapter |
 
-The first three start from Prism's compression, which is still stronger than OpenBonsai's (with thinking off, GSM8K 77/100 against 69/100, HumanEval 45/50 against 19/50). But the fine-tune has to be redone on the Bonsai model, and an adapter adds FP16 weights and two small matrix products per adapted layer at inference. This guide starts from the fine-tune you already have.
+The first three start from Prism's compression, which is still stronger than OpenBonsai's (with thinking off, GSM8K 77/100 and HumanEval 45/50, against 65/100 and 34/50 for the current OpenBonsai model on Hugging Face and 69/100 and 19/50 for the recipe this guide uses; 34/50 is probably optimistic: the setting was picked from four runs scored on the same 50 problems, and its traces restate at least 6 of them in other words; see the [README](../README.md#more-code-in-the-data)). But the fine-tune has to be redone on the Bonsai model, and an adapter adds FP16 weights and two small matrix products per adapted layer at inference. This guide starts from the fine-tune you already have.
 
 ## What you need
 
 - **One 32 GB GPU.** Everything was measured on one RTX 5090; smaller cards are untested. Generation with long answers comes close to the limit (28.7 GB peak at 8 × 4,096 tokens in flight), so run nothing else on the card.
 - **The software** from the README's [Install](../README.md#install) section: Python 3.12, PyTorch 2.14.1, transformers 5.20.2, and Prism's llama.cpp fork to run the result.
 - **Disk.** About 18-20 GB for your BF16 checkpoint, a few hundred MB of datasets in the Hugging Face cache, and 10-15 GB for the run directory. Plan for 40-50 GB free.
-- **Time.** The published recipe took 4 h 23 min end to end on one RTX 5090, including two restarts of the traces stage. Measured per stage, from `research/runs/2026-10-27-reasoning-mix-v1/logs/`:
+- **Time.** The reasoning recipe took 4 h 23 min end to end on one RTX 5090, including two restarts of the traces stage. Measured per stage, from `research/runs/2026-10-27-reasoning-mix-v1/logs/`:
 
   | Stage | Measured |
   |---|---|
@@ -77,9 +77,9 @@ model:
   revision: null
 ```
 
-The recipe holds the settings of the run that made the published model (`research/runs/2026-10-27-reasoning-mix-v1/run.yaml`). Two of them depend on the hardware or are worth knowing about:
+The recipe holds the settings of the run that made the first published model, now the previous Hugging Face model (`research/runs/2026-10-27-reasoning-mix-v1/run.yaml`). Two of them depend on the hardware or are worth knowing about:
 
-- `traces.batch_tokens: 14000` caps the tokens in flight per generation batch. The published run first tried 32,768: its GSM8K thinking batches held 16 prompts and decoded at about 113 tokens/s. At 14,000 they held 8 and decoded at 127-215 tokens/s (mean 173). Keep 14,000 on a 32 GB card.
+- `traces.batch_tokens: 14000` caps the tokens in flight per generation batch. That run first tried 32,768: its GSM8K thinking batches held 16 prompts and decoded at about 113 tokens/s. At 14,000 they held 8 and decoded at 127-215 tokens/s (mean 173). Keep 14,000 on a 32 GB card.
 - `distill.train.small: false` trains only the group scales. `true` also trains the small high-precision tensors (norms, `conv1d`, `A_log`, `dt_bias`, `in_proj_a/b`). On the generic recipe that moved dev NLL from 2.892 to 2.884, within noise; it has not been tried on this recipe.
 
 The rest of the recipe (rotation, GPTQ, endpoints, distillation schedule, export) applies to a fine-tune unchanged. Read the comments at the top of the recipe: they explain every data choice below.
@@ -125,13 +125,13 @@ traces:
 
 **Keep the recipe's sources?** They are what raised GSM8K from 30 to 69 and HumanEval from 6 to 19. Keep them if your fine-tune should still reason and write code. If it does not need math or code, you can shrink or drop them, and your task then gets a larger share of the trace blocks. Either choice is untested on a fine-tune.
 
-**Time.** A batch runs until its longest answer stops or reaches the cap, so the time is about the number of batches × the cap ÷ the decode rate. In the published run, batches of 8 decoded 17-24 steps/s (a 1,536-token batch took 65-90 s). 400 prompts with a 1,024-token cap in batches of about 11 (what 14,000 tokens allows) are 37 batches × 1,024 ÷ 20 ≈ 32 minutes. The log shows tokens/s and an ETA after every batch.
+**Time.** A batch runs until its longest answer stops or reaches the cap, so the time is about the number of batches × the cap ÷ the decode rate. In the reasoning recipe's run, batches of 8 decoded 17-24 steps/s (a 1,536-token batch took 65-90 s). 400 prompts with a 1,024-token cap in batches of about 11 (what 14,000 tokens allows) are 37 batches × 1,024 ÷ 20 ≈ 32 minutes. The log shows tokens/s and an ETA after every batch.
 
 ### Block arithmetic
 
 Calibration and distillation read blocks of 2,048 tokens (`calibrate.seq_len`, `distill.teacher.seq_len`). The traces of all sources are interleaved in `traces/traces.jsonl` in a seeded order, concatenated whole, and cut into blocks. Calibrate's `{kind: traces, n: 128}` and the teacher's `{kind: traces, n: 640}` both read from the start of that stream. Three rules follow:
 
-1. **Supply.** The traces must make at least as many blocks as the largest trace count: trace tokens ÷ 2,048 ≥ 640 in the recipe. The published traces held 1,736,153 tokens, or 847 blocks. Blocks are never capped silently: a run that cannot supply them stops right after the traces stage, before quantize, and names each count.
+1. **Supply.** The traces must make at least as many blocks as the largest trace count: trace tokens ÷ 2,048 ≥ 640 in the recipe. That run's traces held 1,736,153 tokens, or 847 blocks. Blocks are never capped silently: a run that cannot supply them stops right after the traces stage, before quantize, and names each count.
 2. **Share.** Every prefix of the stream holds each source in proportion to its tokens, so your task's share of the trace blocks is its share of the trace tokens.
 3. **Calibration total.** The total `n` of `calibrate.sources` must be a multiple of `quantize.batch` (4). A total that is not is refused before the first stage, with the `--set` that fixes it.
 

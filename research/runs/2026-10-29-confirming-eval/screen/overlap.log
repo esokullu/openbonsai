@@ -1,0 +1,3 @@
+union traces 2400 A1 2400 P 1520 both 1520
+wrote .\overlap.json
+overlap exit 0

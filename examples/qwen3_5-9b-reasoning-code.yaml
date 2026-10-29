@@ -1,5 +1,6 @@
 # Qwen3.5-9B -> ternary: the reasoning recipe (examples/qwen3_5-9b-reasoning.yaml, the run behind
-# the Hugging Face model) with more code in the traces, the calibration and the distillation data.
+# the previous Hugging Face model) with more code in the traces, the calibration and the distillation
+# data.
 # That recipe scores HumanEval 19/50 with thinking off, against 44/50 for BF16 and 45/50 for Prism's
 # Ternary Bonsai 2 9B. Its failures are logic and syntax errors in well-formed answers, not format.
 # This config scored 34/50 (research/runs/2026-10-28-humaneval-gap, the "code-gap data, 1 epoch" run):
@@ -11,8 +12,10 @@
 #   GSM8K on         25/50              32/50         36/50
 #   dev NLL / ARC    2.960 / 17         3.012 / 18    2.423 / 19
 #
-# The 1-epoch setting was picked from four runs scored on these same problems, so 34/50 probably
-# overstates its gain on new problems (research/runs/2026-10-28-humaneval-gap/README.md, Caveats).
+# The 1-epoch setting was picked from four runs scored on these same problems, and its traces restate
+# at least 6 of the 50 HumanEval tasks in other words (the 13-word guard does not catch rewording), so
+# 34/50 probably overstates its gain on new problems (research/runs/2026-10-28-humaneval-gap/README.md,
+# Caveats).
 #
 # Changes against the reasoning recipe (everything else is equal):
 #
@@ -31,7 +34,8 @@
 #
 # These are the settings of the measured run, research/runs/2026-10-28-humaneval-gap/code-gap-1epoch/
 # run.yaml (it read UltraChat from a local copy of the same pinned file, offline; every stage hash
-# but that path's matches).
+# but that path's matches). That run is the current Hugging Face model (GGUF sha256 818d8783...); it
+# replaced the previous one, made with examples/qwen3_5-9b-reasoning.yaml, on 29 October 2026.
 #
 # The first seven trace sources are the reasoning recipe's, with the same seeds, so a run that starts
 # from a copy of that recipe's traces/ reuses its 167 cached batches and generates only the two new

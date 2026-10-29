@@ -1,0 +1,17 @@
+{
+ "source": "D:/openbonsai/runs/2026-10-27-gguf-shared-v1/OpenBonsai-Qwen3.5-9B-PTQ1_0.gguf",
+ "suite": "compare",
+ "tokens": 4088,
+ "nll": 2.573059374985735,
+ "ref_nll": 2.22213217243816,
+ "delta_nll": 0.35092720254757515,
+ "top1_agreement": 0.7250489236790607,
+ "ear_full": 0.7369444956986172,
+ "kl_full": 0.45640311109271126,
+ "ear_top64_lb": 0.6989207576497453,
+ "ear_top64_ub": 0.7533272374167027,
+ "kl_top64": 0.41603123060086167,
+ "topk": 64,
+ "vocab": 248320,
+ "full_vocab": true
+}
