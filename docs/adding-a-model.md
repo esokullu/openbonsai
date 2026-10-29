@@ -374,7 +374,7 @@ Results against Qwen3-8B's own BF16 model, with the 9B's subsets (thinking off: 
 | after endpoints (all ternary) | | | +0.923, 0.557, 0.526, 1.318 |
 | distilled, the GGUF | 70/100 / 41/50 | 22/50 / 6/25 | +0.317, 0.683, 0.686, 0.650 |
 
-In Prism's llama.cpp (CPU, upstream `wiki.test.raw`, 8 × 512) the GGUF scores perplexity 14.94. On the same tokens an FP32 PyTorch model of the same weights agrees on 98.8% of top-1 predictions, with perplexity 14.93 against Prism's 14.92. The full report, with logs and every problem's result, is `research/runs/2026-10-28-qwen3-8b-reasoning/report.md`.
+In Prism's llama.cpp (CPU, upstream `wiki.test.raw`, 8 × 512) the GGUF scores perplexity 14.94. On the same tokens an FP32 PyTorch model of the same weights agrees on 98.8% of top-1 predictions, with perplexity 14.93 against Prism's 14.94. The full report, with logs and every problem's result, is `research/runs/2026-10-28-qwen3-8b-reasoning/report.md`.
 
 What it taught us for the next model:
 
