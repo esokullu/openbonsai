@@ -1,0 +1,214 @@
+{
+ "gsm8k.think-off": {
+  "prism": {
+   "score": "87/100",
+   "hit_cap": 2,
+   "looping": 0,
+   "endoftext_in_completion": 0,
+   "unfinished_thinking": null,
+   "mean_generated_tokens": 292.67,
+   "generation_seconds": 346.625,
+   "tokens_per_second": 84.43418680130178,
+   "batch": 16,
+   "max_new_tokens": 512,
+   "chat_kwargs": {
+    "enable_thinking": false
+   }
+  },
+  "ours": {
+   "score": "70/100",
+   "hit_cap": 3,
+   "looping": 0,
+   "endoftext_in_completion": 0,
+   "unfinished_thinking": null,
+   "mean_generated_tokens": 287.96,
+   "generation_seconds": 308.547,
+   "tokens_per_second": 93.32775881794166,
+   "batch": 16,
+   "max_new_tokens": 512,
+   "chat_kwargs": {
+    "enable_thinking": false
+   }
+  },
+  "bf16": {
+   "score": "88/100",
+   "hit_cap": 3,
+   "looping": 0,
+   "endoftext_in_completion": 0,
+   "unfinished_thinking": null,
+   "mean_generated_tokens": 297.55,
+   "generation_seconds": 298.483,
+   "tokens_per_second": 99.68741938402576,
+   "batch": 16,
+   "max_new_tokens": 512,
+   "chat_kwargs": {
+    "enable_thinking": false
+   }
+  },
+  "overlap": {
+   "both": 67,
+   "prism_only": 20,
+   "ours_only": 3,
+   "neither": 10
+  }
+ },
+ "gsm8k.think-on": {
+  "prism": {
+   "score": "45/50",
+   "hit_cap": 4,
+   "looping": 3,
+   "endoftext_in_completion": 0,
+   "unfinished_thinking": 4,
+   "mean_generated_tokens": 1466.74,
+   "generation_seconds": 1913.531,
+   "tokens_per_second": 38.325483099045634,
+   "batch": 8,
+   "max_new_tokens": 4096,
+   "chat_kwargs": {
+    "enable_thinking": true
+   }
+  },
+  "ours": {
+   "score": "41/50",
+   "hit_cap": 7,
+   "looping": 7,
+   "endoftext_in_completion": 0,
+   "unfinished_thinking": 7,
+   "mean_generated_tokens": 1912.4,
+   "generation_seconds": 3121.282,
+   "tokens_per_second": 30.634848116895494,
+   "batch": 8,
+   "max_new_tokens": 4096,
+   "chat_kwargs": {
+    "enable_thinking": true
+   }
+  },
+  "bf16": {
+   "score": "44/50",
+   "hit_cap": 5,
+   "looping": 1,
+   "endoftext_in_completion": 0,
+   "unfinished_thinking": 3,
+   "mean_generated_tokens": 1948.58,
+   "generation_seconds": 2270.357,
+   "tokens_per_second": 42.913515363443324,
+   "batch": 8,
+   "max_new_tokens": 4096,
+   "chat_kwargs": {
+    "enable_thinking": true
+   }
+  },
+  "overlap": {
+   "both": 38,
+   "prism_only": 7,
+   "ours_only": 3,
+   "neither": 2
+  }
+ },
+ "humaneval.think-off": {
+  "prism": {
+   "score": "39/50",
+   "hit_cap": 0,
+   "looping": 0,
+   "endoftext_in_completion": 0,
+   "unfinished_thinking": null,
+   "mean_generated_tokens": 201.6,
+   "generation_seconds": 142.546,
+   "tokens_per_second": 70.7140151249483,
+   "batch": 16,
+   "max_new_tokens": 512,
+   "chat_kwargs": {
+    "enable_thinking": false
+   }
+  },
+  "ours": {
+   "score": "22/50",
+   "hit_cap": 1,
+   "looping": 1,
+   "endoftext_in_completion": 0,
+   "unfinished_thinking": null,
+   "mean_generated_tokens": 208.56,
+   "generation_seconds": 149.297,
+   "tokens_per_second": 69.84735125286902,
+   "batch": 16,
+   "max_new_tokens": 512,
+   "chat_kwargs": {
+    "enable_thinking": false
+   }
+  },
+  "bf16": {
+   "score": "41/50",
+   "hit_cap": 0,
+   "looping": 0,
+   "endoftext_in_completion": 0,
+   "unfinished_thinking": null,
+   "mean_generated_tokens": 202.08,
+   "generation_seconds": 119.939,
+   "tokens_per_second": 84.2428234352371,
+   "batch": 16,
+   "max_new_tokens": 512,
+   "chat_kwargs": {
+    "enable_thinking": false
+   }
+  },
+  "overlap": {
+   "both": 21,
+   "prism_only": 18,
+   "ours_only": 1,
+   "neither": 10
+  }
+ },
+ "humaneval.think-on": {
+  "prism": {
+   "score": "14/25",
+   "hit_cap": 10,
+   "looping": 3,
+   "endoftext_in_completion": 0,
+   "unfinished_thinking": 9,
+   "mean_generated_tokens": 3141.36,
+   "generation_seconds": 1673.296,
+   "tokens_per_second": 46.93371644945101,
+   "batch": 8,
+   "max_new_tokens": 4096,
+   "chat_kwargs": {
+    "enable_thinking": true
+   }
+  },
+  "ours": {
+   "score": "6/25",
+   "hit_cap": 14,
+   "looping": 12,
+   "endoftext_in_completion": 0,
+   "unfinished_thinking": 14,
+   "mean_generated_tokens": 2935.32,
+   "generation_seconds": 1561.672,
+   "tokens_per_second": 46.99002095190265,
+   "batch": 8,
+   "max_new_tokens": 4096,
+   "chat_kwargs": {
+    "enable_thinking": true
+   }
+  },
+  "bf16": {
+   "score": "22/25",
+   "hit_cap": 3,
+   "looping": 1,
+   "endoftext_in_completion": 0,
+   "unfinished_thinking": 3,
+   "mean_generated_tokens": 2311.68,
+   "generation_seconds": 1475.124,
+   "tokens_per_second": 39.17772336427282,
+   "batch": 8,
+   "max_new_tokens": 4096,
+   "chat_kwargs": {
+    "enable_thinking": true
+   }
+  },
+  "overlap": {
+   "both": 4,
+   "prism_only": 10,
+   "ours_only": 2,
+   "neither": 9
+  }
+ }
+}

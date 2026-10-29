@@ -1,0 +1,11 @@
+2026-10-29 05:22:06 launcher start (pid 46504)
+2026-10-29 05:25:27 launcher start (pid 46140)
+2026-10-29 05:55:43 acquired gpu.lock
+2026-10-29 05:55:43 f16 check start
+2026-10-29 05:56:53 f16 check done
+2026-10-29 05:56:53 eval thinking off start (Prism's checkpoint and chat template as published)
+2026-10-29 06:05:49 eval thinking off done
+2026-10-29 06:05:49 eval thinking on start (Prism's weights with Qwen3-8B's chat template)
+2026-10-29 07:06:38 eval thinking on done
+2026-10-29 07:06:38 all done
+2026-10-29 07:06:38 released gpu.lock
