@@ -4,3 +4,5 @@
 /openbonsai/eval/assets/reasoning/*.json -text
 # Shell scripts run on Linux even when checked out on Windows.
 *.sh text eol=lf
+# Keep the confirming-eval record byte for byte, so PREREGISTRATION.sha256 still checks after a checkout.
+/research/runs/2026-10-29-confirming-eval/** -text

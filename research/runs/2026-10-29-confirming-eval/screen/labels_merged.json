@@ -1,0 +1,2287 @@
+{
+ "rows": [
+  {
+   "id": "HumanEval/8",
+   "position": 51,
+   "entry_point": "sum_product",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": []
+  },
+  {
+   "id": "HumanEval/59",
+   "position": 52,
+   "entry_point": "largest_prime_factor",
+   "flagged": true,
+   "label": "same",
+   "scope": "both",
+   "judge_labels": [
+    "same",
+    "same"
+   ],
+   "sweep_labels": [
+    "same"
+   ],
+   "func_pass_traces": [],
+   "evidence_traces": [
+    421,
+    2014
+   ],
+   "agreement": true,
+   "rationales": [
+    "judge-a1: same: Trace 2014 (opencodeinstruct, in_P=true) asks to find and return the largest prime factor of n, using the same 13195 -> 29 example. Its answer is a long thinking trace cut off at 2,500 chars, which probably explains the zero functional passes. Trace 421 (A1 only) computes the largest prime factor of each number in a list and defines a helper largest_prime_factor(n, spf).",
+    "judge-b4: same: Trace 2014 (in_P) asks to 'find and return the largest prime factor of n' and even uses the same example, 13195 -> 29. 421 (A1-only) asks for the largest prime factor of each integer in a list, the same core behaviour applied per element. 2014 was not a functional pass only because its thinking-trace answer is cut off.",
+    "sweep-2: same: Trace 2014 (in_P) asks for the largest prime factor of a positive integer n, and its sample input includes 13195 -> 29, the same as the problem's example. The functional screen missed it because the answer is a thinking-mode answer that reads from stdin. Trace 421 (A1 only) is a per-list variant (largest prime factor of each integer, None for 1), so it is only related."
+   ]
+  },
+  {
+   "id": "HumanEval/128",
+   "position": 53,
+   "entry_point": "prod_signs",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [
+    "unrelated",
+    "unrelated"
+   ],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": [
+    "judge-a2: unrelated: prod_signs (sum of |x| times the product of signs, None for empty). No functional passes. I searched for sign product, magnitude, absolute-value sum, prod_sign and negative-count product and found no trace with this behaviour. The lexical top-5 (two-sum 1111, missing number 488, binary search 931, merge sort 320) share only array vocabulary.",
+    "judge-b3: unrelated: No trace multiplies the sum of magnitudes by the product of signs. Searches for sign, magnitude and absolute value found only unrelated tasks (complex-number magnitudes, quadratic roots of opposite sign, astronomy magnitudes), and the lexical hits are generic array tasks."
+   ]
+  },
+  {
+   "id": "HumanEval/24",
+   "position": 54,
+   "entry_point": "largest_divisor",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [
+    "unrelated",
+    "unrelated"
+   ],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": [
+    "judge-a3: unrelated: No trace asks for the largest proper divisor of n. The closest are 357 (MBPP smallest_Divisor, smallest prime divisor; in_P) and 1039 (find_smallest_prime_factor). Both ask for the smallest prime divisor, which is a different specification, not a variant of this one. Lexical hits (1085 two largest numbers, 155 largest prime <= n) share only vocabulary. No functional passes.",
+    "judge-b2: unrelated: No trace asks for the largest divisor of n smaller than n. The nearest traces ask for the smallest prime divisor or factor (357 MBPP smallest_Divisor, in_P; 1039 find_smallest_prime_factor), GCD (437, 561) or the divisor count (824). These are different specifications with topical overlap only."
+   ]
+  },
+  {
+   "id": "HumanEval/2",
+   "position": 55,
+   "entry_point": "truncate_number",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": []
+  },
+  {
+   "id": "HumanEval/121",
+   "position": 56,
+   "entry_point": "solution",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [
+    "unrelated",
+    "unrelated"
+   ],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": [
+    "judge-a4: unrelated: No trace sums the odd elements at even positions. The closest traces cover only pieces of it: 1921 sums even integers (A1-only), 1407/2210 take alternate elements (in_P), 1496 checks whether even indices hold even numbers (in_P), and 934/939 sum the first even and first odd number. None has a functional pass. The overlap is topical only.",
+    "judge-b1: unrelated: Task: sum the odd elements at even indices. No functional passes. The matches are an even-before-odd sort (2183), the sum of even integers (1921), MBPP sum_even_odd (934/939 in_P, first even and first odd), MBPP even_position (1496 in_P, checks that even indices hold even numbers) and alternate_elements (1407 in_P). Each shares parity or index vocabulary, but none specifies summing odd values at even positions."
+   ]
+  },
+  {
+   "id": "HumanEval/31",
+   "position": 57,
+   "entry_point": "is_prime",
+   "flagged": true,
+   "label": "same",
+   "scope": "both",
+   "judge_labels": [
+    "same",
+    "same"
+   ],
+   "sweep_labels": [
+    "same"
+   ],
+   "func_pass_traces": [
+    259,
+    735,
+    874,
+    1046,
+    1493,
+    1636,
+    1667,
+    1735,
+    2325,
+    2331
+   ],
+   "evidence_traces": [
+    259,
+    735,
+    874,
+    1046,
+    1493,
+    1636,
+    1667,
+    1735,
+    2325,
+    2331
+   ],
+   "agreement": true,
+   "rationales": [
+    "judge-a1: same: Trace 1046 (A1 only) asks for is_prime(n) returning True/False, and trace 2331 (A1 only) is the same primality task. MBPP trace 1636 (in_P=true) asks for a function that checks whether an integer is prime. In traces 259 and 1493 (in_P=true) the prompt itself requires an is_prime helper, and those helpers pass the tests. In total 10 functional passes, 4 of them from P traces.",
+    "judge-b4: same: Several traces ask for a primality check. 1636 (in_P, MBPP prime_num: 'check if the given integer is a prime number'), 259 and 1493 (in_P, which specify an is_prime(n) helper), and 1046/2331 (A1-only, 'determine whether n is prime') all ask for this. They pass the tests.",
+    "sweep-1: same: Direct 'determine whether n is a prime number' tasks: 1046 and 2331 (A1 only) and MBPP prime_num 1636 (in_P). P traces 259 and 1493 also specify a helper is_prime(n). The lexical and functional screen already caught this one (func_pass=10)."
+   ]
+  },
+  {
+   "id": "HumanEval/34",
+   "position": 58,
+   "entry_point": "unique",
+   "flagged": true,
+   "label": "same",
+   "scope": "A1_only",
+   "judge_labels": [
+    "same",
+    "same"
+   ],
+   "sweep_labels": [
+    "same"
+   ],
+   "func_pass_traces": [
+    964,
+    1487
+   ],
+   "evidence_traces": [
+    964,
+    1487
+   ],
+   "agreement": true,
+   "rationales": [
+    "judge-a2: same: Trace 964 (in_P=false) asks for the unique elements of a list sorted ascending; it is framed as filenames, but the behaviour is identical. Its answer is sorted(set(filenames)) and passes the test. Trace 1487 (in_P=false) asks for unique integers in any order; list(set()) passes coincidentally, so it is weaker supporting evidence. P-side traces only dedupe in first-appearance order (e.g. 957, in_P=true), which is a related variant, not the same task.",
+    "judge-b3: same: Trace 964 (A1-only) asks for a list of unique filenames sorted ascending, which is the same sorted(set(l)) behaviour on strings, and it passes the test. Trace 1487 (A1-only, unique integers in any order) also passes. P's in_P traces (957, 920, 1861) only preserve first-appearance order, which is a related variant that fails the sorted test.",
+    "sweep-2: same: Trace 964 returns a sorted list of unique filenames with sorted(set(...)), which is the same behaviour on strings, and it passes. Trace 1487 asks for unique integers in any order (list(set(...))). It passes the tests only by coincidence, so by its specification it is related. Neither trace is in_P."
+   ]
+  },
+  {
+   "id": "HumanEval/155",
+   "position": 59,
+   "entry_point": "even_odd_count",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [
+    "unrelated",
+    "unrelated"
+   ],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": [
+    "judge-a3: unrelated: No trace counts the even and odd digits of an integer. The closest are 934/939 (sum of the first even and first odd element of a list), 2183 (sort evens before odds) and 1318 (filter odd numbers), which overlap only in topic. No functional passes.",
+    "judge-b2: unrelated: No trace counts the even and odd digits of an integer. The matches are list parity tasks (2183 sort evens first, 1318 filter odds, 934/939 sum of first even and odd) and 1135 (parity of a divisor count). None has the same spec."
+   ]
+  },
+  {
+   "id": "HumanEval/87",
+   "position": 60,
+   "entry_point": "get_row",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [
+    "unrelated",
+    "unrelated"
+   ],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": [
+    "judge-a4: unrelated: No trace finds (row, col) coordinates of x in a jagged 2D list with rows sorted ascending and columns descending. The closest is 892 (in_P), which finds the indices of a target in a flat 1D list. That misses both the 2D coordinate part and the custom ordering, which are the substance of the task. Lexical matches (CSV reader, sorting 2D rows, coordinate parsing) are vocabulary only. No functional passes.",
+    "judge-b1: unrelated: Task: in a jagged 2D list, return the (row, col) coordinates of x, sorted by row ascending and then column descending. No functional passes. Trace 892 (in_P) returns the indices of a target in a 1D list. Trace 883 finds the first row containing a delegate using a zigzag scan. The rest are CSV, row-sorting or coordinate-parsing tasks (1506, 2327, 721). None specifies collecting 2D coordinates with this ordering, so the overlap is topical."
+   ]
+  },
+  {
+   "id": "HumanEval/113",
+   "position": 61,
+   "entry_point": "odd_count",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [
+    "unrelated",
+    "unrelated"
+   ],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": [
+    "judge-a1: unrelated: No trace counts odd digits per string or fills a templated sentence with that count. Lexical matches only filter odd numbers or ask about odd functions. Searches for odd digits, odd_count, odd elements and templated replacement found nothing.",
+    "judge-b4: unrelated: No trace counts the odd digits in each string and outputs the templated sentence with i replaced. The matches only filter or sort odd and even integers (1318, 1447, 2183)."
+   ]
+  },
+  {
+   "id": "HumanEval/41",
+   "position": 62,
+   "entry_point": "car_race_collision",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": []
+  },
+  {
+   "id": "HumanEval/95",
+   "position": 63,
+   "entry_point": "check_dict_case",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [
+    "unrelated",
+    "unrelated"
+   ],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": [
+    "judge-a2: unrelated: check_dict_case (all keys lowercase strings or all uppercase strings, False when empty). No functional passes. Searches for dict keys combined with upper/lower case, all-upper or all-lower checks, and keys being strings found only word-frequency and case-insensitive counting dicts. Top lexical match 765 (MBPP upper-then-lower regex, in_P) is only vocabulary overlap.",
+    "judge-b3: unrelated: No trace checks whether all dict keys are lowercase or all uppercase strings. The hits are word-frequency dicts (case-insensitive), snake_case-to-camelCase key conversion (5) and an MBPP uppercase-then-lowercase regex (765, in P). All are topical only."
+   ]
+  },
+  {
+   "id": "HumanEval/71",
+   "position": 64,
+   "entry_point": "triangle_area",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [
+    "unrelated",
+    "unrelated"
+   ],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": [
+    "judge-a3: unrelated: No trace computes a triangle's area from three side lengths (Heron) with a validity check. 1470 (MBPP triangle_area, largest triangle inscribed in a semicircle) shares the name only. 1048 classifies a triangle as equilateral/isosceles/scalene with a validity check, 2300 checks validity from angles, and the MATH problems are geometry questions. No functional passes.",
+    "judge-b2: unrelated: No trace computes a triangle's area from three side lengths (Heron) with a -1 validity check. Trace 1470 triangle_area (in_P) is the largest triangle inscribed in a semicircle, and 2300 checks validity from angles. Trace 1048 classifies triangles from sides, and the MATH traces compute areas from coordinates. All are topical overlap only."
+   ]
+  },
+  {
+   "id": "HumanEval/159",
+   "position": 65,
+   "entry_point": "eat",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": []
+  },
+  {
+   "id": "HumanEval/51",
+   "position": 66,
+   "entry_point": "remove_vowels",
+   "flagged": true,
+   "label": "same",
+   "scope": "A1_only",
+   "judge_labels": [
+    "same",
+    "same"
+   ],
+   "sweep_labels": [
+    "same"
+   ],
+   "func_pass_traces": [
+    613,
+    1095
+   ],
+   "evidence_traces": [
+    613,
+    1095,
+    1778
+   ],
+   "agreement": true,
+   "rationales": [
+    "judge-a4: same: 613 (filter_vowels, case-insensitive) and 1095 (remove_vowels, both cases) ask for exactly this behaviour and both pass the unit tests. 1778 (remove_vowels, lowercase-only input) is a weaker variant that would fail 'acBAA'. All three are in_P=false. The vowel traces that are in P (1228 count vowels, 1770 sort by vowel count) are different tasks.",
+    "judge-b1: same: Task: remove all vowels (both cases) from a string. Trace 613 filter_vowels removes all vowels regardless of case, and trace 1095 removes vowels of both cases; both pass the tests. Trace 1778 remove_vowels is the same task restricted to lowercase input. Trace 150 (filter words with more than three vowels) and the count_vowels traces are not counted. All evidence has in_P=false.",
+    "sweep-2: same: 613 (filter_vowels, any case) and 1095 (remove all vowels from upper/lowercase string) pass the tests. 1778 is remove_vowels(s) on lowercase-only input, the same task with a narrower domain. None is in_P."
+   ]
+  },
+  {
+   "id": "HumanEval/30",
+   "position": 67,
+   "entry_point": "get_positive",
+   "flagged": true,
+   "label": "related",
+   "scope": "both",
+   "judge_labels": [
+    "related",
+    "related"
+   ],
+   "sweep_labels": [
+    "related"
+   ],
+   "func_pass_traces": [],
+   "evidence_traces": [
+    1364
+   ],
+   "agreement": true,
+   "rationales": [
+    "judge-a1: related: MBPP trace 1364 (in_P=true), remove_negs, removes negative numbers from a list, which is the same core filter. Its solution keeps 0 (num >= 0), so it fails the test where 0 must be dropped. Other matches (sum of positives in 125/856/1864, rearranging positives and negatives in 936) only share vocabulary.",
+    "judge-b4: related: Trace 1364 (in_P, MBPP remove_negs) removes negative numbers from a list. Its answer keeps num >= 0, so zeros stay, while get_positive must drop 0. That is a material variation and fails the test [5,3,-5,2,3,3,9,0,123,1,-10]. Sum-of-positives traces (125/856, 1864) give a different output.",
+    "sweep-1: related: MBPP remove_negs (in_P), 'remove negative numbers from a list'. The teacher answer keeps 0 (num >= 0), while get_positive must drop 0, so it fails test 2. Same filter with a boundary change. The lexical screen missed it because of the wording."
+   ]
+  },
+  {
+   "id": "HumanEval/101",
+   "position": 68,
+   "entry_point": "words_string",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": []
+  },
+  {
+   "id": "HumanEval/22",
+   "position": 69,
+   "entry_point": "filter_integers",
+   "flagged": true,
+   "label": "related",
+   "scope": "both",
+   "judge_labels": [
+    "related",
+    "related"
+   ],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [
+    626,
+    2281
+   ],
+   "agreement": true,
+   "rationales": [
+    "judge-a2: related: filter_integers keeps only the int values of a mixed-type list. Trace 2281 (in_P=true) filter_by_type(data, data_type) recursively collects values of a given type such as int from a nested dict. That is the same type-filter core, generalised, with a different signature and input structure. Trace 626 (in_P=true) get_even_numbers returns even integers from a list and ignores non-integer elements via isinstance(int); it is the same type filter plus a parity condition and would fail the [1, 2, 3] case. No exact filter-only-ints trace was found.",
+    "judge-b3: related: Trace 2281 (in_P), filter_by_type(data, data_type), has the same core task, collecting values of a given type with isinstance, generalised to recursive traversal of a nested dict or list. It has a different signature and recurses into sublists, so it is not the same behaviour. This label is borderline. Trace 626 (in_P) also skips non-integer elements, but its core task is extracting even numbers, so it is weaker evidence. No flat-list 'keep only ints' trace exists."
+   ]
+  },
+  {
+   "id": "HumanEval/28",
+   "position": 70,
+   "entry_point": "concatenate",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [
+    "unrelated",
+    "unrelated"
+   ],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": [
+    "judge-a3: unrelated: No trace asks to concatenate a list of strings into one string. 2199 (MBPP concatenate_nested, joins two tuples) and 968 (summarize_sentences, a concatenation with punctuation handling) share vocabulary only. Searches for join/list-to-string tasks found nothing matching. No functional passes.",
+    "judge-b2: unrelated: No trace asks simply to concatenate a list of strings into one string. Trace 968 joins sentences with ', ' after stripping final punctuation (a summarize task). The other matches are 2199 (MBPP tuple concatenation), 1614 (concatenating lists) and 1605 (joining file contents with newlines); all are different specs."
+   ]
+  },
+  {
+   "id": "HumanEval/5",
+   "position": 71,
+   "entry_point": "intersperse",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": []
+  },
+  {
+   "id": "HumanEval/7",
+   "position": 72,
+   "entry_point": "filter_by_substring",
+   "flagged": true,
+   "label": "same",
+   "scope": "A1_only",
+   "judge_labels": [
+    "same",
+    "same"
+   ],
+   "sweep_labels": [
+    "same"
+   ],
+   "func_pass_traces": [
+    135
+   ],
+   "evidence_traces": [
+    135
+   ],
+   "agreement": true,
+   "rationales": [
+    "judge-a4: same: Trace 135 (in_P=false) returns every string in a list that contains T as a substring, keeping the order. Its function passes the unit tests. The only difference is that it ignores case, which the tests never exercise, so it is the same core task and not a coincidental pass. No in_P trace asks for a substring filter (601 is a multi-keyword product search, A1-only).",
+    "judge-b1: same: Task: filter a list of strings to those containing a given substring. Trace 135 asks for all strings in S that contain T as a substring, ignoring case. That is the same task with a case-insensitive twist, and it passes the problem's tests (functional pass). As with frozen HumanEval/61, where a generalised checker that passes counted as same, this is same. No other trace filters strings by substring (996 and 2153 are only vocabulary matches). Trace 135 has in_P=false.",
+    "sweep-2: same: Trace 135 returns the strings in S that contain T as a substring. The only difference is that it ignores case, and the problem's tests cannot tell the two apart, so it passes. I treat it as effectively the same task. It is A1 only."
+   ]
+  },
+  {
+   "id": "HumanEval/92",
+   "position": 73,
+   "entry_point": "any_int",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": []
+  },
+  {
+   "id": "HumanEval/67",
+   "position": 74,
+   "entry_point": "fruit_distribution",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [
+    "unrelated",
+    "unrelated"
+   ],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": [
+    "judge-a1: unrelated: Only GSM8K/MATH fruit word problems share vocabulary (apples, oranges, mangoes). No trace parses counts out of a string and subtracts them from a total.",
+    "judge-b4: unrelated: No coding trace parses 'X apples and Y oranges' and subtracts from a total. The matches are GSM8K/MATH fruit word problems (1027, 2213, 1593, 16, 669), which overlap only in vocabulary."
+   ]
+  },
+  {
+   "id": "HumanEval/118",
+   "position": 75,
+   "entry_point": "get_closest_vowel",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": []
+  },
+  {
+   "id": "HumanEval/125",
+   "position": 76,
+   "entry_point": "split_words",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": []
+  },
+  {
+   "id": "HumanEval/104",
+   "position": 77,
+   "entry_point": "unique_digits",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": []
+  },
+  {
+   "id": "HumanEval/154",
+   "position": 78,
+   "entry_point": "cycpattern_check",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": []
+  },
+  {
+   "id": "HumanEval/72",
+   "position": 79,
+   "entry_point": "will_it_fly",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": []
+  },
+  {
+   "id": "HumanEval/123",
+   "position": 80,
+   "entry_point": "get_odd_collatz",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [
+    "unrelated",
+    "unrelated"
+   ],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": [
+    "judge-a2: unrelated: get_odd_collatz returns the sorted odd terms of n's Collatz sequence. The only Collatz trace is 1619 (in_P=false), which returns the Collatz sequence length for each integer in an array. The shared object is the Collatz sequence, but the input and the returned quantity both differ. By the frozen-screen precedent (HumanEval/96 list primes < n vs a 'count primes <= n' trace was labelled none) I call this unrelated. It is a borderline case; if upgraded it would be related, A1_only, trace 1619.",
+    "judge-b3: unrelated: The only Collatz trace is 1619 (A1-only), which returns each integer's Collatz sequence length. HumanEval/123 asks for the sorted odd terms of one number's sequence, so the two share only the sequence-generation sub-step. This matches the frozen-set treatment of sub-component overlaps such as factorial vs special_factorial and cube root vs iscube (both 'none')."
+   ]
+  },
+  {
+   "id": "HumanEval/132",
+   "position": 81,
+   "entry_point": "is_nested",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": []
+  },
+  {
+   "id": "HumanEval/16",
+   "position": 82,
+   "entry_point": "count_distinct_characters",
+   "flagged": true,
+   "label": "related",
+   "scope": "A1_only",
+   "judge_labels": [],
+   "sweep_labels": [
+    "related"
+   ],
+   "func_pass_traces": [],
+   "evidence_traces": [
+    317
+   ],
+   "agreement": true,
+   "rationales": [
+    "sweep-2: related: Trace 317, find_unique_characters, returns the set of unique alphabetic characters ignoring case. HumanEval/16 has the same core (distinct characters regardless of case) but returns a count and also counts non-letters. The test 'Jerry jERRY JeRRRY' expects 5, including the space, so the trace's solution fails."
+   ]
+  },
+  {
+   "id": "HumanEval/146",
+   "position": 83,
+   "entry_point": "specialFilter",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [
+    "unrelated",
+    "unrelated"
+   ],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": [
+    "judge-a3: unrelated: No trace counts elements greater than 10 whose first and last digits are odd. The only first/last-digit trace is 1230 (first digit of a factorial). Lexical hits (odd occurrence, LIS, even/odd sort) are topical only. No functional passes.",
+    "judge-b2: unrelated: No trace counts list elements >10 whose first and last digits are odd. The only first-digit trace is MBPP 1230 (first digit of a factorial, in_P), which is a different task. The other matches (2183, 519, 1389) share vocabulary only."
+   ]
+  },
+  {
+   "id": "HumanEval/119",
+   "position": 84,
+   "entry_point": "match_parens",
+   "flagged": true,
+   "label": "related",
+   "scope": "both",
+   "judge_labels": [
+    "related",
+    "unrelated"
+   ],
+   "sweep_labels": [
+    "related"
+   ],
+   "func_pass_traces": [],
+   "evidence_traces": [
+    33,
+    350,
+    605,
+    1275,
+    1443,
+    1674,
+    1853,
+    1955,
+    2311
+   ],
+   "agreement": false,
+   "rationales": [
+    "judge-a4: related: Borderline. The problem defines 'good' as balanced parentheses and asks whether either concatenation order of two strings is balanced. Its canonical solution is a balance check on s1+s2 or s2+s1. Traces 350 and 2311 (A1-only) are exactly a '(' ')' balance check, and 1275, 1674 and 605 (in_P) are multi-bracket balance checks. The core predicate is the same, with a material wrapper (two strings, try both orders, return 'Yes'/'No'), so those solutions would fail the tests as written. No trace mentions concatenating in some order.",
+    "judge-b1: unrelated: Task: given two strings of '(' and ')', decide whether either concatenation order is balanced and return 'Yes' or 'No'. No functional passes. Balanced-parentheses checkers exist (2311, 350, 1443, 1955, 1674 in_P, ...), but they cover only the check(s) sub-step. No trace asks about concatenating or reordering two pieces (grep for concatenation near parentheses or balanced returns 0). Frozen precedent: HumanEval/1 and 6, also built on balanced-paren sub-steps, were labelled none.",
+    "sweep-2: related: The core of match_parens is a balanced '(' ')' check. The variation is that two strings are concatenated in either order and the answer is 'Yes' or 'No'. Balanced-paren traces such as 350 and 2311 (only '(' and ')') would fail the tests directly. This is a judgement call, flagged on the conservative side. 1275, 1674 and 605 are in_P."
+   ]
+  },
+  {
+   "id": "HumanEval/140",
+   "position": 85,
+   "entry_point": "fix_spaces",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": []
+  },
+  {
+   "id": "HumanEval/65",
+   "position": 86,
+   "entry_point": "circular_shift",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": []
+  },
+  {
+   "id": "HumanEval/29",
+   "position": 87,
+   "entry_point": "filter_by_prefix",
+   "flagged": true,
+   "label": "related",
+   "scope": "A1_only",
+   "judge_labels": [
+    "unrelated",
+    "unrelated"
+   ],
+   "sweep_labels": [
+    "related"
+   ],
+   "func_pass_traces": [],
+   "evidence_traces": [
+    135
+   ],
+   "agreement": true,
+   "rationales": [
+    "judge-a1: unrelated: No trace filters a list of strings by a given prefix. Nearest are longest common prefix (516/1910), filter_hidden_files (162, which drops paths whose basename starts with '.') and a single-string regex startswith check (758). These only share topic.",
+    "judge-b4: unrelated: No trace filters a list of strings to those starting with a given prefix. 162 drops file paths whose basename starts with '.' (inverted, fixed prefix), 758 checks one string with a regex and returns a message, and 516/1910 find the longest common prefix. All are different specs.",
+    "sweep-1: related: Return the strings in S that contain T as a substring (case-insensitive), a sibling of filter-by-prefix with a different predicate. By the spec it is a material variation, but it would coincidentally pass HumanEval/29's two weak tests (the 'xxx' case). A1-only."
+   ]
+  },
+  {
+   "id": "HumanEval/126",
+   "position": 88,
+   "entry_point": "is_sorted",
+   "flagged": true,
+   "label": "related",
+   "scope": "A1_only",
+   "judge_labels": [
+    "related",
+    "related"
+   ],
+   "sweep_labels": [
+    "related"
+   ],
+   "func_pass_traces": [],
+   "evidence_traces": [
+    906
+   ],
+   "agreement": true,
+   "rationales": [
+    "judge-a2: related: is_sorted means ascending order plus False if any number appears more than twice. Trace 906 (in_P=false) is_sorted_ascending checks non-decreasing order only. That is the same core specification without the triplicate rule, so its solution returns True for [1,2,2,2,3,4] and fails. No other is-sorted trace, and none in P, was found.",
+    "judge-b3: related: Trace 906 (is_sorted_ascending: True if the list is non-decreasing, A1-only) has the same core specification. It lacks the HumanEval twist that a value appearing three or more times returns False, so its solution fails [1,2,2,2,3,4]->False. No in_P trace checks sortedness.",
+    "sweep-2: related: Trace 906, is_sorted_ascending, checks whether a list is in non-decreasing order. HumanEval/126 adds a rule: return False if any number appears more than twice. The trace's solution therefore fails, for example [1,2,2,2,3,4] should be False."
+   ]
+  },
+  {
+   "id": "HumanEval/151",
+   "position": 89,
+   "entry_point": "double_the_difference",
+   "flagged": true,
+   "label": "related",
+   "scope": "A1_only",
+   "judge_labels": [],
+   "sweep_labels": [
+    "related"
+   ],
+   "func_pass_traces": [],
+   "evidence_traces": [
+    1509
+   ],
+   "agreement": true,
+   "rationales": [
+    "sweep-1: related: Weak. sum_of_squares_of_evens: 'sum of the squares of all even numbers in the list' against 'sum of squares of the numbers that are odd', plus ignoring negatives and non-integers. Same template with parity flipped; fails ([5,4] gives 16, not 25). A1-only."
+   ]
+  },
+  {
+   "id": "HumanEval/68",
+   "position": 90,
+   "entry_point": "pluck",
+   "flagged": true,
+   "label": "related",
+   "scope": "both",
+   "judge_labels": [
+    "related",
+    "related"
+   ],
+   "sweep_labels": [
+    "related"
+   ],
+   "func_pass_traces": [],
+   "evidence_traces": [
+    2147
+   ],
+   "agreement": true,
+   "rationales": [
+    "judge-a3: related: Trace 2147 (opencodeinstruct, in_P) is find_smallest_even_number: return the smallest even number in a list, or None. That is the same core task as pluck. The material difference is that pluck returns [value, first index] and [] when there is no even value, so the trace's solution fails pluck's tests. No other smallest-even or value-with-index trace was found.",
+    "judge-b2: related: Trace 2147 (in_P) find_smallest_even_number returns the smallest even number in a list, or None if there is none. That is the core of pluck, but pluck must also return the first index as [value, index] and [] when empty, so 2147's solution fails these tests. Trace 1568 (even values paired with indices) is only topical.",
+    "sweep-2: related: Trace 2147 (in_P) is find_smallest_even_number: the smallest even number in a list, or None. pluck asks for the same core thing but returns [value, smallest index] and returns [] when there is none, so the trace's solution fails the tests."
+   ]
+  },
+  {
+   "id": "HumanEval/39",
+   "position": 91,
+   "entry_point": "prime_fib",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [
+    "unrelated",
+    "unrelated"
+   ],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": [
+    "judge-a4: unrelated: No trace asks for the n-th number that is both Fibonacci and prime. A search for traces mentioning both Fibonacci and prime returned nothing. Nth-Fibonacci traces (584, 750, 372, 2287 in_P) and first-n-primes traces (1725, 1538) each cover only one ingredient, and their outputs differ completely (the sequences are not the same). No functional passes.",
+    "judge-b1: unrelated: Task: return the n-th number that is both Fibonacci and prime. No functional passes. The traces cover plain Fibonacci (584, 750, 372, 2287 in_P) and plain prime generation (1725), but grepping for Fibonacci and prime together in one prompt returns 0 traces. This is a composition of two utilities, which the frozen-set precedent labels none (139, 143)."
+   ]
+  },
+  {
+   "id": "HumanEval/84",
+   "position": 92,
+   "entry_point": "solve",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [
+    "unrelated",
+    "unrelated"
+   ],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": [
+    "judge-a1: unrelated: No trace converts a decimal digit sum to a binary string. Digit-sum traces (1892 sums digits over a list, 82/1702 sum the digits of a power) have different outputs, and no trace asks for decimal-to-binary conversion. The 'binary' hits are about binary trees and binary search.",
+    "judge-b4: unrelated: No trace sums an integer's decimal digits and returns the result as a binary string. Digit-sum traces (1892 total digit sum over a list, 82/1702 digit sum of base^power) cover only a sub-step, and no trace converts decimal to binary."
+   ]
+  },
+  {
+   "id": "HumanEval/11",
+   "position": 93,
+   "entry_point": "string_xor",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [
+    "unrelated",
+    "unrelated"
+   ],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": [
+    "judge-a2: unrelated: string_xor (bitwise XOR of two 0/1 strings). Searches for xor, bitwise, binary string and 0s/1s found only toggle_bits at given indices (102), XOR byte decryption with a key (918), equal-0/1 subarrays (1510, 1268) and MBPP odd-occurrence (519). None asks for an elementwise XOR of two binary strings.",
+    "judge-b3: unrelated: No trace XORs two binary strings. The nearest are 102 (toggle_bits: invert bits at a list of indices) and 918 (XOR-decrypt hex ciphertext with a key), whose inputs and specifications differ. The others are binary-array or substring-counting tasks."
+   ]
+  },
+  {
+   "id": "HumanEval/38",
+   "position": 94,
+   "entry_point": "decode_cyclic",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": []
+  },
+  {
+   "id": "HumanEval/81",
+   "position": 95,
+   "entry_point": "numerical_letter_grade",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": []
+  },
+  {
+   "id": "HumanEval/78",
+   "position": 96,
+   "entry_point": "hex_key",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [
+    "unrelated",
+    "unrelated"
+   ],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": [
+    "judge-a3: unrelated: No trace counts the prime hexadecimal digits in a string. The hex traces (2227 hex_to_int_list, 2371 convert_to_hex, MAC/color validation) and the is_prime/prime-range traces (1046, 2331, 2055, 1516) overlap only in vocabulary and the prime definition. No functional passes.",
+    "judge-b2: unrelated: No trace counts prime-valued hexadecimal digits (2,3,5,7,B,D) in a string. The hex traces (2227 hex_to_int_list, 2371 convert_to_hex, 60/227 validation) and the prime traces (1046 is_prime, 2055 primes in range, 1516 prime counting) overlap in topic only."
+   ]
+  },
+  {
+   "id": "HumanEval/40",
+   "position": 97,
+   "entry_point": "triples_sum_to_zero",
+   "flagged": true,
+   "label": "related",
+   "scope": "both",
+   "judge_labels": [],
+   "sweep_labels": [
+    "related"
+   ],
+   "func_pass_traces": [],
+   "evidence_traces": [
+    1021,
+    1303
+   ],
+   "agreement": true,
+   "rationales": [
+    "sweep-1: related: 3Sum: find all unique triplets summing to zero (both in_P). Same search; the problem returns a bool, the traces return a list of triplets, so they fail the == True/False asserts. 52 (3Sum closest to a target, A1) is weaker."
+   ]
+  },
+  {
+   "id": "HumanEval/47",
+   "position": 98,
+   "entry_point": "median",
+   "flagged": true,
+   "label": "same",
+   "scope": "both",
+   "judge_labels": [
+    "same",
+    "same"
+   ],
+   "sweep_labels": [
+    "same"
+   ],
+   "func_pass_traces": [
+    526,
+    958,
+    1663,
+    2159
+   ],
+   "evidence_traces": [
+    526,
+    958,
+    1663,
+    2159
+   ],
+   "agreement": true,
+   "rationales": [
+    "judge-a4: same: Four traces ask for the median of a list, handling both odd and even lengths, and all four pass the tests. 526 and 2159 are in_P. 958 and 1663 are A1-only, and 958 even uses the HumanEval docstring inputs [3,1,2,4,5] and [-10,4,6,1000,10,20] as its samples.",
+    "judge-b1: same: Task: return the median of a list, averaging the two middle elements for even length. Four traces ask exactly this and pass the tests: 526 find_median (in_P), 2159 calculate_median (in_P), 958 calculate_median (raises on empty) and 1663 calculate_median. Traces 500, 1816 and 2255 compute a median only as part of a larger output, so they are not counted. Scope is both because 526 and 2159 have in_P=true.",
+    "sweep-2: same: These are median-of-a-list traces that pass the tests. 526 and 2159 are in_P; 958 and 1663 are A1 only."
+   ]
+  },
+  {
+   "id": "HumanEval/48",
+   "position": 99,
+   "entry_point": "is_palindrome",
+   "flagged": true,
+   "label": "same",
+   "scope": "A1_only",
+   "judge_labels": [
+    "same",
+    "same"
+   ],
+   "sweep_labels": [
+    "same"
+   ],
+   "func_pass_traces": [
+    260,
+    983,
+    1462,
+    1656,
+    1915,
+    2195,
+    2399
+   ],
+   "evidence_traces": [
+    260,
+    916,
+    983,
+    1462,
+    1656,
+    1915,
+    2195,
+    2399
+   ],
+   "agreement": true,
+   "rationales": [
+    "judge-a1: same: Trace 916 is exactly 'determine whether a lowercase string is a palindrome'. The alphanumeric/ignore-case palindrome tasks (983, 1656, 1915, 260, 1462, 2195) all pass the tests. Every palindrome-check trace has in_P=false; the in_P palindrome traces (746 previous palindrome, 1146 palindrome product) are different tasks.",
+    "judge-b4: same: Trace 916 (not in P) asks exactly whether a lowercase string is a palindrome (s == s[::-1]). Several A1-only traces ask for is_palindrome ignoring case and non-alphanumerics (983, 1656, 1915, 2195, 260, 1462) and all pass the tests, which use only lowercase letters. The in_P palindrome traces (746, 1146, 1541) are numeric variants, not this task.",
+    "sweep-1: same: 916 is a plain palindrome check on a lowercase string, the identical task. The rest are palindrome checks ignoring case and non-alphanumerics, which pass the tests. All are A1-only; P has only numeric-palindrome tasks (746, 1146). Already caught functionally."
+   ]
+  },
+  {
+   "id": "HumanEval/103",
+   "position": 100,
+   "entry_point": "rounded_avg",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": []
+  },
+  {
+   "id": "HumanEval/18",
+   "position": 101,
+   "entry_point": "how_many_times",
+   "flagged": true,
+   "label": "related",
+   "scope": "A1_only",
+   "judge_labels": [],
+   "sweep_labels": [
+    "related"
+   ],
+   "func_pass_traces": [],
+   "evidence_traces": [
+    678
+   ],
+   "agreement": true,
+   "rationales": [
+    "sweep-1: related: count_occurrences of substring t in s, but NON-overlapping. Same task with the overlap rule flipped: 'cacacacac','cac' gives 2, not 4, so it fails. A1-only."
+   ]
+  },
+  {
+   "id": "HumanEval/86",
+   "position": 102,
+   "entry_point": "anti_shuffle",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": []
+  },
+  {
+   "id": "HumanEval/145",
+   "position": 103,
+   "entry_point": "order_by_points",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": []
+  },
+  {
+   "id": "HumanEval/141",
+   "position": 104,
+   "entry_point": "file_name_check",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": []
+  },
+  {
+   "id": "HumanEval/107",
+   "position": 105,
+   "entry_point": "even_odd_palindrome",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": []
+  },
+  {
+   "id": "HumanEval/27",
+   "position": 106,
+   "entry_point": "flip_case",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [
+    "unrelated",
+    "unrelated"
+   ],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": [
+    "judge-a2: unrelated: flip_case swaps the case of every character. Searches for swapcase, toggle/flip/invert/opposite case and upper-to-lower conversion found only partial case transforms (lowercase vowels to uppercase 25, capitalize first letter 630, camel to snake case, Caesar ciphers). None asks for a case swap.",
+    "judge-b3: unrelated: No trace asks to swap or flip the case of every character, and no answer uses swapcase(). The nearest are 25 (uppercase only the lowercase vowels) and 630 (capitalize the first letter, lowercase the rest), which are different behaviours."
+   ]
+  },
+  {
+   "id": "HumanEval/88",
+   "position": 107,
+   "entry_point": "sort_array",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [
+    "unrelated",
+    "unrelated"
+   ],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": [
+    "judge-a3: unrelated: No trace sorts ascending or descending depending on whether the first plus last element is odd or even. Hits are generic sorts (merge sort 243/320, custom_sort 498, DNF 1392) and frequency-based sorts, so the overlap is topical only. No functional passes.",
+    "judge-b2: unrelated: No trace picks ascending or descending order from the parity of first+last element. The matches are generic sorts (243/320 merge sort, 498 custom sort, 1392 DNF sort) and 2183, which places even numbers before odd ones; that is a different spec."
+   ]
+  },
+  {
+   "id": "HumanEval/10",
+   "position": 108,
+   "entry_point": "make_palindrome",
+   "flagged": true,
+   "label": "related",
+   "scope": "A1_only",
+   "judge_labels": [],
+   "sweep_labels": [
+    "related"
+   ],
+   "func_pass_traces": [],
+   "evidence_traces": [
+    1067
+   ],
+   "agreement": true,
+   "rationales": [
+    "sweep-2: related: Trace 1067 asks for the shortest palindrome formed by adding characters at the beginning, using the same longest-palindromic-suffix reasoning. HumanEval/10 appends to the end, so the mirrored solution fails ('cat' -> 'catac')."
+   ]
+  },
+  {
+   "id": "HumanEval/54",
+   "position": 109,
+   "entry_point": "same_chars",
+   "flagged": true,
+   "label": "related",
+   "scope": "A1_only",
+   "judge_labels": [
+    "related",
+    "related"
+   ],
+   "sweep_labels": [
+    "related"
+   ],
+   "func_pass_traces": [],
+   "evidence_traces": [
+    1557
+   ],
+   "agreement": true,
+   "rationales": [
+    "judge-a4: related: Borderline. Trace 1557 (in_P=false) checks whether two strings 'contain the same characters with the same frequencies' (an anagram check, ignoring case and non-letters). The problem asks only whether the two character sets are equal. That is the same core spec with a material variation (multiset vs set), and an anagram solution fails same_chars('abcd','dddddddabc')==True. The other matches (1666 all-chars-same, 1074/1503 same digit count, 271 match percentage) are vocabulary only.",
+    "judge-b1: related: Task: same_chars returns True if two words use the same set of characters (set equality; repeats ignored). Trace 1557 asks whether two strings are anagrams: the same characters with the same frequencies, ignoring case and non-letters (Counter equality). Same core question (do two strings consist of the same characters) with a material variation (multiset instead of set), so it fails the tests, e.g. ('abcd','dddddddabc') should be True. Trace 271 (character match percentage over unique sets) and 167 (in_P, group anagrams) have different outputs, so they are not counted. Borderline between related and unrelated; the frozen-set precedent was strict (96 was labelled none).",
+    "sweep-1: related: Anagram check ('same characters with the same frequencies', ignoring case and non-letters) against same_chars, which asks for the same set of characters. Multiset vs set is a material variation; 'eabcdzzzz' vs 'dddzzzzzzzddeddabc' would return False. A1-only. 167 and 849 (group or generate anagrams) are only topical."
+   ]
+  },
+  {
+   "id": "HumanEval/36",
+   "position": 110,
+   "entry_point": "fizz_buzz",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [
+    "unrelated",
+    "unrelated"
+   ],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": [
+    "judge-a1: unrelated: Trace 2369 is classic FizzBuzz and shares only the function name. No trace counts occurrences of the digit 7 among multiples of 11 or 13, or counts a digit across a range.",
+    "judge-b4: unrelated: Trace 2369 (in_P) has the same name fizz_buzz but is the classic Fizz/Buzz string game, a different behaviour. No trace counts occurrences of the digit 7 in multiples of 11 or 13."
+   ]
+  },
+  {
+   "id": "HumanEval/98",
+   "position": 111,
+   "entry_point": "count_upper",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [
+    "unrelated",
+    "unrelated"
+   ],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": [
+    "judge-a2: unrelated: count_upper counts uppercase vowels at even indices. The nearest traces are generic case-insensitive vowel counters (425, 1360, 1081, all in_P=false; MBPP Check_Vow 1228, in_P=true). Both defining constraints, uppercase-only and even index, are absent there, so this is vowel-counting topical overlap only. No even-index character-counting trace exists; MBPP even_position 1496 checks list values.",
+    "judge-b3: unrelated: No trace counts uppercase vowels at even indices. The vowel traces (425, 1081, 1360 count_vowels, 1502/1937 vowel dicts) count all vowels case-insensitively and have neither defining condition (uppercase only, even index). The overlap is topical only."
+   ]
+  },
+  {
+   "id": "HumanEval/106",
+   "position": 112,
+   "entry_point": "f",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [
+    "unrelated",
+    "unrelated"
+   ],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": [
+    "judge-a3: unrelated: No trace builds a list whose element i is i! for even i and 1+...+i for odd i. The factorial traces (682, 796, 885, 1166, 1537, 2041, 2221 factorial_sum) and the f(x) MATH problems share only a component or the letter f. No functional passes.",
+    "judge-b2: unrelated: No trace builds a list whose entry i is i! for even i and 1+...+i for odd i. Factorial traces (1537, 682, 885 and others) and factorial_sum 2221 (in_P, a sum of factorials 1..n) cover only a generic component, not this specification."
+   ]
+  },
+  {
+   "id": "HumanEval/152",
+   "position": 113,
+   "entry_point": "compare",
+   "flagged": true,
+   "label": "related",
+   "scope": "both",
+   "judge_labels": [
+    "unrelated",
+    "related"
+   ],
+   "sweep_labels": [
+    "related"
+   ],
+   "func_pass_traces": [],
+   "evidence_traces": [
+    2255,
+    2302
+   ],
+   "agreement": false,
+   "rationales": [
+    "judge-a4: unrelated: No trace asks for the list of absolute differences between corresponding guesses and scores. 2255 (in_P) computes those absolute differences only as a step toward returning their median, so its output is a different single number. 2302 (profit per period) and 1969 (brightness ratio per band) are signed or formula-based elementwise operations. The lexical matches (hangman, guessing game, Book.compare) are vocabulary only.",
+    "judge-b1: related: Task (game/guess story): return the element-wise absolute difference of two equal-length lists. Trace 2302 calculate_profit returns the element-wise signed difference revenue[i]-expenses[i], truncated to the shorter list. Same per-index difference with a material variation (no abs), so it fails the tests, e.g. compare([0,5,...],[4,1,...]) gives -4 instead of 4. Trace 2255 (in_P) computes [abs(a-b) for a,b in zip(...)] as an intermediate step but specifies the median of those differences, a scalar. That is a composition, so it is not counted as evidence. Without 2255 the evidence is A1-only. Borderline: the related link is weak because the operation is a generic one-liner.",
+    "sweep-1: related: 2302 (A1) computes element-wise differences of two equal-length lists but signed, not absolute, so it fails the second example. 2255 (in_P) computes absolute differences of corresponding elements, then returns their median. The match is a sub-step, so the P evidence is weaker."
+   ]
+  },
+  {
+   "id": "HumanEval/112",
+   "position": 114,
+   "entry_point": "reverse_delete",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [
+    "unrelated",
+    "unrelated"
+   ],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": [
+    "judge-a1: unrelated: Lexical matches are plain palindrome checks, and other traces remove special or non-alphanumeric characters. No trace deletes the characters of s that appear in c and returns a (result, is_palindrome) tuple. Palindrome checking is only a subcomponent.",
+    "judge-b4: unrelated: No trace deletes the characters of s that appear in c and then returns (result, is_palindrome). Many traces check palindromes, which is only a sub-step. 'Remove characters' traces (471/1843) keep only alphanumerics with a regex, which is a different spec."
+   ]
+  },
+  {
+   "id": "HumanEval/150",
+   "position": 115,
+   "entry_point": "x_or_y",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": []
+  },
+  {
+   "id": "HumanEval/76",
+   "position": 116,
+   "entry_point": "is_simple_power",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [
+    "unrelated",
+    "unrelated"
+   ],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": [
+    "judge-a2: unrelated: is_simple_power checks whether x equals n**k for some integer k. Searches for power-of checks, perfect powers and is_power found only perfect-square checks (MBPP 340, 2017, 1455), memory sizes that must be powers of two embedded in other tasks (792, 893), and computing powers (63, 2244). None asks whether x is an integer power of a given base n.",
+    "judge-b3: unrelated: No trace checks whether x is an integer power of n. The hits are power_list/calculate_power (exponentiation), power sets, fifth-power sums, and 893 (OpenGL memory with a power-of-two size check as a minor sub-condition). All share vocabulary only."
+   ]
+  },
+  {
+   "id": "HumanEval/158",
+   "position": 117,
+   "entry_point": "find_max",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [
+    "unrelated",
+    "unrelated"
+   ],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": [
+    "judge-a3: unrelated: No trace returns the word with the most unique characters, breaking ties lexicographically. 139 (max element of a list) is a name-only hit. 1617 (unique substrings), 240 (top-k frequent words), 213/996 (most frequent word) and the permutation traces are topical only. No functional passes.",
+    "judge-b2: unrelated: No trace returns the word with the most unique characters, with a lexicographic tie-break. Searches for unique/distinct characters per word and for len(set(word)) found nothing relevant. The lexical matches (139 list max, 1617 unique substrings, 240 top-k words) are a different spec."
+   ]
+  },
+  {
+   "id": "HumanEval/56",
+   "position": 118,
+   "entry_point": "correct_bracketing",
+   "flagged": true,
+   "label": "related",
+   "scope": "both",
+   "judge_labels": [
+    "related",
+    "related"
+   ],
+   "sweep_labels": [
+    "related"
+   ],
+   "func_pass_traces": [],
+   "evidence_traces": [
+    33,
+    350,
+    605,
+    1275,
+    1443,
+    1674,
+    1853,
+    1955,
+    2311
+   ],
+   "agreement": true,
+   "rationales": [
+    "judge-a4: related: This is the same bracket-balance task as the frozen HumanEval/61, but with '<' '>' instead of '(' ')'. That parallels the uppercase vs lowercase roman-numeral precedent: the solutions would mishandle '<' and '>' and fail the tests, and there are no functional passes. The '(' ')' traces 350 and 2311 and the multi-bracket traces 33, 1443, 1853 and 1955 are A1-only. The multi-bracket traces 1275, 1674 and 605 (MBPP check_expression) are in_P.",
+    "judge-b1: related: Task: correct_bracketing over '<' and '>' (every opening has a matching closing). This is the angle-bracket twin of frozen HumanEval/61, which was labelled same using these traces. Traces 350 and 2311 check balanced '(' ')'. Traces 33, 1443, 1853, 1955 and in_P traces 605 (MBPP check_expression), 1275 and 1674 check balanced ()[]{}. Same core specification with a different bracket alphabet: these solutions ignore '<' and '>', so correct_bracketing('<') returns True and the tests fail (func_pass 0). This matches the rule's uppercase-vs-lowercase example. Scope is both because 605, 1275 and 1674 have in_P=true.",
+    "sweep-2: related: Balanced-bracket checking with the same core specification ('every opening bracket has a corresponding closing bracket'), but using () or ()[]{} instead of '<' and '>'. Those solutions treat '<' and '>' as ordinary characters and fail, for example on '<'. 350 and 2311 handle '(' and ')' only. 1275, 1674 and 605 (MBPP check_expression) are in_P."
+   ]
+  },
+  {
+   "id": "HumanEval/129",
+   "position": 119,
+   "entry_point": "minPath",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [
+    "unrelated",
+    "unrelated"
+   ],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": [
+    "judge-a1: unrelated: Grid traces cover island perimeter, shortest-path BFS, maze generation and the largest region. None asks for the lexicographically minimal path of k cells.",
+    "judge-b4: unrelated: No trace asks for a lexicographically smallest length-k walk on an N x N permutation grid. The lexical matches are island perimeter or area, region size, and obstacle pathfinding (72, 615, 245, 759, 1799), which share only the grid topic."
+   ]
+  },
+  {
+   "id": "HumanEval/26",
+   "position": 120,
+   "entry_point": "remove_duplicates",
+   "flagged": true,
+   "label": "related",
+   "scope": "both",
+   "judge_labels": [
+    "related",
+    "related"
+   ],
+   "sweep_labels": [
+    "related"
+   ],
+   "func_pass_traces": [],
+   "evidence_traces": [
+    407,
+    600,
+    920,
+    957,
+    1861,
+    2169
+   ],
+   "agreement": true,
+   "rationales": [
+    "judge-a2: related: HumanEval remove_duplicates drops every element that occurs more than once ([1,2,3,2,4] -> [1,3,4]). Many traces, several with the same function name, ask instead to remove duplicates while keeping the first occurrence: 407, 600 and 2169 (in_P=false) and 957, 920 and 1861 (in_P=true). That is the same core specification with a material variation, and those solutions return [1,2,3,4,5] instead of [1,4,5]. No trace asks to keep only the elements that appear exactly once.",
+    "judge-b3: related: Many traces use the same name and core task, remove_duplicates with order preserved: 957, 920 and 1861 are in_P; 407, 600 and 2169 are A1-only. All of them keep the first occurrence of each value. HumanEval/26 instead drops every value that occurs more than once, so those solutions fail [1,2,3,2,4,3,5]->[1,4,5]. No trace asks to keep only elements that occur exactly once (2208, 'non-repeated', actually sums the distinct values).",
+    "sweep-2: related: These remove_duplicates traces dedupe an integer list keeping the first occurrence of each value, in order. HumanEval/26 instead removes every element that occurs more than once. The core specification is the same with a material variation, and the dedupe solution fails ([1,2,3,2,4] -> [1,3,4]). 920, 957 and 1861 are in_P."
+   ]
+  },
+  {
+   "id": "HumanEval/91",
+   "position": 121,
+   "entry_point": "is_bored",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [
+    "unrelated",
+    "unrelated"
+   ],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": [
+    "judge-a3: unrelated: No trace counts sentences, delimited by . ? !, that start with the word 'I'. 1971 (capitalize sentences ending in . ! ?) and the sentence filtering/word-count traces (2057, 1514, 1660) share vocabulary only. No functional passes.",
+    "judge-b2: unrelated: No trace counts sentences that start with the word 'I', and none splits on . ? ! for that purpose. The nearest traces (2057 filter_sentences, 2065 sort_sentences_by_word_count, 1514 and 2174 word counts) are general sentence processing."
+   ]
+  },
+  {
+   "id": "HumanEval/120",
+   "position": 122,
+   "entry_point": "maximum",
+   "flagged": true,
+   "label": "related",
+   "scope": "A1_only",
+   "judge_labels": [
+    "related",
+    "related"
+   ],
+   "sweep_labels": [
+    "related"
+   ],
+   "func_pass_traces": [],
+   "evidence_traces": [
+    1085,
+    1781
+   ],
+   "agreement": true,
+   "rationales": [
+    "judge-a4: related: Borderline. Trace 1085 returns the two largest integers in ascending order, duplicates allowed. That is maximum(arr, 2) returned as a tuple. 1781 does the same for two distinct integers. Both are the same top-k sorted-ascending spec with k fixed at 2, a material variation that fails these tests. Both are in_P=false. 864 (in_P, MBPP n cheapest items by price via heapq) is a further removed variant (smallest, keyed dicts) and is not counted. No trace takes a general k.",
+    "judge-b1: related: Task: return the k largest numbers of arr in ascending order, keeping duplicates. Trace 1085 asks for the two largest integers as a tuple with the smaller first, returning equal values too (its answer is sorted(nums, reverse=True)[:2], reversed). That is this task fixed at k=2. Trace 1781 asks for the two largest distinct integers in ascending order. Same core specification with a material variation (k fixed at 2, tuple output, distinct values in 1781), and no k parameter, so neither passes the tests (func_pass 0). Both traces have in_P=false. No general top-k, nlargest or kth-largest trace exists (2342 is k-th smallest, 173 is the smallest three unique).",
+    "sweep-2: related: These are weak 'related' cases: 1781 and 1085 return the two largest distinct integers in ascending order. HumanEval/120 returns the k largest, sorted, with duplicates allowed, so fixing k=2 and requiring distinct values fails, for example [4,-4,4], k=2 -> [4,4]."
+   ]
+  },
+  {
+   "id": "HumanEval/114",
+   "position": 123,
+   "entry_point": "minSubArraySum",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [
+    "unrelated",
+    "unrelated"
+   ],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": [
+    "judge-a1: unrelated: No minimum (or maximum, Kadane-style) subarray-sum trace exists. The nearest are fixed-size window max sum (1389) and non-adjacent max sum (1925, 495, 430), which are different specifications.",
+    "judge-b4: unrelated: No trace asks for a minimum or maximum contiguous subarray sum (Kadane). The nearest are 1389 (max sum of a fixed-size-k window) and 1925/495/430 (non-adjacent max-sum subsequence). These are different problems."
+   ]
+  },
+  {
+   "id": "HumanEval/163",
+   "position": 124,
+   "entry_point": "generate_integers",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [
+    "unrelated",
+    "unrelated"
+   ],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": [
+    "judge-a2: unrelated: generate_integers returns the even single digits between a and b in either order, so (10,14) gives []. The nearest traces are range_gen yielding even numbers of range(start, stop) (914, in_P=false) and filtering even numbers from a list then sorting (870, 450, 626). They lack the digit restriction, the order swap and the inclusive bound, so the overlap is generic even-number filtering only.",
+    "judge-b3: unrelated: No trace asks for the even digits (or even numbers) between a and b in either order. The matches are generic even-number filters on lists (870, 450, 1675, 2183) and prime-in-range tasks (331, 2055), which share topic only. No functional passes."
+   ]
+  },
+  {
+   "id": "HumanEval/137",
+   "position": 125,
+   "entry_point": "compare_one",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": []
+  },
+  {
+   "id": "HumanEval/17",
+   "position": 126,
+   "entry_point": "parse_music",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [
+    "unrelated",
+    "unrelated"
+   ],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": [
+    "judge-a3: unrelated: No trace parses ASCII music notes into beat counts. The only lexical hit is 1706, a GSM8K word problem about beats per minute. The other music hits are UltraChat prose. No functional passes.",
+    "judge-b2: unrelated: No trace parses note strings ('o', 'o|', '.|') into beat counts. The only overlap is the word 'beats' in GSM8K 1706 and other music vocabulary in ultrachat/GSM traces."
+   ]
+  },
+  {
+   "id": "HumanEval/144",
+   "position": 127,
+   "entry_point": "simplify",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [
+    "unrelated",
+    "unrelated"
+   ],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": [
+    "judge-a4: unrelated: No trace parses two 'a/b' fraction strings and checks whether their product is a whole number. 89 (in_P) is a Fraction class with arithmetic and reduction, 90 is a 'simplify' that flattens nested lists, and 984/1347 are MATH simplification problems. The overlap is topical or vocabulary only.",
+    "judge-b1: unrelated: Task: parse two 'a/b' fraction strings and check whether their product is a whole number. No functional passes. Trace 90 is also named simplify but flattens a nested list (name only). Trace 89 (in_P) is a general Fraction class and 248 is a recursive fraction computation. The MATH 'simplify' problems (984, 1347) are arithmetic only. No trace parses fraction strings or tests whether a product is an integer."
+   ]
+  },
+  {
+   "id": "HumanEval/124",
+   "position": 128,
+   "entry_point": "valid_date",
+   "flagged": true,
+   "label": "related",
+   "scope": "A1_only",
+   "judge_labels": [
+    "related",
+    "related"
+   ],
+   "sweep_labels": [
+    "related"
+   ],
+   "func_pass_traces": [],
+   "evidence_traces": [
+    701
+   ],
+   "agreement": true,
+   "rationales": [
+    "judge-a1: related: Trace 701 (in_P=false) asks to validate a date string, checking the month range and days per month. It uses YYYY-MM-DD with Gregorian leap years and assumes the format is correct, so its solution fails the mm-dd-yyyy format and empty-string cases. MBPP 109 (month name with 31 days, in_P) only shares the topic.",
+    "judge-b4: related: Trace 701 (not in P) checks whether a date string is valid using month 1-12 and per-month day limits, so the core spec is the same. It differs materially: the format is YYYY-MM-DD, it uses the Gregorian leap-year rule, and it assumes the format is correct. HumanEval needs mm-dd-yyyy, a format check, and February up to 29. The 701 solution would fail tests such as '03-11-2000' -> True. MBPP check_monthnumb (109/1079) is only topical.",
+    "sweep-2: related: Trace 701 validates a date string against month and day ranges with leap years. The format is YYYY-MM-DD and is assumed well-formed, while HumanEval/124 requires mm-dd-yyyy, a format check, and Feb <= 29. The trace's solution fails the tests."
+   ]
+  },
+  {
+   "id": "HumanEval/46",
+   "position": 129,
+   "entry_point": "fib4",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": []
+  },
+  {
+   "id": "HumanEval/58",
+   "position": 130,
+   "entry_point": "common",
+   "flagged": true,
+   "label": "same",
+   "scope": "both",
+   "judge_labels": [
+    "same",
+    "same"
+   ],
+   "sweep_labels": [
+    "same"
+   ],
+   "func_pass_traces": [
+    478,
+    1700,
+    1788
+   ],
+   "evidence_traces": [
+    388,
+    478,
+    1700,
+    1788,
+    1919
+   ],
+   "agreement": true,
+   "rationales": [
+    "judge-a2: same: common returns the sorted unique common elements of two lists. Trace 1700 find_common_elements (unique, ascending) and trace 1788 common_sorted_unique (sorted unique common integers) are the same task reworded, and both pass. Trace 478 (unique common elements, any order) also passes. All three have in_P=false. The P traces 388 and 1919 (find_common_elements keeping list1 order and multiplicity, unsorted) are related variants only.",
+    "judge-b3: same: Trace 1700 (find_common_elements, no duplicates, sorted ascending) and trace 1788 (sorted list of unique integers common to both lists) ask for exactly this behaviour, and both pass the tests. Trace 478 (unique common elements, order irrelevant) also passes. All three are A1-only. P's closest trace, 1919 (in_P), keeps list1 order without sorting, so it is only a related variant and fails the tests.",
+    "sweep-2: same: Same task in A1-only traces: 1788 (sorted unique integers common to both lists), 1700 (find_common_elements, deduplicated and sorted) and 478 (unique common elements). All pass. The in_P traces 388 and 1919 are only related variants: they keep list1 order and multiplicity, not sorted unique. So P saw a related task and A1 saw the same task. Scope is 'both' only because of those related in_P traces."
+   ]
+  },
+  {
+   "id": "HumanEval/94",
+   "position": 131,
+   "entry_point": "skjkasdkd",
+   "flagged": true,
+   "label": "related",
+   "scope": "A1_only",
+   "judge_labels": [
+    "related",
+    "related"
+   ],
+   "sweep_labels": [
+    "related"
+   ],
+   "func_pass_traces": [],
+   "evidence_traces": [
+    735
+   ],
+   "agreement": true,
+   "rationales": [
+    "judge-a3: related: Trace 735 (opencodeinstruct_off, not in P) asks for the largest prime in a list of integers (None if there is none), which is the core of this problem. The material difference is that HumanEval/94 returns the digit sum of that prime, so 735's solution fails the tests. 1892 (total digit sum of a list) covers only the other sub-step, and 155/2014/421 (largest prime <= n, largest prime factor) are different tasks. No functional passes.",
+    "judge-b2: related: Trace 735 (not in_P) asks for the largest prime number in a list of integers, or None if there is none. That is the core of skjkasdkd, but the trace returns the prime itself rather than the sum of its digits, so its solution fails these tests. No in_P trace covers the largest prime in a list: 2014 is the largest prime factor of n, 1365 a sum of prime divisors, and 155 the largest prime <= n (not in_P).",
+    "sweep-1: related: 'Identify and return the largest prime number from the list' (None if none). That is the core of skjkasdkd, minus the final digit-sum step, so it returns 181 instead of 10. A1-only. Lexical sol10=0.112 hints at the overlap, but there is no functional pass."
+   ]
+  },
+  {
+   "id": "HumanEval/130",
+   "position": 132,
+   "entry_point": "tri",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": []
+  },
+  {
+   "id": "HumanEval/32",
+   "position": 133,
+   "entry_point": "find_zero",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": []
+  },
+  {
+   "id": "HumanEval/63",
+   "position": 134,
+   "entry_point": "fibfib",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": []
+  },
+  {
+   "id": "HumanEval/79",
+   "position": 135,
+   "entry_point": "decimal_to_binary",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": []
+  },
+  {
+   "id": "HumanEval/82",
+   "position": 136,
+   "entry_point": "prime_length",
+   "flagged": true,
+   "label": "related",
+   "scope": "both",
+   "judge_labels": [
+    "related",
+    "unrelated"
+   ],
+   "sweep_labels": [
+    "related"
+   ],
+   "func_pass_traces": [],
+   "evidence_traces": [
+    1046,
+    1636,
+    2331
+   ],
+   "agreement": false,
+   "rationales": [
+    "judge-a4: related: The problem is just a primality test applied to len(string). Traces 1046 and 2331 (A1-only) and 1636 (in_P, MBPP prime_num) ask for exactly that primality test on an integer. Because the input here is a string, an is_prime solution called directly fails the tests (no functional passes). The rules count is_prime as 'same' only when the behaviour matches, so this is the same core spec with a material variation. No trace asks about prime string length.",
+    "judge-b1: unrelated: Task: True if len(string) is prime. No functional passes. The matches are integer is_prime (1046, 2331), generate_primes (1725), smallest prime factor (1039) and largest prime in a list (735). Primality is only a sub-step here, and no trace asks whether a string's length is prime (grep for 'length ... prime' finds only 874, vector lengths with a prime z-coordinate). This follows the frozen-set precedent, where HumanEval/143 (prime-length words) and 96 (primes below n) were labelled none. Borderline: the canonical solution is is_prime(len(s)).",
+    "sweep-2: related: prime_length is an is_prime check applied to len(string). The is_prime traces 1046 and 2331 (A1 only) and MBPP prime_num 1636 (in_P) specify the primality behaviour, but they take an int, so they would fail on string input. This is a wrapper variant and a judgement call."
+   ]
+  },
+  {
+   "id": "HumanEval/42",
+   "position": 137,
+   "entry_point": "incr_list",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": []
+  },
+  {
+   "id": "HumanEval/53",
+   "position": 138,
+   "entry_point": "add",
+   "flagged": true,
+   "label": "same",
+   "scope": "both",
+   "judge_labels": [
+    "same",
+    "same"
+   ],
+   "sweep_labels": [
+    "same"
+   ],
+   "func_pass_traces": [
+    1938
+   ],
+   "evidence_traces": [
+    165,
+    711,
+    1018,
+    1938,
+    2243
+   ],
+   "agreement": true,
+   "rationales": [
+    "judge-a1: same: This is a trivial utility. Calculator trace 2243 (in_P=true) specifies add(a, b) returning the sum of a and b, and so do Calculator traces 711, 165 and 1018 (A1 only). Trace 1938 (A1 only) defines add(a, b) = a + b, which functionally passes. Following the strlen precedent, this counts as the same behaviour.",
+    "judge-b4: same: Trivial utility. Trace 2243 (in_P) asks for a Calculator with 'add(a, b): Returns the sum of a and b', and A1-only traces 165 and 711 specify the same thing. That is the same behaviour as add(x, y), here as a method. Trace 1938 (A1-only) defines a standalone add(a, b) that passes the tests (100 random cases, so not weak), although that task is a logging decorator around add.",
+    "sweep-2: same: This is a trivial utility. Calculator-class traces specify add(a, b) returning the sum of a and b: 2243 (in_P) and 711 (A1 only); 165, 1018 and 2094 are similar. Trace 1938 (add/multiply with a logging decorator) passes the functional test. The behaviour is identical even though it is a method or part of a larger task."
+   ]
+  },
+  {
+   "id": "HumanEval/60",
+   "position": 139,
+   "entry_point": "sum_to_n",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": []
+  },
+  {
+   "id": "HumanEval/108",
+   "position": 140,
+   "entry_point": "count_nums",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": []
+  },
+  {
+   "id": "HumanEval/64",
+   "position": 141,
+   "entry_point": "vowels_count",
+   "flagged": true,
+   "label": "related",
+   "scope": "both",
+   "judge_labels": [
+    "related",
+    "related"
+   ],
+   "sweep_labels": [
+    "related"
+   ],
+   "func_pass_traces": [],
+   "evidence_traces": [
+    425,
+    1081,
+    1228,
+    1360
+   ],
+   "agreement": true,
+   "rationales": [
+    "judge-a2: related: vowels_count counts a, e, i, o, u in a word, plus 'y' only when it is the last letter. Traces 1360, 425 and 1081 (in_P=false) and MBPP Check_Vow 1228 (in_P=true) all count vowels in a string, mostly case-insensitive, with no 'y' rule. That is the same core specification with a material variation, and they fail 'key', 'keY' and 'ACEDY'. No trace treats y as a vowel.",
+    "judge-b3: related: Several traces give the same core task, counting vowels in a string case-insensitively: count_vowels in 425, 1081 and 1360 (A1-only), and MBPP Check_Vow in 1228 (in_P, vowel set passed as an argument). None has the HumanEval twist that 'y' counts as a vowel only at the end of the word, so those solutions fail 'key'->2 and 'ACEDY'->3. No trace mentions the y rule.",
+    "sweep-1: related: Case-insensitive vowel counting: 425, 1360, 1081 (A1) and MBPP Check_Vow 1228 (in_P, vowels passed as an argument). The problem adds 'y counts only at end of word', so these fail 'key'/'bye'. Same core with a material variation."
+   ]
+  },
+  {
+   "id": "HumanEval/49",
+   "position": 142,
+   "entry_point": "modp",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": []
+  },
+  {
+   "id": "HumanEval/100",
+   "position": 143,
+   "entry_point": "make_a_pile",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": []
+  },
+  {
+   "id": "HumanEval/131",
+   "position": 144,
+   "entry_point": "digits",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [
+    "unrelated",
+    "unrelated"
+   ],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": [
+    "judge-a3: unrelated: No trace returns the product of an integer's odd digits (0 if all digits are even). Hits are a MATH digit-product puzzle (503, 1720), even/odd list tasks (2183, 1318) and digit-sum traces (1892, 82/1702), so the overlap is topical only. No functional passes.",
+    "judge-b2: unrelated: No trace asks for the product of the odd digits of an integer, or for any per-digit parity product or sum. The lexical matches are MATH digit-product puzzles (503, 1720) and generic even/odd list tasks (2183, 1318), which overlap in vocabulary only."
+   ]
+  },
+  {
+   "id": "HumanEval/19",
+   "position": 145,
+   "entry_point": "sort_numbers",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [
+    "unrelated",
+    "unrelated"
+   ],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": [
+    "judge-a4: unrelated: No trace sorts space-separated number words ('zero'..'nine'). Searches for number words, numeral-to-word conversion and quoted 'zero'/'nine' returned nothing. The matches are a sort_numbers trace that sorts integers without built-ins (61, in_P) and find_largest_smallest (201). They share only the name and vocabulary.",
+    "judge-b1: unrelated: Task: sort a space-delimited string of number words ('zero'..'nine') by numeric value. No functional passes. Trace 61 (in_P) is also named sort_numbers but sorts an integer list without built-ins, so only the name matches. No trace prompt or answer contains a number-word mapping: grepping for 'zero'..'nine', 'seven' and 'eight' literals, 'number words' and 'spelled' finds nothing relevant."
+   ]
+  },
+  {
+   "id": "HumanEval/83",
+   "position": 146,
+   "entry_point": "starts_one_ends",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": []
+  },
+  {
+   "id": "HumanEval/14",
+   "position": 147,
+   "entry_point": "all_prefixes",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": []
+  },
+  {
+   "id": "HumanEval/147",
+   "position": 148,
+   "entry_point": "get_max_triples",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": []
+  },
+  {
+   "id": "HumanEval/21",
+   "position": 149,
+   "entry_point": "rescale_to_unit",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": []
+  },
+  {
+   "id": "HumanEval/122",
+   "position": 150,
+   "entry_point": "add_elements",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [
+    "unrelated",
+    "unrelated"
+   ],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": [
+    "judge-a1: unrelated: Lexical matches only share the arr/k variable names (pair sum, missing number, rotation point). No trace sums the elements with at most two digits among the first k elements.",
+    "judge-b4: unrelated: No trace sums elements that have at most two digits, or works on the first k elements. Searches for two-digit, first k and digit-count filters found only 'last two digits' factorial tasks (343/2390) and unrelated array tasks (1111 pair sum, 488 missing number)."
+   ]
+  },
+  {
+   "id": "HumanEval/85",
+   "position": 151,
+   "entry_point": "add",
+   "flagged": true,
+   "label": "related",
+   "scope": "A1_only",
+   "judge_labels": [
+    "unrelated",
+    "unrelated"
+   ],
+   "sweep_labels": [
+    "related"
+   ],
+   "func_pass_traces": [],
+   "evidence_traces": [
+    1921
+   ],
+   "agreement": true,
+   "rationales": [
+    "judge-a2: unrelated: add sums the even elements at odd indices. The nearest trace is 1921 (in_P=false), which sums all even integers in a list; 1026 (in_P=true) is a Lua stdin program that sums evens. The index-parity condition, which is the substance of the problem, is absent, and MBPP even_position 1496 checks something different. I treated sum-of-evens as a generic building block, consistent with the strict frozen-screen threshold. This is borderline; if upgraded it would be related, A1_only, trace 1921 (the Lua trace differs in both language and task).",
+    "judge-b3: unrelated: No trace sums even elements at odd indices. The nearest traces drop the index condition (1026 Lua sum of evens, in P; 1921 sum of even ints, A1-only) or test something else (1496 MBPP even_position: every even index holds an even number, in P). The lexical hits are Calculator.add classes, so the overlap is only in names. No functional passes.",
+    "sweep-1: related: Weak. 'Sum of all even integers in the list' (ignoring non-integers) against 'add the even elements at odd indices'. Same operation; the problem adds the odd-index restriction, so the trace fails ([4,2,6,7] gives 12, not 2). A1-only."
+   ]
+  },
+  {
+   "id": "HumanEval/70",
+   "position": 152,
+   "entry_point": "strange_sort_list",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": []
+  },
+  {
+   "id": "HumanEval/25",
+   "position": 153,
+   "entry_point": "factorize",
+   "flagged": true,
+   "label": "same",
+   "scope": "A1_only",
+   "judge_labels": [
+    "same",
+    "same"
+   ],
+   "sweep_labels": [
+    "same"
+   ],
+   "func_pass_traces": [
+    1179,
+    1410
+   ],
+   "evidence_traces": [
+    1179,
+    1410
+   ],
+   "agreement": true,
+   "rationales": [
+    "judge-a3: same: 1179 (prime factors in ascending order, each repeated as often as it divides n; 60 -> [2,2,3,5]) and 1410 (find_prime_factors, same spec and sample) are the same task. Both pass the unit tests, and neither is in P. Unique-factor variants 1400 and 2249 (not in P) are only related. In-P factor traces are different tasks: 2014 largest prime factor and 872 count of distinct prime powers.",
+    "judge-b2: same: Trace 1179 asks for all prime factors in ascending order, each repeated as often as it divides n. Trace 1410 (find_prime_factors, ascending, 60 -> [2,2,3,5]) asks for the same. Both are the factorize task and both pass its tests; neither is in_P. Traces 1400 (unique prime factors per list element) and 2249 (prime factors as a set) are material variants and also not in_P. The in_P traces 2014 (largest prime factor), 872 and 298 ask for different things.",
+    "sweep-1: same: Prime factors in ascending order with multiplicity (60 -> [2,2,3,5]). Same task, A1-only. 2249 (set of factors) and 1400 (unique factors) are weaker variants. No P trace does factorization with multiplicity."
+   ]
+  },
+  {
+   "id": "HumanEval/149",
+   "position": 154,
+   "entry_point": "sorted_list_sum",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": []
+  },
+  {
+   "id": "HumanEval/62",
+   "position": 155,
+   "entry_point": "derivative",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": []
+  },
+  {
+   "id": "HumanEval/157",
+   "position": 156,
+   "entry_point": "right_angle_triangle",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [
+    "unrelated",
+    "unrelated"
+   ],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": [
+    "judge-a4: unrelated: No coding trace checks whether three sides form a right triangle, and searches for right-angle, Pythagorean and hypotenuse turned up only MATH word problems (441, 443, 1458, 1928). 1048 classifies triangles as equilateral, isosceles or scalene, and 2300 (in_P) checks triangle validity from angles. Both are different tasks.",
+    "judge-b1: unrelated: Task: decide whether three sides form a right triangle (Pythagorean check). No functional passes. Trace 1048 classifies triangles as equilateral, isosceles or scalene. MBPP validity_triangle (2300) checks a triangle from its angles. The other hits are math word problems about right triangles or hypotenuses (441, 443, 1458, 1928), with no code task. Overlap is topical only."
+   ]
+  },
+  {
+   "id": "HumanEval/160",
+   "position": 157,
+   "entry_point": "do_algebra",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [
+    "unrelated",
+    "unrelated"
+   ],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": [
+    "judge-a1: unrelated: Expression-evaluator traces (1820, 1893, 948, 233, 2161 in_P, 429 in_P) parse an infix string, which is a different task. No trace builds an expression from separate operator and operand lists with // and **. generate_formula (593, in_P) returns a formula string and is not evaluated.",
+    "judge-b4: unrelated: No trace builds an expression from an operator list and an operand list. The nearest traces (1820, 1893, 233, 948, 2161, 113) parse and evaluate an expression given as one string, 294/165/711 are Calculator classes, and 593 joins variables into a formula string without evaluating it. They share only the arithmetic topic."
+   ]
+  },
+  {
+   "id": "HumanEval/133",
+   "position": 158,
+   "entry_point": "sum_squares",
+   "flagged": true,
+   "label": "related",
+   "scope": "A1_only",
+   "judge_labels": [],
+   "sweep_labels": [
+    "related"
+   ],
+   "func_pass_traces": [],
+   "evidence_traces": [
+    558,
+    830,
+    2395
+   ],
+   "agreement": true,
+   "rationales": [
+    "sweep-2: related: The sum_of_squares traces sum the squares of a list of integers. HumanEval/133 first rounds each element up with ceil, so the plain solutions fail the float tests, for example [1.4, 4.2, 0] -> 29."
+   ]
+  },
+  {
+   "id": "HumanEval/43",
+   "position": 159,
+   "entry_point": "pairs_sum_to_zero",
+   "flagged": true,
+   "label": "related",
+   "scope": "both",
+   "judge_labels": [],
+   "sweep_labels": [
+    "related"
+   ],
+   "func_pass_traces": [],
+   "evidence_traces": [
+    869,
+    1111,
+    1891,
+    2374
+   ],
+   "agreement": true,
+   "rationales": [
+    "sweep-1: related: Two-sum. 2374 and 1111 (A1-only) return True/False for two distinct elements summing to a given target; pairs_sum_to_zero is the target=0 case, and the extra target argument makes them fail as written. P has two-sum variants that go further: 1891 returns indices; 869 returns the pair, non-consecutive indices only. 1084 and 1460 (A1) are also index-returning."
+   ]
+  },
+  {
+   "id": "HumanEval/109",
+   "position": 160,
+   "entry_point": "move_one_ball",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [
+    "unrelated",
+    "unrelated"
+   ],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": [
+    "judge-a2: unrelated: move_one_ball asks whether some number of right rotations makes the array sorted. The nearest is find_rotation_point (159, in_P=false), which returns the index of the minimum in an array that is already a rotated sorted array. That is a different task. Other rotation traces (chunk rotation 1209, string left_rotate 1980, cipher shifts) are only topical, and no trace asks whether an array can be sorted by rotation.",
+    "judge-b3: unrelated: No trace asks whether right shifts or rotations can sort an array. Searches for rotat/shift/circular/sorted-and-rotated/'possible to' found only trace 159 (find_rotation_point: index of the minimum in a rotated sorted array, A1-only) and 1209 (rotate_chunks). Both overlap only by topic. No functional passes."
+   ]
+  },
+  {
+   "id": "HumanEval/55",
+   "position": 161,
+   "entry_point": "fib",
+   "flagged": true,
+   "label": "same",
+   "scope": "both",
+   "judge_labels": [
+    "same",
+    "same"
+   ],
+   "sweep_labels": [
+    "same"
+   ],
+   "func_pass_traces": [
+    122,
+    553,
+    577,
+    598,
+    750,
+    945,
+    1320,
+    1511,
+    2238,
+    2287
+   ],
+   "evidence_traces": [
+    122,
+    545,
+    553,
+    577,
+    598,
+    750,
+    945,
+    1320,
+    1511,
+    2238,
+    2287
+   ],
+   "agreement": true,
+   "rationales": [
+    "judge-a3: same: Many traces ask for the nth Fibonacci number with F(0)=0, F(1)=1 indexing. The in-P traces include 577, 945, 1320, 1511, 545, 2238 and 2287 (MBPP fibonacci recursion, fibonacci(7)==13). Not-in-P traces 122, 553 and 750 are also nth-Fibonacci. The packet reports 10 functional passes, 6 of them in P. Trace 584 uses 1-based F(1)=0 indexing, which is related rather than same.",
+    "judge-b2: same: Many traces ask for the n-th Fibonacci number with F(0)=0, F(1)=1, which is the same behaviour as fib(n). Functional passes: 122, 553, 598, 750 (not in_P) and 577, 945, 1320, 1511 (in_P). Further same-task traces: 545 and 2238 (memoized nth Fibonacci, in_P) and 2287 (MBPP fibonacci(7)==13, in_P). Trace 584 uses a shifted index (F(1)=0). Several evidence traces are in_P, so scope is both.",
+    "sweep-1: same: 'Compute the nth Fibonacci number' with F(0)=0, F(1)=1. In P: 577, 945, 1320, 1511 (also 545, 2238, 2287). A1-only: 122, 553, 750. Already caught by the functional screen."
+   ]
+  },
+  {
+   "id": "HumanEval/69",
+   "position": 162,
+   "entry_point": "search",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [
+    "unrelated",
+    "unrelated"
+   ],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": [
+    "judge-a4: unrelated: No trace asks for the greatest integer whose frequency is at least its own value (and no 'lucky integer' style variant either). The lexical matches are BST search classes (730, 886, 2301) and prime counting (1516, 1046), which share the name or vocabulary only. 1378 (in_P, sum of the second-largest frequency group) and 1832 (lucky numbers sequence) are different tasks.",
+    "judge-b1: unrelated: Task: return the largest integer whose frequency is at least its own value, else -1. No functional passes. The lexical matches are BST 'search' classes (730, 886, 2301) and prime counting/is_prime (1516, 1046), which only share the name or vocabulary. Grepping for frequency, 'lucky', h-index and 'at least ... times' finds only word-frequency and most-common-element tasks (803, 213, 1059, ...) and MBPP lucky_num (1832). None asks for a frequency compared against the value itself."
+   ]
+  },
+  {
+   "id": "HumanEval/116",
+   "position": 163,
+   "entry_point": "sort_array",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": []
+  },
+  {
+   "id": "HumanEval/93",
+   "position": 164,
+   "entry_point": "encode",
+   "flagged": false,
+   "label": "unrelated",
+   "scope": "none",
+   "judge_labels": [],
+   "sweep_labels": [],
+   "func_pass_traces": [],
+   "evidence_traces": [],
+   "agreement": true,
+   "rationales": []
+  }
+ ]
+}

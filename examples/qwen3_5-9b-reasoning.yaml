@@ -17,7 +17,9 @@
 #
 #   openbonsai run --config examples/qwen3_5-9b-reasoning.yaml --out runs/qwen3_5-9b-reasoning
 #
-# These are the settings of the run behind the Hugging Face model,
+# These are the settings of the run behind the previous Hugging Face model (GGUF sha256 4f2f3d10...,
+# still at revision 40964de there, tag reasoning-mix-v1; examples/qwen3_5-9b-reasoning-code.yaml
+# made the current one),
 # research/runs/2026-10-27-reasoning-mix-v1/run.yaml (it read UltraChat from a local copy of the same
 # pinned file, offline).
 #

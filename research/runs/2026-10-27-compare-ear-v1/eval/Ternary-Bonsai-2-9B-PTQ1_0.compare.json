@@ -1,0 +1,17 @@
+{
+ "source": "D:/openbonsai/runs/bonsai-official/Ternary-Bonsai-2-9B-PTQ1_0.gguf",
+ "suite": "compare",
+ "tokens": 4088,
+ "nll": 2.9960105771229255,
+ "ref_nll": 2.22213217243816,
+ "delta_nll": 0.7738784046847655,
+ "top1_agreement": 0.6824853228962818,
+ "ear_full": 0.6755947505643811,
+ "kl_full": 0.6928111452182362,
+ "ear_top64_lb": 0.6456537295806304,
+ "ear_top64_ub": 0.6983987520166773,
+ "kl_top64": 0.6236498246216337,
+ "topk": 64,
+ "vocab": 248320,
+ "full_vocab": true
+}
