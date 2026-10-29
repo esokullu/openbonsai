@@ -1,0 +1,30 @@
+# run/ (thinking off, Prism's checkpoint and chat template)
+[05:57:33] eval: VRAM: 15.0 of 31.8 GiB free; this process is capped at 28.8 GiB (an overflow stops the stage instead of spilling to system RAM)
+[05:58:30] eval: gsm8k think=off: batch 1/7: 5178 new tokens in 57.2 s = 90.5 tok/s (512 steps, 8.95 steps/s), hit cap 1/16; ETA 5m00s
+[05:59:16] eval: gsm8k think=off: batch 2/7: 4334 new tokens in 46.1 s = 94.0 tok/s (408 steps, 8.85 steps/s), hit cap 0/16; ETA 3m40s
+[06:00:02] eval: gsm8k think=off: batch 3/7: 4114 new tokens in 46.1 s = 89.3 tok/s (404 steps, 8.76 steps/s), hit cap 0/16; ETA 2m42s
+[06:01:00] eval: gsm8k think=off: batch 4/7: 4491 new tokens in 57.7 s = 77.8 tok/s (510 steps, 8.83 steps/s), hit cap 0/16; ETA 1m57s
+[06:01:53] eval: gsm8k think=off: batch 5/7: 5439 new tokens in 52.6 s = 103.4 tok/s (476 steps, 9.05 steps/s), hit cap 0/16; ETA 1m05s
+[06:02:49] eval: gsm8k think=off: batch 6/7: 4823 new tokens in 56.6 s = 85.3 tok/s (512 steps, 9.05 steps/s), hit cap 1/16; ETA 0m13s
+[06:03:20] eval: gsm8k think=off: batch 7/7: 888 new tokens in 30.3 s = 29.3 tok/s (273 steps, 9.01 steps/s), hit cap 0/4; ETA 0m00s
+[06:03:20] eval: gsm8k think=off: 87/100, hit cap 2/100 at 512 tokens, 84.4 tok/s (0/7 batches from the cache)
+[06:04:04] eval: humaneval think=off: batch 1/4: 3505 new tokens in 43.7 s = 80.1 tok/s (383 steps, 8.76 steps/s), hit cap 0/16; ETA 1m33s
+[06:04:37] eval: humaneval think=off: batch 2/4: 2929 new tokens in 33.2 s = 88.2 tok/s (278 steps, 8.37 steps/s), hit cap 0/16; ETA 0m43s
+[06:05:26] eval: humaneval think=off: batch 3/4: 3368 new tokens in 49.5 s = 68.0 tok/s (449 steps, 9.07 steps/s), hit cap 0/16; ETA 0m05s
+[06:05:42] eval: humaneval think=off: batch 4/4: 278 new tokens in 16.1 s = 17.3 tok/s (144 steps, 8.95 steps/s), hit cap 0/2; ETA 0m00s
+[06:05:47] eval: humaneval think=off: 39/50, hit cap 0/50 at 512 tokens, 70.7 tok/s (0/4 batches from the cache)
+# run-qwen3-template/ (thinking on, Prism's weights with Qwen3-8B's chat template)
+[06:06:46] eval: VRAM: 15.0 of 31.8 GiB free; this process is capped at 28.8 GiB (an overflow stops the stage instead of spilling to system RAM)
+[06:11:41] eval: gsm8k think=on: batch 1/7: 11218 new tokens in 294.7 s = 38.1 tok/s (3050 steps, 10.35 steps/s), hit cap 0/8; ETA 25m47s
+[06:18:04] eval: gsm8k think=on: batch 2/7: 12821 new tokens in 383.0 s = 33.5 tok/s (4096 steps, 10.70 steps/s), hit cap 1/8; ETA 24m00s
+[06:24:31] eval: gsm8k think=on: batch 3/7: 12815 new tokens in 387.2 s = 33.1 tok/s (4096 steps, 10.58 steps/s), hit cap 1/8; ETA 19m14s
+[06:30:54] eval: gsm8k think=on: batch 4/7: 17354 new tokens in 383.1 s = 45.3 tok/s (4096 steps, 10.69 steps/s), hit cap 2/8; ETA 13m34s
+[06:33:23] eval: gsm8k think=on: batch 5/7: 8914 new tokens in 148.3 s = 60.1 tok/s (1560 steps, 10.52 steps/s), hit cap 0/8; ETA 6m39s
+[06:35:38] eval: gsm8k think=on: batch 6/7: 6940 new tokens in 135.8 s = 51.1 tok/s (1439 steps, 10.60 steps/s), hit cap 0/8; ETA 1m12s
+[06:38:40] eval: gsm8k think=on: batch 7/7: 3275 new tokens in 181.5 s = 18.0 tok/s (1928 steps, 10.62 steps/s), hit cap 0/2; ETA 0m00s
+[06:38:40] eval: gsm8k think=on: 45/50, hit cap 4/50 at 4096 tokens, unfinished thinking 4, 38.3 tok/s (0/7 batches from the cache)
+[06:45:29] eval: humaneval think=on: batch 1/4: 22474 new tokens in 409.1 s = 54.9 tok/s (4096 steps, 10.01 steps/s), hit cap 2/8; ETA 14m29s
+[06:53:41] eval: humaneval think=on: batch 2/4: 24316 new tokens in 491.7 s = 49.5 tok/s (4096 steps, 8.33 steps/s), hit cap 3/8; ETA 8m27s
+[07:00:32] eval: humaneval think=on: batch 3/4: 27648 new tokens in 411.2 s = 67.2 tok/s (4096 steps, 9.96 steps/s), hit cap 4/8; ETA 0m55s
+[07:06:34] eval: humaneval think=on: batch 4/4: 4096 new tokens in 361.2 s = 11.3 tok/s (4096 steps, 11.34 steps/s), hit cap 1/1; ETA 0m00s
+[07:06:36] eval: humaneval think=on: 14/25, hit cap 10/25 at 4096 tokens, unfinished thinking 9, 46.9 tok/s (0/4 batches from the cache)

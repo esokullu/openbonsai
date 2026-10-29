@@ -1,0 +1,6 @@
+loaded torch.float16 in 25 s
+rope: {"rope_parameters": {"rope_type": "yarn", "factor": 4.0, "original_max_position_embeddings": 16384, "rope_theta": 1000000.0}, "rope_scaling": {"rope_type": "yarn", "factor": 4.0, "original_max_position_embeddings": 16384, "rope_theta": 1000000.0}, "max_position_embeddings": 65536, "rope_type": "yarn", "attention_scaling": 1.138629436111989, "inv_freq_changed": 43, "inv_freq_n": 64}
+ternary check 1 s: {"groups": 63970624, "non_ternary_groups": 0, "weights": 8188239872, "zeros": 3047424849, "scales": 63970624, "scales_not_bf16": 0, "max_rel_bf16_error": 0.0, "zero_fraction": 0.3721709300946087, "modules": 254}
+{"nll": 2.7342619001865387, "finite_logits": true, "max_abs_out": {"value": 6760.0, "where": "layer35.out"}, "max_abs_o_proj.in": {"value": 68.875, "where": "layer34.o_proj.in"}, "max_abs_down_proj.in": {"value": 652.5, "where": "layer35.down_proj.in"}}
+loaded torch.bfloat16 in 23 s
+{"nll": 2.733778715133667, "finite_logits": true, "nll_minus_f16": -0.0004831850528717041, "top1_agreement_with_f16": 0.9887475371360779, "mean_abs_target_logprob_diff": 0.017214294523000717, "perplexity": 15.390935236899125}

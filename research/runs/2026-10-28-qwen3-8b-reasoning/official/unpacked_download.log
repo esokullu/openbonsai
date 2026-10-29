@@ -1,0 +1,22 @@
+2026-10-29 05:22:04 download start (pid 54888) prism-ml/Ternary-Bonsai-8B-unpacked@ac20f03fc62e872399218b659c8e949dfca05769
+sha ac20f03fc62e872399218b659c8e949dfca05769
+.gitattributes	1570
+LICENSE	10174
+NOTICE.txt	412
+README.md	956
+added_tokens.json	707
+chat_template.jinja	4063
+config.json	3057
+generation_config.json	313
+merges.txt	1671853
+model-00001-of-00004.safetensors	4932546824
+model-00002-of-00004.safetensors	4932507048
+model-00003-of-00004.safetensors	4027142760
+model-00004-of-00004.safetensors	2484945096
+model.safetensors.index.json	32877
+special_tokens_map.json	613
+tokenizer.json	11422654
+tokenizer_config.json	5404
+vocab.json	2776833
+path D:\openbonsai\runs\hf-cache\hub\models--prism-ml--Ternary-Bonsai-8B-unpacked\snapshots\ac20f03fc62e872399218b659c8e949dfca05769
+2026-10-29 05:36:06 DONE
