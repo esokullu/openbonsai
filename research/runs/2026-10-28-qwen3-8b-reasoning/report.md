@@ -89,7 +89,7 @@ With thinking off, 3 of 100 GSM8K answers hit the 512-token cap for each model, 
 
 - **Math holds up better than code.** The ternary model keeps 80% of BF16's GSM8K with thinking off and 93% with thinking on, but 54% of HumanEval with thinking off. The 9B showed the same pattern with the same recipe (90%, 69% and 43%).
 - **HumanEval with thinking on fails by looping.** 14 of 25 answers run out of tokens mid-thought, 12 of them repeating earlier passages verbatim, and an answer cut off mid-thought has no code to test. All 7 capped GSM8K answers loop too. BF16 loops once in each suite. On the 9B the same recipe left 5 of 25 HumanEval answers capped.
-- **The code traces are mostly unfinished.** With thinking on and a 1,536-token cap, Qwen3-8B finished thinking in 48 of 280 OpenCodeInstruct answers and 54 of 140 MBPP answers; the 9B finished 215 and 138. So most of the 8B's code calibration and distillation data is reasoning without a final program. We have not tested whether this causes the code gap; a longer trace cap for the code sources is the obvious experiment.
+- **The code traces are mostly unfinished.** With thinking on and a 1,536-token cap, Qwen3-8B finished thinking in 48 of 280 OpenCodeInstruct answers and 54 of 140 MBPP answers; the 9B finished 215 and 138. So most of the 8B's code calibration and distillation data is reasoning without a final program. We have not tested whether this causes the code gap; a longer trace cap for the code sources is the obvious experiment, and the 9B's more-code config (`examples/qwen3_5-9b-reasoning-code.yaml`, which took the 9B's HumanEval from 19/50 to 34/50; `../2026-10-28-humaneval-gap/`) is another.
 
 ## In Prism's runtime
 
@@ -115,7 +115,7 @@ Prism quantizes activations to 8 bits, so the two do not match exactly.
 
 - **VRAM spill during generation on Windows** (above): fixed in `8c150da` (`vram_cap` around trace and eval generation, with tests).
 - **Launcher**: the first launcher read a stale `run FAILED` line in the 0.8B queue's log as that queue's end, and was killed before it took the lock. `1e7f819` waits for the log's last line instead.
-- **Prism perplexity file**: the README's earlier 9B perplexities had come from the parquet-rebuilt test file. `962ac07` re-measured them on upstream `wiki.test.raw`.
+- **Prism perplexity file**: the README's earlier 9B perplexities had come from a copy of the test file with the blank lines removed and CRLF line endings (`../2026-10-28-prism-ppl-upstream/README.md`). `962ac07` re-measured them on upstream `wiki.test.raw`, with the same numbers as that directory.
 - **Runtime-parity KL**: the plain KL against Prism's floored log-probs can go negative. `runtime_parity.py` reports the bracketing estimates above.
 - **The dense adapter itself**: no change needed for Qwen3-8B.
 
@@ -133,5 +133,5 @@ Prism quantizes activations to 8 bits, so the two do not match exactly.
 - `logs/`: one log per stage; `traces/summary.json`: per-source trace counts, caps and timing.
 - `eval/`: `compare` for each state, GSM8K and HumanEval for `distill` and `bf16`, with each problem's completion and result. The per-batch generation cache and the cached BF16 reference logits are not committed.
 - `export/`: `DONE.json`, the export and verification report, and Prism's perplexity line.
-- `prism/`: `cpu_checks.sh` (the Prism perplexity runs and the parity check), their logs, and `runtime_parity.json`. Prism's raw log-prob file (590 MB) is not committed. The `prism_ppl_9b_*.log` files are the 9B perplexities re-measured on the upstream test file, and `make_wiki.py` rebuilds the parquet copy.
+- `prism/`: `cpu_checks.sh` (the Prism perplexity runs and the parity check), their logs, and `runtime_parity.json`. Prism's raw log-prob file (590 MB) is not committed. The `prism_ppl_9b_*.log` files are the 9B perplexities re-measured on the upstream test file (the same numbers as `../2026-10-28-prism-ppl-upstream/`), and `make_wiki.py` rebuilds the parquet copy used for the 14.35 above.
 - `runtime_parity.py`: the parity check.

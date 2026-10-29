@@ -418,6 +418,30 @@ def test_examples_include_the_reasoning_config():
     assert sum(s["n"] * s["max_new_tokens"] for s in srcs) == 1060 * 1536 + 200 * 512 + 260 * 768
 
 
+def test_the_code_config_extends_the_reasoning_config():
+    base, cfg = load_config(REASONING), load_config(ROOT / "examples" / "qwen3_5-9b-reasoning-code.yaml")
+    # The first seven sources are the reasoning recipe's (so a copy of its traces/ serves them from the
+    # cache); two OpenCodeInstruct sources with other seeds follow.
+    srcs = T.trace_sources(cfg)
+    assert srcs[:7] == T.trace_sources(base)
+    assert [(s["name"], s["kind"], s["n"], s["seed"], s["thinking"], s["max_new_tokens"]) for s in srcs[7:]] == [
+        ("opencodeinstruct_2", "opencodeinstruct", 280, 7, True, 1536),
+        ("opencodeinstruct_off", "opencodeinstruct", 600, 8, False, 768)]
+    assert {s["kind"]: s["n"] for s in cfg["calibrate"]["sources"]} == {"wikitext2": 32, "ultrachat": 32, "traces": 192}
+    teacher = cfg["distill"]["teacher"]
+    counts = {s["kind"]: s["n"] for s in teacher["sources"]}
+    assert counts == {"wikitext2": 256, "ultrachat": 512, "traces": 1088} and sum(counts.values()) == teacher["n_seq"]
+    assert cfg["distill"]["epochs"] == 1
+    for section in ("model", "rotation", "quantize", "endpoints", "export", "eval"):
+        assert cfg[section] == base[section], section
+    assert {k: v for k, v in cfg["distill"].items() if k != "teacher"} == \
+        {k: v for k, v in base["distill"].items() if k != "teacher"}
+    # Supply: the measured run's 1,225 blocks serve both readers; 1,000 do not.
+    assert T.supply_problems(cfg, 1225 * 2048, None) == []
+    with pytest.raises(ConfigError, match=r"distill\.teacher\.sources\.2\.n = 1088 blocks"):
+        T.check_trace_supply(cfg, 1000 * 2048, None)
+
+
 def test_eval_thinking_subsets_default_to_the_full_ones():
     from openbonsai.stages.evaluate import suite_batch, suite_size
     r = load_config()["eval"]["reasoning"]

@@ -380,7 +380,7 @@ What it taught us for the next model:
 
 - **On Windows, generation needs a VRAM cap.** The first attempt's traces spilled 6.6 GB to system RAM and ran at 19-25 tokens/s, an ETA of 22 hours. The driver pages instead of raising out-of-memory, and PyTorch's allocator keeps old blocks of the growing KV cache. Trace generation and the reasoning evals now cap the allocator below the free VRAM, as `refine` already did. A batch that does not fit then fails, and the traces stage splits it.
 - **Full attention costs generation time.** All 36 layers attend over the whole context, against 8 of 32 in Qwen3.5-9B, so the traces and the thinking-on evals take longer than on the 9B (3.4 h against 2.6 h for the traces).
-- **Check the traces before you calibrate.** `traces/summary.json` gives `hit_cap` and `finished_thinking` per source. Qwen3-8B finished thinking within 1,536 tokens in only 102 of its 420 code traces (the 9B in 353), so most of its code data holds no final program, and code is where it lost most: HumanEval 22/50 against BF16's 41/50. A longer cap for the code sources is untested.
+- **Check the traces before you calibrate.** `traces/summary.json` gives `hit_cap` and `finished_thinking` per source. Qwen3-8B finished thinking within 1,536 tokens in only 102 of its 420 code traces (the 9B in 353), so most of its code data holds no final program, and code is where it lost most: HumanEval 22/50 against BF16's 41/50. A longer cap for the code sources is untested, and so is the 9B's more-code config (`examples/qwen3_5-9b-reasoning-code.yaml`).
 - **No sensitivity scan was run.** The dense plan, with nothing kept, went in as is. For a model you will publish, run the scan above first.
 
 ## Checklist

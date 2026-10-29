@@ -1,0 +1,355 @@
+{
+ "records": 2400,
+ "tokens": 2510623,
+ "bytes": 30110802,
+ "generated_tokens": 2103903,
+ "hit_cap": 837,
+ "form": "sources",
+ "seed": 0,
+ "batches": 251,
+ "cached_batches": 167,
+ "generation_seconds": 3743.724,
+ "tokens_per_second": 149.96858742792045,
+ "decoding": {
+  "strategy": "greedy",
+  "num_beams": 1,
+  "kv_cache": true,
+  "model_generation_config": "ignored: transformers' library defaults (no repetition penalty, n-gram blocking, suppressed or bad tokens, minimum length)"
+ },
+ "sources": [
+  {
+   "name": "gsm8k_train",
+   "kind": "gsm8k_train",
+   "where": "traces.sources.0",
+   "n": 400,
+   "seed": 1,
+   "thinking": true,
+   "max_new_tokens": 1536,
+   "batch": 16,
+   "batches": 50,
+   "batch_tokens": 14000,
+   "instruction": "Please reason step by step, and put your final answer within \\boxed{}.",
+   "max_chars": null,
+   "records": 400,
+   "prompt_tokens": 33944,
+   "generated_tokens": 552990,
+   "mean_generated_tokens": 1382.5,
+   "hit_cap": 244,
+   "finished_thinking": 191,
+   "data": [
+    {
+     "repo": "openai/gsm8k",
+     "revision": "740312add88f781978c0658806c59bc2815b9866",
+     "file": "main/train-00000-of-00001.parquet",
+     "sha256": "ea82612ea9582142387730c793eb67d3b12849002bc0b7fa6f8efafa7351419d"
+    }
+   ],
+   "near_duplicates_skipped": [],
+   "answers_dropped": []
+  },
+  {
+   "name": "math_train",
+   "kind": "math_train",
+   "where": "traces.sources.1",
+   "n": 240,
+   "seed": 2,
+   "thinking": true,
+   "max_new_tokens": 1536,
+   "batch": 16,
+   "batches": 31,
+   "batch_tokens": 14000,
+   "instruction": "Please reason step by step, and put your final answer within \\boxed{}.",
+   "max_chars": null,
+   "levels": [
+    1,
+    2,
+    3
+   ],
+   "subjects": [
+    "algebra",
+    "counting_and_probability",
+    "geometry",
+    "intermediate_algebra",
+    "number_theory",
+    "prealgebra",
+    "precalculus"
+   ],
+   "records": 240,
+   "prompt_tokens": 19901,
+   "generated_tokens": 356790,
+   "mean_generated_tokens": 1486.6,
+   "hit_cap": 206,
+   "finished_thinking": 56,
+   "data": [
+    {
+     "repo": "EleutherAI/hendrycks_math",
+     "revision": "21a5633873b6a120296cce3e2df9d5550074f4a3",
+     "file": "algebra/train-00000-of-00001.parquet",
+     "sha256": "73347f5b55869f21ff094361025dbd12d291e971aa4d72142eacee10438e449f"
+    },
+    {
+     "repo": "EleutherAI/hendrycks_math",
+     "revision": "21a5633873b6a120296cce3e2df9d5550074f4a3",
+     "file": "counting_and_probability/train-00000-of-00001.parquet",
+     "sha256": "d37ae017930df41678edee50dcde18c17fb06afaff9eb505c1b95f1002bfcb31"
+    },
+    {
+     "repo": "EleutherAI/hendrycks_math",
+     "revision": "21a5633873b6a120296cce3e2df9d5550074f4a3",
+     "file": "geometry/train-00000-of-00001.parquet",
+     "sha256": "9dbf5e5b55499e696e0ba72da9d85d4f0be3acbf7eaa6cb014b0fc78bb63784f"
+    },
+    {
+     "repo": "EleutherAI/hendrycks_math",
+     "revision": "21a5633873b6a120296cce3e2df9d5550074f4a3",
+     "file": "intermediate_algebra/train-00000-of-00001.parquet",
+     "sha256": "0c87f3798ebdfb915b1f9b6fc13c1a8d064c3cb91631ccbe85b83ed5d71150f6"
+    },
+    {
+     "repo": "EleutherAI/hendrycks_math",
+     "revision": "21a5633873b6a120296cce3e2df9d5550074f4a3",
+     "file": "number_theory/train-00000-of-00001.parquet",
+     "sha256": "81c08649149b39811f2d1d7ddf5dfccf6c4c8044a2e169cfb24db09160c941f4"
+    },
+    {
+     "repo": "EleutherAI/hendrycks_math",
+     "revision": "21a5633873b6a120296cce3e2df9d5550074f4a3",
+     "file": "prealgebra/train-00000-of-00001.parquet",
+     "sha256": "765b526fb5c0b8385cb7be2c16bf4f6f28cf71f2bc15c826abfbb5fa7f8616cc"
+    },
+    {
+     "repo": "EleutherAI/hendrycks_math",
+     "revision": "21a5633873b6a120296cce3e2df9d5550074f4a3",
+     "file": "precalculus/train-00000-of-00001.parquet",
+     "sha256": "28bb1ff95525c8d32521509bef91de76339659f5467a381e6e8deea204538f0e"
+    }
+   ],
+   "near_duplicates_skipped": [],
+   "answers_dropped": []
+  },
+  {
+   "name": "mbpp_train",
+   "kind": "mbpp_train",
+   "where": "traces.sources.2",
+   "n": 140,
+   "seed": 3,
+   "thinking": true,
+   "max_new_tokens": 1536,
+   "batch": 16,
+   "batches": 18,
+   "batch_tokens": 14000,
+   "instruction": null,
+   "max_chars": null,
+   "records": 140,
+   "prompt_tokens": 11042,
+   "generated_tokens": 122770,
+   "mean_generated_tokens": 876.9,
+   "hit_cap": 9,
+   "finished_thinking": 138,
+   "data": [
+    {
+     "repo": "google-research-datasets/mbpp",
+     "revision": "4bb6404fdc6cacfda99d4ac4205087b89d32030c",
+     "file": "full/train-00000-of-00001.parquet",
+     "sha256": "09d125ca31edacb7800be8c67c45abff618faf0214ff551291817d06bdb914ae"
+    }
+   ],
+   "near_duplicates_skipped": [],
+   "answers_dropped": []
+  },
+  {
+   "name": "opencodeinstruct",
+   "kind": "opencodeinstruct",
+   "where": "traces.sources.3",
+   "n": 280,
+   "seed": 4,
+   "thinking": true,
+   "max_new_tokens": 1536,
+   "batch": 16,
+   "batches": 38,
+   "batch_tokens": 14000,
+   "instruction": null,
+   "max_chars": 2000,
+   "records": 280,
+   "prompt_tokens": 65792,
+   "generated_tokens": 339918,
+   "mean_generated_tokens": 1214.0,
+   "hit_cap": 93,
+   "finished_thinking": 215,
+   "data": [
+    {
+     "repo": "nvidia/OpenCodeInstruct",
+     "revision": "8f3ba5bafe4d6e8db46082cf7ae6741bc370604d",
+     "file": "data/train-00000-of-00050.parquet",
+     "sha256": "342757e0c6b706c8f68cf0a867ead5c417d0273726453dbcfc934f5c3c6ca891"
+    }
+   ],
+   "near_duplicates_skipped": [],
+   "answers_dropped": []
+  },
+  {
+   "name": "ultrachat",
+   "kind": "ultrachat",
+   "where": "traces.sources.4",
+   "n": 200,
+   "seed": 5090,
+   "thinking": false,
+   "max_new_tokens": 512,
+   "batch": 32,
+   "batches": 12,
+   "batch_tokens": 14000,
+   "instruction": null,
+   "max_chars": null,
+   "rows": [
+    5000,
+    6000
+   ],
+   "records": 200,
+   "prompt_tokens": 41045,
+   "generated_tokens": 77275,
+   "mean_generated_tokens": 386.4,
+   "hit_cap": 109,
+   "data": [
+    {
+     "path": "D:\\openbonsai\\runs\\2026-10-26-5090-ultrachat-attempt2\\source\\data\\train_sft-00000-of-00003-a3ecf92756993583.parquet",
+     "sha256": "afa8fa7426081b2a0e732fb50dbb5cd402a28ad5f0dbe66c0d996d63e7220727"
+    }
+   ],
+   "near_duplicates_skipped": [],
+   "answers_dropped": []
+  },
+  {
+   "name": "gsm8k_train_off",
+   "kind": "gsm8k_train",
+   "where": "traces.sources.5",
+   "n": 160,
+   "seed": 5,
+   "thinking": false,
+   "max_new_tokens": 768,
+   "batch": 16,
+   "batches": 11,
+   "batch_tokens": 14000,
+   "instruction": "Please reason step by step, and put your final answer within \\boxed{}.",
+   "max_chars": null,
+   "records": 160,
+   "prompt_tokens": 14069,
+   "generated_tokens": 61597,
+   "mean_generated_tokens": 385.0,
+   "hit_cap": 7,
+   "data": [
+    {
+     "repo": "openai/gsm8k",
+     "revision": "740312add88f781978c0658806c59bc2815b9866",
+     "file": "main/train-00000-of-00001.parquet",
+     "sha256": "ea82612ea9582142387730c793eb67d3b12849002bc0b7fa6f8efafa7351419d"
+    }
+   ],
+   "near_duplicates_skipped": [],
+   "answers_dropped": []
+  },
+  {
+   "name": "mbpp_train_off",
+   "kind": "mbpp_train",
+   "where": "traces.sources.6",
+   "n": 100,
+   "seed": 6,
+   "thinking": false,
+   "max_new_tokens": 768,
+   "batch": 16,
+   "batches": 7,
+   "batch_tokens": 14000,
+   "instruction": null,
+   "max_chars": null,
+   "records": 100,
+   "prompt_tokens": 7898,
+   "generated_tokens": 31122,
+   "mean_generated_tokens": 311.2,
+   "hit_cap": 16,
+   "data": [
+    {
+     "repo": "google-research-datasets/mbpp",
+     "revision": "4bb6404fdc6cacfda99d4ac4205087b89d32030c",
+     "file": "full/train-00000-of-00001.parquet",
+     "sha256": "09d125ca31edacb7800be8c67c45abff618faf0214ff551291817d06bdb914ae"
+    }
+   ],
+   "near_duplicates_skipped": [],
+   "answers_dropped": []
+  },
+  {
+   "name": "opencodeinstruct_2",
+   "kind": "opencodeinstruct",
+   "where": "traces.sources.7",
+   "n": 280,
+   "seed": 7,
+   "thinking": true,
+   "max_new_tokens": 1536,
+   "batch": 16,
+   "batches": 38,
+   "batch_tokens": 14000,
+   "instruction": null,
+   "max_chars": 2000,
+   "records": 280,
+   "prompt_tokens": 66010,
+   "generated_tokens": 326324,
+   "mean_generated_tokens": 1165.4,
+   "hit_cap": 80,
+   "finished_thinking": 234,
+   "data": [
+    {
+     "repo": "nvidia/OpenCodeInstruct",
+     "revision": "8f3ba5bafe4d6e8db46082cf7ae6741bc370604d",
+     "file": "data/train-00000-of-00050.parquet",
+     "sha256": "342757e0c6b706c8f68cf0a867ead5c417d0273726453dbcfc934f5c3c6ca891"
+    }
+   ],
+   "near_duplicates_skipped": [],
+   "answers_dropped": []
+  },
+  {
+   "name": "opencodeinstruct_off",
+   "kind": "opencodeinstruct",
+   "where": "traces.sources.8",
+   "n": 600,
+   "seed": 8,
+   "thinking": false,
+   "max_new_tokens": 768,
+   "batch": 16,
+   "batches": 46,
+   "batch_tokens": 14000,
+   "instruction": null,
+   "max_chars": 2000,
+   "records": 600,
+   "prompt_tokens": 147019,
+   "generated_tokens": 235117,
+   "mean_generated_tokens": 391.9,
+   "hit_cap": 73,
+   "data": [
+    {
+     "repo": "nvidia/OpenCodeInstruct",
+     "revision": "8f3ba5bafe4d6e8db46082cf7ae6741bc370604d",
+     "file": "data/train-00000-of-00050.parquet",
+     "sha256": "342757e0c6b706c8f68cf0a867ead5c417d0273726453dbcfc934f5c3c6ca891"
+    }
+   ],
+   "near_duplicates_skipped": [],
+   "answers_dropped": []
+  }
+ ],
+ "supply": [
+  {
+   "stage": "calibrate",
+   "where": "calibrate.sources.2.n",
+   "n": 192,
+   "seq_len": 2048,
+   "available": 1225
+  },
+  {
+   "stage": "distill",
+   "where": "distill.teacher.sources.2.n",
+   "n": 1088,
+   "seq_len": 2048,
+   "available": 1225
+  }
+ ]
+}

@@ -1,0 +1,14 @@
+{
+ "stage": "export",
+ "config_hash": "43649d846324402cd18493b29a172bc577a048c64883a63f5ca090f0d05570b2",
+ "output_sha256": "818d8783bc39d92b2777a0333d38f7a25021a7b906f47344b83b7109eba6f7a0",
+ "result": {
+  "output": "D:\\openbonsai\\.claude\\worktrees\\bonsai-start-distill-002447\\runs\\2026-10-28-code-gap-1epoch\\export\\OpenBonsai-Qwen3.5-9B-PTQ1_0.gguf",
+  "format": "ptq1_0-gguf",
+  "source": "distill",
+  "file_size": 1997486976,
+  "distilled_f32": 0,
+  "verified": true,
+  "checks_passed": 13
+ }
+}

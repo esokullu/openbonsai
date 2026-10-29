@@ -1,0 +1,222 @@
+model:
+  path: Qwen/Qwen3.5-9B
+  revision: c202236235762e1c871ad0ccb60c8ee5ba337b9a
+  adapter: auto
+  dtype: bfloat16
+  device: auto
+  attn: sdpa
+  keep_vision: false
+  local_files_only: true
+rotation:
+  group: 128
+  max_block: 4096
+  signs:
+    mode: seeded
+    seed: width
+    path: null
+  impl: dense
+traces:
+  enabled: true
+  prompts:
+    kind: jsonl
+    path: null
+    n: null
+  sources:
+  - kind: gsm8k_train
+    n: 400
+    seed: 1
+    thinking: true
+    max_new_tokens: 1536
+    batch: 16
+  - kind: math_train
+    n: 240
+    seed: 2
+    levels:
+    - 1
+    - 2
+    - 3
+    thinking: true
+    max_new_tokens: 1536
+    batch: 16
+  - kind: mbpp_train
+    n: 140
+    seed: 3
+    thinking: true
+    max_new_tokens: 1536
+    batch: 16
+  - kind: opencodeinstruct
+    n: 280
+    seed: 4
+    max_chars: 2000
+    thinking: true
+    max_new_tokens: 1536
+    batch: 16
+  - kind: ultrachat
+    n: 200
+    rows:
+    - 5000
+    - 6000
+    seed: 5090
+    thinking: false
+    max_new_tokens: 512
+    batch: 32
+    path: D:/openbonsai/runs/2026-10-26-5090-ultrachat-attempt2/source/data/train_sft-00000-of-00003-a3ecf92756993583.parquet
+  - kind: gsm8k_train
+    name: gsm8k_train_off
+    n: 160
+    seed: 5
+    thinking: false
+    max_new_tokens: 768
+    batch: 16
+  - kind: mbpp_train
+    name: mbpp_train_off
+    n: 100
+    seed: 6
+    thinking: false
+    max_new_tokens: 768
+    batch: 16
+  - kind: opencodeinstruct
+    name: opencodeinstruct_2
+    n: 280
+    seed: 7
+    max_chars: 2000
+    thinking: true
+    max_new_tokens: 1536
+    batch: 16
+  - kind: opencodeinstruct
+    name: opencodeinstruct_off
+    n: 600
+    seed: 8
+    max_chars: 2000
+    thinking: false
+    max_new_tokens: 768
+    batch: 16
+  max_new_tokens: 512
+  thinking: false
+  batch: 8
+  batch_tokens: 14000
+  seed: 0
+calibrate:
+  seq_len: 2048
+  seed: 0
+  sources:
+  - kind: wikitext2
+    n: 32
+  - kind: ultrachat
+    n: 32
+    min_row: 6000
+    path: D:/openbonsai/runs/2026-10-26-5090-ultrachat-attempt2/source/data/train_sft-00000-of-00003-a3ecf92756993583.parquet
+  - kind: traces
+    n: 192
+quantize:
+  damp: 0.01
+  batch: 4
+endpoints:
+  enabled: true
+  head: ternary
+  embedding: ternary
+  damp: 0.01
+  chunk: 16384
+  batch: 4
+refine:
+  enabled: false
+  layers: null
+  window: 1
+  blocks: 128
+  val_blocks: 8
+  seed: 0
+  batch: 1
+  epochs: 4
+  target: original
+  mix: 0.5
+  assign: nearest
+  zeros: 42
+  zero_anneal: 0.25
+  init: center
+  lr_codes: 0.005
+  lr_scales: 0.0005
+  warmup: 0.05
+  freeze_codes_after: 0.8
+  eps: 1.0e-10
+  checkpoint: auto
+  cache: auto
+  rollback: true
+distill:
+  enabled: true
+  teacher:
+    n_seq: 1856
+    seq_len: 2048
+    seed: 1
+    shard: 64
+    topk: 64
+    sources:
+    - kind: wikitext2
+      n: 256
+    - kind: ultrachat
+      n: 512
+      min_row: 6000
+      path: D:/openbonsai/runs/2026-10-26-5090-ultrachat-attempt2/source/data/train_sft-00000-of-00003-a3ecf92756993583.parquet
+    - kind: traces
+      n: 1088
+  train:
+    scales: true
+    small: false
+  endpoints: true
+  lr: 0.001
+  lr_small: 0.0001
+  lr_small_mat: 2.0e-05
+  epochs: 1
+  accum: 8
+  warmup: 10
+  chunk: 512
+  log_every: 5
+  ckpt_every: 16
+  max_steps: null
+export:
+  enabled: true
+  format: ptq1_0-gguf
+  out: null
+  name: null
+  size_label: null
+  verify: true
+  chunk_rows: 16384
+eval:
+  from: auto
+  suites:
+  - dev
+  - extended
+  - compare
+  - gsm8k
+  - humaneval
+  generations: true
+  compare:
+    seq_len: 512
+    n: 8
+    seed: 7
+    topk: 64
+    full: true
+    sources: null
+  teacher:
+    rows: 8
+  reasoning:
+    thinking:
+    - false
+    - true
+    max_new_tokens: 512
+    max_new_tokens_thinking: 4096
+    batch: 16
+    batch_thinking: 8
+    batch_check: 0
+    dense: true
+    cache: true
+    gsm8k:
+      n: 100
+      n_thinking: 50
+      path: null
+    humaneval:
+      n: 50
+      n_thinking: 25
+      path: null
+      timeout: 10.0
+      workers: 4
+      memory_mb: 2048

@@ -1,0 +1,42 @@
+{
+ "D:\\openbonsai\\runs\\2026-10-26-5090-ultrachat-attempt2\\source\\data\\train_sft-00000-of-00003-a3ecf92756993583.parquet": {
+  "size": 243999189,
+  "mtime_ns": 1793020628626558200,
+  "sha256": "afa8fa7426081b2a0e732fb50dbb5cd402a28ad5f0dbe66c0d996d63e7220727"
+ },
+ "D:\\openbonsai\\runs\\2026-10-28-code-gap\\traces\\traces.jsonl": {
+  "size": 30110802,
+  "mtime_ns": 1793146453471675200,
+  "sha256": "87b8f2b829911258310bc9b40552605d96677b1f7ba80a877816b52c696dcf90"
+ },
+ "D:\\openbonsai\\runs\\2026-10-28-code-gap\\calib\\tokens.npy": {
+  "size": 2097280,
+  "mtime_ns": 1793146464273609800,
+  "sha256": "24b9c341762874ed85c610b2c7a3237c31ae5e3971dea2edd3f09422aea6710d"
+ },
+ "D:\\openbonsai\\runs\\2026-10-28-code-gap\\quantize\\state.safetensors": {
+  "size": 1836124776,
+  "mtime_ns": 1793147323567959400,
+  "sha256": "83ebf6ccceb2bbf6ac7e7a38a1da8026de3e07dd048ebf3090f708b91d4235a3"
+ },
+ "D:\\openbonsai\\runs\\2026-10-28-code-gap\\endpoints\\state.safetensors": {
+  "size": 540349168,
+  "mtime_ns": 1793147436607978300,
+  "sha256": "d591d73377908ba88be637f961c72ea2b13eb0390f1803682b0b9580fc9e197c"
+ },
+ "D:\\openbonsai\\runs\\2026-10-28-code-gap\\distill\\scales.safetensors": {
+  "size": 139810112,
+  "mtime_ns": 1793153158830041000,
+  "sha256": "71a0c51440f00b0d233d0640552b9b2871284b3ae3553f287329d26f7276946e"
+ },
+ "D:\\openbonsai\\runs\\2026-10-28-code-gap\\export\\OpenBonsai-Qwen3.5-9B-PTQ1_0.gguf": {
+  "size": 1997486976,
+  "mtime_ns": 1793153253548759200,
+  "sha256": "f26e74bc7a2b6ea7b5e6ec1d077fd82c1e9f3662e34f033af6e09173abcc4c76"
+ },
+ "D:\\openbonsai\\runs\\2026-10-28-code-gap\\distill\\teacher\\input_ids.npy": {
+  "size": 15204480,
+  "mtime_ns": 1793147468435772600,
+  "sha256": "d127e4b6eb2250dc81c91d3d8ab0d2fa7020bb3400cae5f0565496f2d5d8b381"
+ }
+}
