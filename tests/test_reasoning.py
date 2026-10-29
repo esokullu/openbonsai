@@ -429,9 +429,25 @@ def test_densify_writes_the_weights_apply_dense_writes(calibrated):
     assert torch.equal(dense(input_ids=ids).logits, tern(input_ids=ids).logits)
 
 
-def test_reasoning_suites_end_to_end_on_the_tiny_model(calibrated):
+def test_reasoning_suites_end_to_end_on_the_tiny_model(calibrated, monkeypatch):
+    from contextlib import contextmanager
     from openbonsai.cli import execute
+    from openbonsai.stages import evaluate as EV
+    from openbonsai.stages import traces as T
     ctx = calibrated
+    events = []
+
+    @contextmanager
+    def cap(device, log):
+        events.append("cap")
+        try:
+            yield None
+        finally:
+            events.append("lift")
+
+    real = T.generate_encoded
+    monkeypatch.setattr(EV, "vram_cap", cap)
+    monkeypatch.setattr(T, "generate_encoded", lambda model, rows, **kw: (events.append("batch"), real(model, rows, **kw))[1])
     for key, value in (("thinking", [False, True]), ("max_new_tokens", 6), ("max_new_tokens_thinking", 5),
                        ("batch", 2), ("batch_check", 1)):
         ctx.cfg["eval"]["reasoning"][key] = value
@@ -442,6 +458,7 @@ def test_reasoning_suites_end_to_end_on_the_tiny_model(calibrated):
     log = ctx.log
     ctx.log = lambda stage: (lambda m: (msgs.append(m), log(stage)(m)))
     execute(ctx, "eval", source="quantize", suites=["humaneval", "gsm8k"], install_mode="ternary")
+    assert events[0] == "cap" and events[-1] == "lift" and set(events[1:-1]) == {"batch"}   # generation is capped
     assert any("ternary modules replaced" in m for m in msgs)
     assert any("tok/s" in m and "ETA" in m for m in msgs)
     assert any("batch check:" in m for m in msgs)

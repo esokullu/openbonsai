@@ -13,7 +13,7 @@ Which case you are in:
 - **A dense model with a new `model_type`** (same seven Linears per layer): add one family row to `FAMILIES` in `adapters/dense.py` and one tiny config to the tests.
 - **A new architecture** (other Linears, other layer kinds, a recurrent block): write an adapter, about 150 lines plus its GGUF layout if Prism can load it.
 
-Status: only Qwen3.5-9B has been compressed and measured end to end. The dense adapter is tested on tiny random Llama, Mistral, Qwen2 and Qwen3 models on CPU, including loading tiny GGUFs in Prism's runtime; no real dense model has been run yet. Whatever the adapter, run the [sensitivity scan](#choosing-the-high-precision-tensors-a-sensitivity-scan) on the real model before trusting its `keep` list.
+Status: two real models have been compressed and measured end to end, Qwen3.5-9B (its own adapter) and Qwen3-8B (the dense adapter, unchanged; [worked example 3](#worked-example-3-qwen3-8b-measured)). The dense adapter is also tested on tiny random Llama, Mistral, Qwen2 and Qwen3 models on CPU, including loading tiny GGUFs in Prism's runtime; no real Llama, Mistral or Qwen2 model has been run yet. Whatever the adapter, run the [sensitivity scan](#choosing-the-high-precision-tensors-a-sensitivity-scan) on the real model before trusting its `keep` list.
 
 ## What an adapter provides
 
@@ -38,11 +38,12 @@ The adapter never declares rotation geometry. The core derives it from the plann
 - **Signs:** one sign vector per width.
 - **Refusal:** a width that is not a multiple of 128 is refused.
 
-Prism's runtime builds its rotation for any power-of-two block. It has run real models only at block 4096 (the official Ternary-Bonsai-2-9B and our 9B export), and tiny random models at block 128 in our tests (below); other blocks, such as 2048 for Llama 3.1 8B, are untested on real weights. Quantize logs a note for any block other than 4096, and the export records it. Some examples:
+Prism's runtime builds its rotation for any power-of-two block. It has run real models only at block 4096 (the official Ternary-Bonsai-2-9B and our 9B and Qwen3-8B exports), and tiny random models at block 128 in our tests (below); other blocks, such as 2048 for Llama 3.1 8B, are untested on real weights. Quantize logs a note for any block other than 4096, and the export records it. Some examples:
 
 | Model shape | Rotated widths | Block |
 |---|---|---|
 | Qwen3.5-9B | 4096, 12288 | 4096 |
+| Qwen3-8B | 4096, 12288 | 4096 |
 | Qwen3.5-4B | 2560, 4096, 9216 | 512 |
 | Llama 3.1 8B, Mistral 7B | 4096, 14336 | 2048 |
 | Llama 3.2 3B | 3072, 8192 | 1024 |
@@ -103,7 +104,7 @@ The current table, and what each family exports to:
 | `llama` | Llama 2/3.x; Llama-architecture checkpoints such as Nanbeige4-style models published as `LlamaForCausalLM` | `llama` | yes | PTQ1_0 GGUF with a byte-level BPE tokenizer (Llama 3.x); latent with SentencePiece (Llama 2) | yes | no | `w` | q/k rows permuted; llama3 rope writes `rope_freqs.weight`; q/k/v/o and MLP biases have slots |
 | `mistral` | Mistral 7B, Mistral-Nemo | `llama` | yes | PTQ1_0 GGUF with a byte-level BPE tokenizer (Nemo); latent with a SentencePiece one (7B v0.x) | yes | no | `w` | the `llama` arch has no sliding window: the GGUF matches the model only within `sliding_window` tokens |
 | `qwen2` | Qwen2, Qwen2.5 | `qwen2` | **no** | latent checkpoint | no | no | `w` | q/k/v biases |
-| `qwen3` | Qwen3 (0.6B-4B tied) | `qwen3` | yes | PTQ1_0 GGUF | no | yes | `w` | per-head q/k norms; a tied table stays BF16 |
+| `qwen3` | Qwen3 (0.6B-4B tied; 8B untied, measured) | `qwen3` | yes | PTQ1_0 GGUF | no | yes | `w` | per-head q/k norms; a tied table stays BF16 |
 | `qwen3_5` (own adapter) | Qwen3.5 | `qwen35` | yes | PTQ1_0 GGUF, untied only | no | yes | `1 + w` | tied sizes (2B, 4B) cannot be written: Prism's version 1 metadata forbids a tied output |
 
 `NanbeigeForCausalLM` (the looped Nanbeige4.2) is Prism's `nanbeige` arch. It is not hadamard-verified and needs remote code, so it is not covered.
@@ -329,7 +330,58 @@ What happens:
   - Every decoder Linear and the ternary head are in `prism.hadamard.weight_names`, and a ternary embedding is the inverse-lookup table.
   - The tokenizer must be byte-level BPE (Llama 3 is). Unknown pre-tokenizer hashes get the family default `llama-bpe`, with a note to check tokenization in Prism. Llama 2's SentencePiece tokenizer is not byte-level BPE, so a Llama 2 model gets a latent checkpoint with `export.format: auto`, and an explicit `ptq1_0-gguf` is refused.
 
-Checked on CPU with Prism's own runtime: tiny random Llama (untied, biases, llama3 rope) and Qwen3 (tied, BF16 table) GGUFs, at Hadamard block 128, load in Prism's `llama-perplexity`. Its full-vocabulary log-probs match the FP32 torch model of the same state within 0.06 / 0.015 nats at most (Prism quantizes activations to 8 bits). An export without the q/k permutation is off by about 1 nat. Run it yourself with `OPENBONSAI_PRISM_BIN=<prism build>/bin pytest tests/test_dense.py -k prism`. No real dense model has been compressed or run in Prism yet.
+Checked on CPU with Prism's own runtime: tiny random Llama (untied, biases, llama3 rope) and Qwen3 (tied, BF16 table) GGUFs, at Hadamard block 128, load in Prism's `llama-perplexity`. Its full-vocabulary log-probs match the FP32 torch model of the same state within 0.06 / 0.015 nats at most (Prism quantizes activations to 8 bits). An export without the q/k permutation is off by about 1 nat. Run it yourself with `OPENBONSAI_PRISM_BIN=<prism build>/bin pytest tests/test_dense.py -k prism`. No real Llama-architecture model has been compressed yet; the one real dense model is Qwen3-8B (next section).
+
+## Worked example 3: Qwen3-8B (measured)
+
+Qwen3-8B (`model_type: qwen3`, 36 layers, hidden 4,096, MLP 12,288, untied head, vocabulary 151,936) is the dense model that has run end to end on real weights. Its config, `examples/qwen3-8b-reasoning.yaml`, is the Qwen3.5-9B reasoning recipe with three changes:
+
+```
+openbonsai run --config examples/qwen3-8b-reasoning.yaml --out runs/qwen3-8b-reasoning
+```
+
+- **Model:** `Qwen/Qwen3-8B` at a pinned commit. `model_type: qwen3` picks the dense adapter.
+- **Traces:** the same 1,520 prompts, thinking switches and caps, with `traces.batch_tokens: 28000`. A dense Qwen3 KV cache takes about 144 KB per token, so 16 thinking rows (about 27K tokens) need about 4 GB next to the 16.4 GB model.
+- **Eval:** `compare`, `gsm8k` and `humaneval`. `dev` and `extended` need the Qwen3.5 tokenizer.
+
+What the dense adapter did with it, unchanged:
+
+- **Geometry:** widths 4,096 and 12,288, so block 4,096, the block Prism has run on real weights.
+- **Plan:** `[q,k,v] -> [o] -> [gate,up] -> [down]` in 36 layers, 252 ternary Linears, nothing kept. `q_norm`, `k_norm` and the layer norms stay F32.
+- **Endpoints:** the head and embedding are untied, so both are ternary. The embedding's GPTQ weight is `w²` of layer 0's input norm.
+- **Export:** a `qwen3` PTQ1_0 GGUF of 1,798,918,592 bytes. `qwen3` uses NEOX rope, so q/k rows are not permuted. All 11 verification checks passed, `eval --from` the GGUF reproduced the distilled state's `compare` numbers exactly, and Prism's CPU runtime loads and runs the file.
+
+Time on one RTX 5090 (32 GB, Windows 11):
+
+| Stage | Time |
+|---|---|
+| traces: 1,520 answers, 1.71M generated tokens at 140 tokens/s | about 3.4 h |
+| calibrate | 20 s |
+| quantize: 252 Linears | 19.5 min |
+| endpoints: head and embedding | 2.4 min |
+| distill: teacher (1,536 × 2,048 tokens), then 192 training steps | 5.3 min + 34 min |
+| export and verification (CPU) | 2.7 min |
+| eval: `compare`, then GSM8K and HumanEval with thinking off and on | 1 h 26 min |
+
+That is about 4.5 hours to the GGUF and 6 with the evaluation. The model's own BF16 reasoning baseline (`eval --from bf16 --suite gsm8k,humaneval`) took another 70 minutes. The run directory takes 8.6 GB, and the Hugging Face cache 16 GB for the BF16 model.
+
+Results against Qwen3-8B's own BF16 model, with the 9B's subsets (thinking off: 100 GSM8K, 50 HumanEval, 512-token cap; thinking on: the first 50 and 25, 4,096-token cap):
+
+| | GSM8K off / on | HumanEval off / on | `compare`: ΔNLL, top-1, EAR, KL |
+|---|---|---|---|
+| BF16 | 88/100 / 44/50 | 41/50 / 22/25 | |
+| after quantize (endpoints BF16) | | | +0.776, 0.583, 0.565, 1.135 |
+| after endpoints (all ternary) | | | +0.923, 0.557, 0.526, 1.318 |
+| distilled, the GGUF | 70/100 / 41/50 | 22/50 / 6/25 | +0.317, 0.683, 0.686, 0.650 |
+
+In Prism's llama.cpp (CPU, upstream `wiki.test.raw`, 8 × 512) the GGUF scores perplexity 14.94. On the same tokens an FP32 PyTorch model of the same weights agrees on 98.8% of top-1 predictions, with perplexity 14.93 against Prism's 14.92. The full report, with logs and every problem's result, is `research/runs/2026-10-28-qwen3-8b-reasoning/report.md`.
+
+What it taught us for the next model:
+
+- **On Windows, generation needs a VRAM cap.** The first attempt's traces spilled 6.6 GB to system RAM and ran at 19-25 tokens/s, an ETA of 22 hours. The driver pages instead of raising out-of-memory, and PyTorch's allocator keeps old blocks of the growing KV cache. Trace generation and the reasoning evals now cap the allocator below the free VRAM, as `refine` already did. A batch that does not fit then fails, and the traces stage splits it.
+- **Full attention costs generation time.** All 36 layers attend over the whole context, against 8 of 32 in Qwen3.5-9B, so the traces and the thinking-on evals take longer than on the 9B (3.4 h against 2.6 h for the traces).
+- **Check the traces before you calibrate.** `traces/summary.json` gives `hit_cap` and `finished_thinking` per source. Qwen3-8B finished thinking within 1,536 tokens in only 102 of its 420 code traces (the 9B in 353), so most of its code data holds no final program, and code is where it lost most: HumanEval 22/50 against BF16's 41/50. A longer cap for the code sources is untested, and so is the 9B's more-code config (`examples/qwen3_5-9b-reasoning-code.yaml`).
+- **No sensitivity scan was run.** The dense plan, with nothing kept, went in as is. For a model you will publish, run the scan above first.
 
 ## Checklist
 

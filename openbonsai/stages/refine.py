@@ -59,7 +59,7 @@ from ..core.hadamard import rotate
 from ..core.ternary import ASSIGNS, INITS, LatentTernaryLinear, TernaryEmbedding, TernaryLinear, shared_hadamard
 from ..formats.atomic import atomic_write_json
 from ..formats.state import TernaryState, TernaryTensor, load_state, save_state
-from .common import free
+from .common import cap_vram, cuda_index, free
 from .quantize import _Stop, capture_layer_kwargs, layer_forward
 
 TARGETS = ("original", "quantized", "mix")
@@ -67,7 +67,6 @@ CACHES = ("auto", "cuda", "cpu", "disk")
 CHECKPOINT = ("auto", True, False)
 BETAS = (0.9, 0.95)
 GPU_STREAM_BUDGET = 8 * 2**30      # cache auto: streams stay on the GPU up to this many bytes
-VRAM_MARGIN = 3 * 2**29            # left free under the allocator cap (CUDA context growth, other processes)
 REL_FLOOR = 1e-6                   # relative floor of a token's target energy (no absolute epsilon)
 
 
@@ -736,33 +735,6 @@ def refine_model(model, adapter, train_ids, val_ids, base: TernaryState, *, sett
             "settings": refine_hashed(r), "rolled_back": sorted(set(rolled_back))}
     state = TernaryState(tensors, dict(signs), block, group, meta).validate()
     return state, {"layers": [start, stop], "streams": where, "windows": report, "rolled_back": meta["rolled_back"]}
-
-
-def cuda_index(device) -> torch.device:
-    """``device`` with an explicit index: ``set_per_process_memory_fraction`` refuses a bare ``cuda``."""
-    device = torch.device(device)
-    if device.type == "cuda" and device.index is None:
-        device = torch.device("cuda", torch.cuda.current_device())
-    return device
-
-
-def cap_vram(device, log) -> float | None:
-    """Cap this process's CUDA caching allocator at the memory free now (plus what it already holds) less
-    ``VRAM_MARGIN``; returns the cap in GiB (None off CUDA). On Windows the driver pages an allocation that
-    does not fit to system RAM instead of failing, and the stage then runs many times slower while it holds
-    the GPU; with the cap it stops with out-of-memory instead. ``set_per_process_memory_fraction(1.0)``
-    lifts it."""
-    device = cuda_index(device)
-    if device.type != "cuda":
-        return None
-    free_b, total_b = torch.cuda.mem_get_info(device)
-    held = torch.cuda.memory_reserved(device)      # this process's own cache counts against the cap too
-    fraction = min(1.0, max(0.05, (free_b + held - VRAM_MARGIN) / total_b))
-    torch.cuda.set_per_process_memory_fraction(fraction, device)
-    cap = fraction * total_b / 2**30
-    log(f"VRAM: {free_b / 2**30:.1f} of {total_b / 2**30:.1f} GiB free; this process is capped at {cap:.1f} GiB "
-        "(an overflow stops the stage instead of spilling to system RAM)")
-    return cap
 
 
 def run(ctx) -> dict:

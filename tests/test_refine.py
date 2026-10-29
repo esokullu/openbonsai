@@ -25,6 +25,7 @@ from openbonsai.core.hadamard import rotate, seeded_signs
 from openbonsai.core.ternary import LatentTernaryLinear, TernaryLinear, shared_hadamard
 from openbonsai.formats.state import load_state, read_scales
 from openbonsai.rundir import StageNotReady
+from openbonsai.stages import common as C
 from openbonsai.stages import refine as R
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -343,10 +344,18 @@ def test_vram_cap_turns_a_spill_into_out_of_memory(monkeypatch):
     monkeypatch.setattr(torch.cuda, "memory_reserved", lambda device=None: 2**30)
     monkeypatch.setattr(torch.cuda, "set_per_process_memory_fraction", lambda f, device=None: fractions.append(f))
     logs = []
-    cap = R.cap_vram("cuda:0", logs.append)
-    assert fractions == [pytest.approx((21 * 2**30 - R.VRAM_MARGIN) / (32 * 2**30))]
-    assert cap == pytest.approx(21 - R.VRAM_MARGIN / 2**30) and "capped" in logs[0]
-    assert R.cap_vram("cpu", logs.append) is None and len(fractions) == 1
+    cap = C.cap_vram("cuda:0", logs.append)
+    assert fractions == [pytest.approx((21 * 2**30 - C.VRAM_MARGIN) / (32 * 2**30))]
+    assert cap == pytest.approx(21 - C.VRAM_MARGIN / 2**30) and "capped" in logs[0]
+    assert C.cap_vram("cpu", logs.append) is None and len(fractions) == 1
+    # The context manager (traces, eval generation) lifts the cap however its block ends.
+    with pytest.raises(KeyboardInterrupt), C.vram_cap("cuda:0", logs.append) as held:
+        assert held == pytest.approx(cap) and len(fractions) == 2
+        raise KeyboardInterrupt
+    assert fractions[2] == 1.0
+    with C.vram_cap("cpu", logs.append) as held:
+        assert held is None
+    assert len(fractions) == 3
 
 
 def test_layers_outside_the_range_keep_their_codes_and_quantized_targets_run(endpointed):
