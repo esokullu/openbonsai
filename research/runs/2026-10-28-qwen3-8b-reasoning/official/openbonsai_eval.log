@@ -1,0 +1,4 @@
+$ openbonsai eval --run eval --config examples/qwen3-8b-reasoning.yaml --set model.local_files_only=true --from Ternary-Bonsai-8B-PQ2_0.gguf --suite gsm8k,humaneval
+openbonsai: error: only prism.hadamard version 1 files are supported (no ternary tied tables) (GGUFError)
+openbonsai: hint: rerun with --debug (or OPENBONSAI_DEBUG=1) for the traceback; if a stage failed, its log <run>/logs/<stage>.log has it too
+exit 2

@@ -234,20 +234,22 @@ This is not a from-scratch result and not what `openbonsai run` does. Prism ML r
 
 ### Qwen3-8B through the dense adapter
 
-The second real model, and the first that is not Qwen3.5. `examples/qwen3-8b-reasoning.yaml` is the 9B reasoning recipe on Qwen3-8B, with no adapter code: the generic `dense` adapter, Hadamard block 4,096, head and embedding ternary. The output is a 1.8 GB PTQ1_0 GGUF. The export passed its 11 checks, and the file read back scores exactly as the distilled state. Scored against Qwen3-8B's own BF16 model with the 9B's reasoning subsets:
+The second real model, and the first that is not Qwen3.5. `examples/qwen3-8b-reasoning.yaml` is the 9B reasoning recipe on Qwen3-8B, with no adapter code: the generic `dense` adapter, Hadamard block 4,096, head and embedding ternary. The output is a 1.8 GB PTQ1_0 GGUF. The export passed its 11 checks, and the file read back scores exactly as the distilled state. Scored against Qwen3-8B's own BF16 model with the 9B's reasoning subsets, and in Prism's CPU runtime on upstream `wiki.test.raw` (8 × 512):
 
-| Model | GSM8K off / on | HumanEval off / on | `compare` vs its BF16: ΔNLL, top-1, KL |
-|---|---|---|---|
-| Qwen3-8B BF16 | 88/100 / 44/50 | 41/50 / 22/25 | |
-| **Qwen3-8B ternary (OpenBonsai)** | **70/100 / 41/50** | **22/50 / 6/25** | +0.317, 68.3%, 0.650 |
-| Qwen3.5-9B ternary, same recipe (above) | 69/100 / 25/50 | 19/50 / 10/25 | +0.464, 69.6%, 0.554 |
+| Model | GSM8K off / on | HumanEval off / on | `compare` vs its BF16: ΔNLL, top-1, KL | Prism perplexity |
+|---|---|---|---|---|
+| Qwen3-8B BF16 | 88/100 / 44/50 | 41/50 / 22/25 | | |
+| Ternary Bonsai 8B (official, Prism ML; first generation) | | | | 12.02 |
+| **Qwen3-8B ternary (OpenBonsai)** | **70/100 / 41/50** | **22/50 / 6/25** | +0.317, 68.3%, 0.650 | 14.94 |
+| Qwen3.5-9B ternary, same recipe (above) | 69/100 / 25/50 | 19/50 / 10/25 | +0.464, 69.6%, 0.554 | 13.61 (another tokenizer) |
 
 - **Code is the weak spot again.** Math holds up well (80% of BF16's GSM8K with thinking off, 93% with thinking on), while HumanEval keeps about half with thinking off. With thinking on, 14 of 25 HumanEval answers ran out of tokens mid-thought, 12 of them looping.
 - **The code traces are mostly unfinished.** With thinking on, Qwen3-8B finished its reasoning within the 1,536-token cap in only 102 of the 420 code traces (the 9B: 353), so most of its code calibration data holds no final program. A longer cap for the code sources is the next thing to try, and so is the 9B's more-code recipe ([above](#more-code-in-the-data)), which raised the 9B's HumanEval from 19/50 to 34/50 (probably optimistic: that setting was picked from four runs scored on those same problems, and its traces restate at least 6 of them in other words); neither has been run on the 8B.
 - **Prism's runtime.** Perplexity 14.94 on upstream `wiki.test.raw` (8 × 512, CPU). Against an FP32 PyTorch model of the same weights on the same 2,040 positions: 98.8% top-1 agreement, perplexity 14.92 against 14.93.
+- **Prism's Ternary Bonsai 8B is ahead on perplexity.** Prism's first-generation model on the same base (`prism-ml/Ternary-Bonsai-8B-gguf`, the PQ2_0 file, revision `c2aefbe`) scores 12.02 with the same command and tokens, and is lower on each of the 8 chunks. With the YaRN rope scaling in its metadata switched off, so that it runs with the same unscaled rope as ours, it scores 11.92, so the rope setting is not the gap. OpenBonsai cannot read that file (PQ2_0 codes without a Hadamard rotation), so it has no GSM8K, HumanEval or `compare` scores; the report lists what loading it would take.
 - **Time on one RTX 5090.** About 4.5 hours to the GGUF, 3.4 of them for the traces (1.71M generated tokens), and about 6 hours with the evaluation. Full attention in all 36 layers makes long generation slower than on Qwen3.5-9B.
 
-No sensitivity scan was run, there is no official comparison yet (Prism's first-generation Ternary Bonsai 8B is also built on Qwen3-8B), and every number is one run. Report, logs and per-problem results: `research/runs/2026-10-28-qwen3-8b-reasoning/report.md`.
+No sensitivity scan was run, the comparison with Prism's Ternary Bonsai 8B covers perplexity only, and every number is one run. Report, logs and per-problem results: `research/runs/2026-10-28-qwen3-8b-reasoning/report.md`.
 
 ## Hardware and time
 

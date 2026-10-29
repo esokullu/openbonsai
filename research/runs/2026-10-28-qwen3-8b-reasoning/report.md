@@ -4,7 +4,7 @@ Independent project, not affiliated with or endorsed by Prism ML. Bonsai is Pris
 
 The second real model through OpenBonsai, and the first through the generic `dense` adapter: `Qwen/Qwen3-8B` (revision `b968826`) with the `dense` adapter and the Qwen3.5-9B reasoning recipe (`examples/qwen3-8b-reasoning.yaml`, identical to this run's `config.yaml`). Every stage ran on one RTX 5090 (32 GB, Windows 11) with the package at `8c150da`: traces, calibrate, quantize, endpoints, distill, export with verification, eval. The adapter needed no change: the export passed all 11 checks, Prism's llama.cpp loaded the file, and scoring the GGUF read back gives the distilled state's numbers exactly.
 
-Against its own BF16 model, the ternary Qwen3-8B keeps most of GSM8K (70/100 thinking off, 41/50 on, against 88/100 and 44/50) and loses about half of HumanEval with thinking off (22/50 against 41/50). With thinking on, HumanEval falls to 6/25 (BF16 22/25): 14 of 25 answers run to the 4,096-token cap, 12 of them looping. In Prism's runtime the GGUF scores perplexity 14.94 on WikiText-2 test, and on the same tokens it matches our PyTorch reference of the same weights: 98.8% top-1 agreement and perplexity 14.92 against 14.93.
+Against its own BF16 model, the ternary Qwen3-8B keeps most of GSM8K (70/100 thinking off, 41/50 on, against 88/100 and 44/50) and loses about half of HumanEval with thinking off (22/50 against 41/50). With thinking on, HumanEval falls to 6/25 (BF16 22/25): 14 of 25 answers run to the 4,096-token cap, 12 of them looping. In Prism's runtime the GGUF scores perplexity 14.94 on WikiText-2 test, and on the same tokens it matches our PyTorch reference of the same weights: 98.8% top-1 agreement and perplexity 14.92 against 14.93. Prism ML's own Ternary Bonsai 8B, also built on Qwen3-8B, scores 12.02 with the same file and command (11.92 with its YaRN rope scaling switched off, as our file runs). OpenBonsai cannot read Prism's file (PQ2_0, without a Hadamard rotation), so that model has no `compare`, GSM8K or HumanEval scores here.
 
 Single run, small evals: read the caveats at the end.
 
@@ -78,6 +78,8 @@ Greedy decoding with the model's chat template. Thinking off: the frozen 100 GSM
 | Qwen3.5-9B BF16 | 77/100 | 36/50 | 44/50 | 22/25 |
 | Qwen3.5-9B ternary, same recipe (the previous Hugging Face model) | 69/100 | 25/50 | 19/50 | 10/25 |
 
+Prism's Ternary Bonsai 8B is not in this table: `eval` cannot load its file ([below](#prisms-ternary-bonsai-8b)).
+
 How often the 4,096-token cap cut an answer off with thinking on, and how many of those cut-off answers loop (their last 300 characters begin with text that already appeared earlier):
 
 | | GSM8K on: capped / looping | HumanEval on: capped / looping |
@@ -111,6 +113,46 @@ Prism quantizes activations to 8 bits, so the two do not match exactly.
 
 **Why three KL numbers.** Prism stores each log-prob as a uint16 over a 16-nat window below the position's top log-prob. Every token below that window is stored at the floor, so the decoded probabilities sum to slightly more than one, and the plain KL comes out slightly negative here (−0.0005). Lumping the floored tokens of each position into one bucket gives a lower bound, because merging categories cannot raise a KL (up to the uint16 rounding). Renormalizing gives the floored tokens more than their true mass, so that estimate runs high. The third row is the estimator of the 9B check in the README (`research/runs/gguf-test/runtime-parity/ref_vs_llama.py`, mean KL 0.0028). On a confident real model it is dominated by the floor: about 150,000 floored tokens per position, each at e^-16 of the top token's probability. The 9B check ran on the exporter's synthetic test state, whose perplexity is about 13,700: its distributions are nearly flat, so almost nothing is floored. Its 0.0028 and this run's 0.044 therefore measure different things. Compare the two checks by top-1 agreement and perplexity instead.
 
+## Prism's Ternary Bonsai 8B
+
+Prism ML publishes a first-generation Ternary Bonsai 8B built on Qwen3-8B. We scored `Ternary-Bonsai-8B-PQ2_0.gguf` from `prism-ml/Ternary-Bonsai-8B-gguf` at revision `c2aefbe` (Apache-2.0): 2,182,184,672 bytes, sha256 `1376f942…` (`official/sha256.ok`). The repository recommends `Ternary-Bonsai-8B-Q2_0.gguf`, which has the same size and layout but marks its tensors with ggml type 42. Prism's fork at `c9c34bc` reads type 42 as upstream's group-64 Q2_0. Its loader (`ggml/src/gguf.cpp`) refuses such a file and points to the PQ2_0 version (type 142). We did not download the Q2_0 file.
+
+**Perplexity**, in the same runtime with the same command and test files as ours (`official/official_checks.sh`):
+
+| Model | upstream `wiki.test.raw` | the copy without blank lines |
+|---|---|---|
+| Ternary Bonsai 8B (official, Prism ML), as published | **12.02 ± 0.81** | 11.71 ± 0.79 |
+| the same file with `--rope-scaling none` | 11.92 ± 0.81 | |
+| Qwen3-8B ternary (this run) | 14.94 ± 1.01 | 14.35 ± 0.98 |
+
+Both files use Qwen3-8B's tokenizer and are scored on the same tokens, so unlike the 9B's 13.61 these numbers compare directly. Prism's model is lower on each of the 8 chunks taken alone (derived from the running values llama.cpp prints: chunk 1 7.92 against 9.93, chunk 8 19.77 against 23.14). llama.cpp applies a file's YaRN rope scaling at any context length, 512 included, so the as-published number includes it. The `--rope-scaling none` row runs Prism's weights with Qwen3-8B's unscaled rope, as our file does. It moves Prism's number by 0.1, so the rope setting does not explain the gap.
+
+**The two files** (`official/header.json`, `official/pq2_codes.json`; ours from its export report):
+
+| | Ternary Bonsai 8B (Prism ML) | Qwen3-8B ternary (this run) |
+|---|---|---|
+| Tensors | 399: 254 ternary, 145 F32 norms | the same names and shapes, apart from the head and embedding rows |
+| Ternary tensors | every linear layer, the head and the embedding | the same |
+| Weight format | PQ2_0 (ggml type 142): an FP16 scale and 2-bit codes per 128 weights, 34 bytes (2.125 bits per weight) | PTQ1_0 (type 143): an FP16 scale and base-3 codes per 128 weights, 28 bytes (1.75 bits per weight) |
+| Ternary weights | 8,188,239,872, all in {−1, 0, +1} (no +2 codes), 37.2% zero | 8,190,427,136 |
+| Head and embedding rows | 151,669 (the tokenizer's tokens) | 151,936 (Qwen3-8B's padded table) |
+| Rotation | none: no `prism.hadamard` metadata, weights in the model's own basis | Hadamard block 4,096, seeded signs per width |
+| RoPE | YaRN, factor 4 over 16,384 positions, context 65,536 (the unpacked checkpoint's config says the same) | unscaled, as Qwen3-8B, context 40,960 |
+| Size | 2,182,184,672 bytes | 1,798,918,592 bytes |
+
+Both hold ternary weights with one FP16 scale per 128, so the size difference (Prism's file is 21% larger) is packing, not precision. The 267 vocabulary rows that Prism's file leaves out of the head and the embedding account for the 2,187,264 weights between the two counts.
+
+**Why `compare`, GSM8K and HumanEval did not run.** `openbonsai inspect` lists the file (`official/openbonsai_inspect.log`), but `eval --from` refuses it before it reads any weights (`official/openbonsai_eval.log`): `only prism.hadamard version 1 files are supported`. The dense adapter reads PTQ1_0 files in Prism's rotated layout. To score this file it would need:
+
+- a PQ2_0 decoder (type 142, and type 42 for the legacy group-128 files) in `formats/gguf.py`, which today decodes only PTQ1_0 and float tensors;
+- a path without a rotation. `read_gguf` takes the signs and the block from `prism.hadamard.*`, and `TernaryLinear` and `TernaryEmbedding` always rotate their input. An unrotated file needs an identity rotation or dequantized dense weights, and `eval` refuses `--install dense` for a GGUF source;
+- a layout that accepts the file's 151,669-row head and embedding, where the dense adapter derives 151,936 rows from Qwen3-8B's config;
+- the file's YaRN settings in the PyTorch model, since Qwen3-8B's config has none, for the scores to match Prism's runtime.
+
+We did not write that converter. Prism also publishes the same model unpacked (`prism-ml/Ternary-Bonsai-8B-unpacked`, revision `ac20f03`): F16 safetensors, 16.4 GB, `Qwen3ForCausalLM` with the same YaRN settings. As an ordinary Hugging Face model it should run GSM8K and HumanEval in `eval` with no new code, but `compare` would still need a way to score it against BF16 Qwen3-8B. We have not downloaded or tried it.
+
+Prism's model card reports scores from its own harness (EvalScope with vLLM, full benchmarks): GSM8K 91 and HumanEval+ 77.4 for Ternary Bonsai 8B, against 93 and 82.3 for Qwen3-8B. Those do not compare with our 100- and 50-problem subsets under greedy decoding, and we have not reproduced them.
+
 ## What the run exposed, and the fixes
 
 - **VRAM spill during generation on Windows** (above): fixed in `8c150da` (`vram_cap` around trace and eval generation, with tests).
@@ -123,8 +165,8 @@ Prism quantizes activations to 8 bits, so the two do not match exactly.
 
 - **One run, small evals.** One HumanEval problem is 2 points with thinking off and 4 with thinking on; one GSM8K problem with thinking on is 2. There is no variance estimate.
 - **No sensitivity scan.** What stays in high precision is the dense adapter's default (norms; head and embedding ternary). `docs/adding-a-model.md` recommends a scan for a new model, and this run skipped it.
-- **The official comparison is missing.** Prism publishes a first-generation Ternary Bonsai 8B built on Qwen3-8B (`prism-ml/Ternary-Bonsai-8B-gguf`). We have not downloaded or scored it, so this run has no "official model" row.
-- **WikiText is partly in-domain**, as for the 9B: calibration and distillation include WikiText-2 train, and `compare` and Prism's perplexity use WikiText-2 test.
+- **The official comparison covers perplexity only.** Prism's Ternary Bonsai 8B has no `compare`, GSM8K or HumanEval scores here, because OpenBonsai cannot read its file ([above](#prisms-ternary-bonsai-8b)). Its perplexity as published includes the YaRN scaling in its metadata; with that switched off it scores 11.92.
+- **WikiText is partly in-domain**, as for the 9B: calibration and distillation include WikiText-2 train, and `compare` and Prism's perplexity use WikiText-2 test. We do not know Prism's training data, so on WikiText the comparison with Prism's model favors ours.
 - **The thinking-on scores are capped.** BF16 still has 5 of 50 GSM8K and 3 of 25 HumanEval answers cut off at 4,096 tokens.
 
 ## Files
@@ -135,3 +177,4 @@ Prism quantizes activations to 8 bits, so the two do not match exactly.
 - `export/`: `DONE.json`, the export and verification report, and Prism's perplexity line.
 - `prism/`: `cpu_checks.sh` (the Prism perplexity runs and the parity check), their logs, and `runtime_parity.json`. Prism's raw log-prob file (590 MB) is not committed. The `prism_ppl_9b_*.log` files are the 9B perplexities re-measured on the upstream test file (the same numbers as `../2026-10-28-prism-ppl-upstream/`), and `make_wiki.py` rebuilds the parquet copy used for the 14.35 above.
 - `runtime_parity.py`: the parity check.
+- `official/`: Prism's Ternary Bonsai 8B. `official_checks.sh` downloads the file, checks its sha256, runs the perplexities and tries the load. Also here: the perplexity logs; `header.json`, the file's metadata and tensor shapes (`gguf_header.py`); `pq2_codes.json`, the code counts per tensor (`pq2_codes.py`); and the output of `openbonsai inspect` and `eval`. The GGUF itself is not committed.
