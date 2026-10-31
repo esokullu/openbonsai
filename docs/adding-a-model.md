@@ -89,7 +89,7 @@ Family("llama", "llama", add_bos=True, thinking=False, rope_permute=True, pre="l
 | `gguf_arch` | the llama.cpp architecture Prism's converter writes for this `model_type` (`conversion/__init__.py` in Prism) |
 | `prism_hadamard` (derived) | whether Prism's loader accepts `prism.hadamard` metadata for that arch. Prism (c9c34bc, `llama-model.cpp`) verifies only `llama`, `qwen3`, `qwen3moe`, `qwen35`, `qwen35moe`, `qwen3next` and `dspark`; every other arch is refused at load. No GGUF means a latent export |
 | `add_bos` | blocks and eval sequences start with BOS; also the GGUF's `add_bos_token` when the tokenizer config does not set it |
-| `thinking` | the chat template understands `enable_thinking` (asking for thinking otherwise is an error) |
+| `thinking` | the chat template understands `enable_thinking` (asking for thinking otherwise is an error, and so is asking for it from a checkpoint whose template renders the same prompt with the switch on and off) |
 | `rope_permute` | llama.cpp's `llama` arch uses interleaved (NORM) rope, so Prism's converter permutes q/k rows (and biases) per head from rotate-half order. `qwen3` uses NEOX rope: no permutation |
 | `pre` | `tokenizer.ggml.pre` when the tokenizer's probe hash is not one Prism's converter knows (`KNOWN_PRE`) |
 | `zero_centered_norm`, `qk_norm` | norm convention; per-head q/k norms |

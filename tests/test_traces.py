@@ -178,13 +178,67 @@ def test_a_thinking_mode_the_template_cannot_do_fails_before_loading(tmp_path):
     from openbonsai.config import ConfigError, load_config
     from openbonsai.stages.evaluate import check_thinking_modes
     from openbonsai.stages.traces import checked_chat_kwargs
-    from tiny_models import tiny_dense_config
-    llama = adapter_for_config(tiny_dense_config("llama"))
+    from tiny_models import llama_byte_tokenizer, tiny_dense_config
+    llama, tok = adapter_for_config(tiny_dense_config("llama")), llama_byte_tokenizer()
     with pytest.raises(ConfigError, match="traces.thinking"):
-        checked_chat_kwargs(llama, True, "traces.thinking")
-    assert checked_chat_kwargs(llama, False, "traces.thinking") == {}
+        checked_chat_kwargs(llama, tok, True, "traces.thinking")
+    assert checked_chat_kwargs(llama, tok, False, "traces.thinking") == {}
     with pytest.raises(ConfigError, match="eval.reasoning.thinking on"):
-        check_thinking_modes(load_config(None, ["eval.reasoning.thinking=[off,on]"]), llama)
-    assert check_thinking_modes(load_config(None, ["eval.reasoning.thinking=off"]), llama) == ["off"]
+        check_thinking_modes(load_config(None, ["eval.reasoning.thinking=[off,on]"]), llama, tok)
+    assert check_thinking_modes(load_config(None, ["eval.reasoning.thinking=off"]), llama, tok) == ["off"]
     with pytest.raises(ConfigError, match="maybe"):
-        check_thinking_modes(load_config(None, ["eval.reasoning.thinking=maybe"]), llama)
+        check_thinking_modes(load_config(None, ["eval.reasoning.thinking=maybe"]), llama, tok)
+
+
+# The generation prompt of Prism's Ternary-Bonsai-8B-unpacked (a qwen3 checkpoint, rev ac20f03): it closes an
+# empty think block whatever enable_thinking says.
+IGNORES_SWITCH = ("{% for m in messages %}<|im_start|>{{ m['role'] }}\n{{ m['content'] }}<|im_end|>\n{% endfor %}"
+                  "{% if add_generation_prompt %}<|im_start|>assistant\n<think>\n\n</think>\n\n{% endif %}")
+
+
+@pytest.mark.parametrize("model_type", ["qwen3", "qwen3_5"])
+def test_thinking_on_fails_when_the_template_ignores_the_switch(model_type):
+    from openbonsai.adapters import adapter_for_config
+    from openbonsai.config import ConfigError, load_config
+    from openbonsai.stages.evaluate import check_thinking_modes
+    from openbonsai.stages.traces import checked_chat_kwargs
+    from tiny_models import byte_tokenizer, tiny_dense_config, tiny_text_config
+    adapter = adapter_for_config(tiny_dense_config("qwen3") if model_type == "qwen3" else tiny_text_config())
+    both, off = (load_config(None, [f"eval.reasoning.thinking={m}"]) for m in ("[off,on]", "off"))
+    tok = byte_tokenizer()                                   # its template honours the switch (Qwen3, Qwen3.5)
+    assert checked_chat_kwargs(adapter, tok, True, "traces.thinking") == {"enable_thinking": True}
+    assert check_thinking_modes(both, adapter, tok) == ["off", "on"]
+    tok.chat_template = IGNORES_SWITCH
+    with pytest.raises(ConfigError, match=r"traces\.sources\[0\]\.thinking: .* ignores enable_thinking"):
+        checked_chat_kwargs(adapter, tok, True, "traces.sources[0].thinking")
+    with pytest.raises(ConfigError, match="eval.reasoning.thinking on: .* ignores enable_thinking"):
+        check_thinking_modes(both, adapter, tok)
+    # Thinking off is what this template renders: it passes, as for a template without the switch.
+    assert checked_chat_kwargs(adapter, tok, False, "traces.thinking") == {"enable_thinking": False}
+    assert check_thinking_modes(off, adapter, tok) == ["off"]
+    tok.chat_template = None                                 # no template: left to the stages
+    assert checked_chat_kwargs(adapter, tok, True, "traces.thinking") == {"enable_thinking": True}
+
+
+def test_an_ignored_thinking_switch_fails_every_stage_before_the_model_loads(make_ctx, tmp_path, monkeypatch):
+    from openbonsai.cli import preflight
+    from openbonsai.config import ConfigError
+    from openbonsai.stages import evaluate, traces
+    from tiny_models import byte_tokenizer
+    ctx = make_ctx(tmp_path / "run", "traces.thinking=true", "eval.suites=[gsm8k]", "eval.reasoning.thinking=[off,on]")
+
+    def tokenizer():
+        tok = byte_tokenizer()
+        tok.chat_template = IGNORES_SWITCH
+        return tok
+    monkeypatch.setattr(ctx, "load_tokenizer", tokenizer)
+    monkeypatch.setattr(ctx, "load_model", lambda: pytest.fail("the model was loaded"))
+    with pytest.raises(ConfigError, match="traces.thinking: .* ignores enable_thinking"):
+        preflight(ctx, ("traces",))
+    with pytest.raises(ConfigError, match="traces.thinking: .* ignores enable_thinking"):
+        traces.run(ctx)
+    with pytest.raises(ConfigError, match="eval.reasoning.thinking on: .* ignores enable_thinking"):
+        preflight(ctx, ("eval",))
+    with pytest.raises(ConfigError, match="eval.reasoning.thinking on: .* ignores enable_thinking"):
+        evaluate.run(ctx, "bf16", ["gsm8k"])
+    assert not ctx.run.stage_dir("eval").exists() or not any(ctx.run.stage_dir("eval").glob("*.json"))

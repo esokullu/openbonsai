@@ -204,9 +204,9 @@ def check_calibration_batch(cfg: dict) -> None:
                       f"or set quantize.batch to a divisor of {total}")
 
 
-def check_chat_template(ctx) -> None:
+def check_chat_template(tok) -> None:
     """The traces stage renders its prompts with the model's chat template."""
-    if not getattr(ctx.load_tokenizer(), "chat_template", None):
+    if not getattr(tok, "chat_template", None):
         raise ConfigError("the model's tokenizer has no chat template, so the traces stage cannot render its "
                           "prompts; disable traces and use text sources instead (docs/adding-a-model.md, base "
                           f"model without a chat template): {NO_TEMPLATE_SETS}")
@@ -232,18 +232,21 @@ def preflight(ctx, stages=STAGES) -> None:
     if stage_enabled(ctx.cfg, "refine") and "refine" in stages:
         from .stages.refine import check_config
         check_config(ctx.cfg, adapter.n_layers)   # values, layer range, blocks vs the calibration set
+    tok = None                                    # loaded once, by the first check that renders a chat template
     if stage_enabled(ctx.cfg, "traces") and "traces" in stages:
         from .stages.traces import checked_chat_kwargs, trace_sources
-        check_chat_template(ctx)
+        tok = ctx.load_tokenizer()
+        check_chat_template(tok)
         for src in trace_sources(ctx.cfg):        # also every source's kind-specific settings
-            checked_chat_kwargs(adapter, src["thinking"], "traces.thinking" if src["legacy"]
+            checked_chat_kwargs(adapter, tok, src["thinking"], "traces.thinking" if src["legacy"]
                                 else f"{src['where']}.thinking")
     check_trace_supply(ctx, stages)
     if stage_enabled(ctx.cfg, "eval") and "eval" in stages:
         from .eval.reasoning import SUITES
         from .stages.evaluate import check_thinking_modes
         if set(ctx.cfg["eval"].get("suites") or ()) & set(SUITES):
-            check_thinking_modes(ctx.cfg, adapter)   # a mode the chat template cannot do fails now, not at eval
+            # a mode the chat template cannot do fails now, not at eval
+            check_thinking_modes(ctx.cfg, adapter, tok if tok is not None else ctx.load_tokenizer())
     if stage_enabled(ctx.cfg, "export") and "export" in stages:
         explicit_latent = (ctx.cfg["export"].get("format") or "auto") == "latent"
         # refuses an explicit ptq1_0-gguf the model (its tokenizer, its weights' file format) cannot take

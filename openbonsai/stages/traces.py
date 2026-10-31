@@ -626,13 +626,28 @@ def generate_encoded(model, encoded: list[list[int]], *, eos_ids: list[int], max
     return results
 
 
-def checked_chat_kwargs(adapter, thinking: bool, where: str) -> dict:
-    """``adapter.chat_kwargs``; a thinking mode the chat template has no switch for is a ConfigError."""
+# The conversation checked_chat_kwargs renders in both thinking modes.
+THINKING_PROBE = [{"role": "user", "content": "What is 2 + 2?"}]
+
+
+def checked_chat_kwargs(adapter, tokenizer, thinking: bool, where: str) -> dict:
+    """``adapter.chat_kwargs``; a thinking mode the chat template has no switch for is a ConfigError, and so
+    is thinking on when the tokenizer's chat template renders it as the same prompt as thinking off (a
+    template that ignores the switch the model family has, e.g. one that always closes an empty think
+    block). Thinking off passes, as for a template without the switch; a tokenizer without a chat template
+    is left to the stages (traces refuses it, eval skips its reasoning suites)."""
     from ..config import ConfigError
     try:
-        return adapter.chat_kwargs(thinking=bool(thinking))
+        kwargs = adapter.chat_kwargs(thinking=bool(thinking))
     except ValueError as error:
         raise ConfigError(f"{where}: {error}") from None
+    if thinking and getattr(tokenizer, "chat_template", None):
+        off = adapter.chat_kwargs(thinking=False)
+        if encode_chat(tokenizer, THINKING_PROBE, kwargs) == encode_chat(tokenizer, THINKING_PROBE, off):
+            switch = ", ".join(sorted(kwargs)) or "a thinking switch"
+            raise ConfigError(f"{where}: the model's chat template ignores {switch}: thinking on renders the same "
+                              "prompt as thinking off; use thinking off")
+    return kwargs
 
 
 def pad_token(tokenizer, eos_ids) -> int:
@@ -820,10 +835,10 @@ def run(ctx) -> dict:
     out = ctx.run.stage_dir("traces")
     sources = trace_sources(ctx.cfg)
     adapter = ctx.adapter()
-    kwargs = {s["index"]: checked_chat_kwargs(adapter, s["thinking"], f"{s['where']}.thinking"
-                                              if not s["legacy"] else "traces.thinking")
-              for s in sources}                                   # before loading anything
     tok = ctx.load_tokenizer()
+    kwargs = {s["index"]: checked_chat_kwargs(adapter, tok, s["thinking"], f"{s['where']}.thinking"
+                                              if not s["legacy"] else "traces.thinking")
+              for s in sources}                                   # before loading the model
     bos = adapter.bos_id(tok)
     loaded = load_sources(ctx, sources)
     encoded = {src["index"]: [encode_chat(tok, msgs, kwargs[src["index"]]) for _, msgs, _ in picked]

@@ -263,16 +263,17 @@ def check_test_problems_absent(ctx, source: str, suites) -> None:
         atomic_write_json(memo_path, memo)
 
 
-def check_thinking_modes(cfg, adapter) -> list[str]:
-    """``eval.reasoning.thinking`` as modes; a mode the model's chat template has no switch for is a
-    ConfigError (raised before any model is loaded or any result is written)."""
+def check_thinking_modes(cfg, adapter, tokenizer) -> list[str]:
+    """``eval.reasoning.thinking`` as modes; a mode the model's chat template has no switch for, or whose
+    switch the tokenizer's template ignores (``traces.checked_chat_kwargs``), is a ConfigError (raised
+    before any model is loaded or any result is written)."""
     from .traces import checked_chat_kwargs
     try:
         modes = R.thinking_modes(cfg["eval"]["reasoning"].get("thinking", "off"))
     except ValueError as error:
         raise ConfigError(str(error)) from None
     for mode in modes:
-        checked_chat_kwargs(adapter, mode == "on", f"eval.reasoning.thinking {mode}")
+        checked_chat_kwargs(adapter, tokenizer, mode == "on", f"eval.reasoning.thinking {mode}")
     return modes
 
 
@@ -342,7 +343,7 @@ def run(ctx, source: str | None = None, suites=None, install_mode: str = "auto",
     suites = [s for s in suites if s not in R.SUITES]       # scored first, on the installed weights
     dense_gen = bool(e["reasoning"].get("dense", True))
     if generating:
-        check_thinking_modes(ctx.cfg, ctx.adapter())     # bad values fail before loading
+        check_thinking_modes(ctx.cfg, ctx.adapter(), ctx.load_tokenizer())     # bad values fail before loading
         check_test_problems_absent(ctx, source, generating)
         if not suites and dense_gen and install_mode == "auto" and not is_gguf(source):
             install_mode = "dense"    # generation only: write the dequantized weights directly
