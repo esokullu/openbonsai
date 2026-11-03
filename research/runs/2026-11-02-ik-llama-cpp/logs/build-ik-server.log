@@ -1,0 +1,3 @@
+C:\Users\esoku\AppData\Local\Temp\claude\D--openbonsai\14b566d0-5e53-4238-9262-1246932509e5\scratchpad\ik\src\examples\server\server-context.cpp(5050): warning C4267: '=': conversion from 'size_t' to 'int32_t', possible loss of data
+[18/18] Linking CXX executable bin\llama-server.exe
+BUILD_OK

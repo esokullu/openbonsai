@@ -1,0 +1,50 @@
+
+
+Loading model... 
+
+▄▄ ▄▄
+██ ██
+██ ██  ▀▀█▄ ███▄███▄  ▀▀█▄    ▄████ ████▄ ████▄
+██ ██ ▄█▀██ ██ ██ ██ ▄█▀██    ██    ██ ██ ██ ██
+██ ██ ▀█▄██ ██ ██ ██ ▀█▄██ ██ ▀████ ████▀ ████▀
+                                    ██    ██
+                                    ▀▀    ▀▀
+
+build      : b10826-c9c34bc9
+model      : D:/openbonsai/runs/2026-10-28-code-gap-1epoch/export/OpenBonsai-Qwen3.5-9B-PTQ1_0.gguf
+ftype      : PTQ1_0 - 1.75 bpw ternary (group 128)
+modalities : text
+
+available commands:
+  /exit or Ctrl+C     stop or exit
+  /regen              regenerate the last response
+  /clear              clear the chat history
+  /read <file>        add a text file
+  /glob <pattern>     add text files using globbing pattern
+
+
+
+> Write a Python function fib(n) that returns the n-th Fibonacci number, with fib(0) = 0.
+Here’s a simple and efficient implementation of the Fibonacci function in Python:
+
+```python
+def fib(n: int) -> int:
+    """
+    Returns the n-th Fibonacci number, with fib(0) = 0.
+    
+    Fibonacci sequence:
+    fib(0) = 0
+    fib(1) = 1
+    fib(2) = 1
+    fib(3) = 2
+    fib(4) = 3
+    fib(5) = 5
+    ...
+    """
+    if n < 0:
+        raise ValueError("n
+
+[ Prompt: 7.2 t/s | Generation: 3.4 t/s ]
+
+
+Exiting...

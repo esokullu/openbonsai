@@ -4,7 +4,7 @@
 
 Independent project, not affiliated with or endorsed by Prism ML. Bonsai is Prism ML's product.
 
-OpenBonsai is an open (Apache-2.0) framework that compresses a dense language model to ternary weights in the format of Prism ML's Ternary Bonsai models: Prism's PTQ1_0 GGUF, which runs in Prism's llama.cpp fork. For Qwen3.5-9B the output is a file of about 2 GB, with the same tensor layout as Ternary-Bonsai-2-9B.
+OpenBonsai is an open (Apache-2.0) framework that compresses a dense language model to ternary weights in the format of Prism ML's Ternary Bonsai models: Prism's PTQ1_0 GGUF, which runs in Prism's llama.cpp fork and in ik_llama.cpp ([Runtimes](#runtimes)). For Qwen3.5-9B the output is a file of about 2 GB, with the same tensor layout as Ternary-Bonsai-2-9B.
 
 **Why.** Prism publishes finished Bonsai weights for the base models it chooses, and an inference runtime. It has described the format (ternary weights, FP16 group scales, a blockwise Hadamard rotation) but, as far as we know, not a pipeline to compress a model of your own, and Ternary Bonsai 2 ships packed ternary files only, with no BF16 weights. So community fine-tunes adapt Bonsai itself: LoRA adapters on the frozen ternary base, tuning of its scales and norms, ternary quantization-aware training ([overview](docs/your-own-model.md#other-ways-to-adapt-a-bonsai-model)). They keep Prism's stronger compression, but the fine-tune has to be redone on Bonsai, and an adapter adds FP16 weights at inference. OpenBonsai is the other route, in the open: it compresses your own BF16 model or fine-tune, with its own tokenizer and chat template, to a fully ternary file in Bonsai's format, and measures what compression cost against your own BF16 model. The same pipeline can reach models Prism has not compressed, such as Meta's Muse Glimmer 30B, once they have an adapter ([Other models](#other-models)).
 
@@ -127,7 +127,7 @@ Step by step, from the checkpoint to the model card: [docs/your-own-model.md](do
 
 ### Run the GGUF in Prism's llama.cpp
 
-The file needs Prism's fork; upstream llama.cpp does not know PTQ1_0. With the build from `scripts/setup_linux.sh --prism`:
+The file needs Prism's fork or ik_llama.cpp ([Runtimes](#runtimes)); upstream llama.cpp does not know PTQ1_0. With the build from `scripts/setup_linux.sh --prism`:
 
 ```
 B=third_party/prism-llama.cpp-build/cpu/bin
@@ -137,6 +137,23 @@ $B/llama-perplexity -m runs/qwen3_5-9b/export/OpenBonsai-Qwen3.5-9B-PTQ1_0.gguf 
 ```
 
 `wiki.test.raw` is the WikiText-2 raw test file, as upstream llama.cpp's `scripts/get-wikitext-2.sh` downloads it. The official model to compare against is `Ternary-Bonsai-2-9B-PTQ1_0.gguf` from [prism-ml/Ternary-Bonsai-2-9B-gguf](https://huggingface.co/prism-ml/Ternary-Bonsai-2-9B-gguf) (we used revision `5b2abb0`).
+
+### Runtimes
+
+Two llama.cpp forks run the PTQ1_0 file as it is: Prism's, and [ik_llama.cpp](https://github.com/ikawrakow/ik_llama.cpp). Upstream llama.cpp does not know PTQ1_0. We checked both forks on the CPU with the current Hugging Face model, on upstream `wiki.test.raw` (8 chunks of 512 tokens):
+
+| Runtime | Commit checked | Perplexity | Same top token as Prism, 2,040 positions |
+|---|---|---|---|
+| Prism's llama.cpp ([PrismML-Eng/llama.cpp](https://github.com/PrismML-Eng/llama.cpp)) | `c9c34bc` | 14.15 | |
+| ik_llama.cpp with `-rtr 1` | `4955387` | 14.15 | 99.0% |
+| ik_llama.cpp without `-rtr` | `4955387` | 14.14 | |
+
+ik_llama.cpp added PTQ1_0 in [PR 2550](https://github.com/ikawrakow/ik_llama.cpp/pull/2550), by [Bl4ckyou](https://github.com/Bl4ckyou), who also reported that our Hugging Face model runs there ([#13](https://github.com/esokullu/openbonsai/issues/13)): about 2 GB of RAM and about 10 tokens/s of generation on an i5-13420H laptop CPU, with 4 threads and `-rtr 1`. ik_llama.cpp applies the file's own Hadamard sign vectors, which differ from the official model's; with the rotation switched off, perplexity is in the millions. Greedy replies to three chat prompts were identical in both runtimes. `-rtr 1` (run-time repack) rearranges the ternary weights into 8-row blocks while the model loads, for ik_llama.cpp's fast CPU kernels; with 4 threads on our (busy) machine it made prompt processing 4.4 times and generation 2.6 times faster. We checked the CPU path only. Logs and commands: `research/runs/2026-11-02-ik-llama-cpp/`.
+
+```
+llama-server -m OpenBonsai-Qwen3.5-9B-PTQ1_0.gguf -rtr 1 -t 4 --port 8080
+llama-perplexity -m OpenBonsai-Qwen3.5-9B-PTQ1_0.gguf -f wiki.test.raw -c 512 --chunks 8 -rtr 1
+```
 
 ### Evaluate
 

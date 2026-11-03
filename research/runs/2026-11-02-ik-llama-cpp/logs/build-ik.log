@@ -1,0 +1,54 @@
+start 2026-11-02 14:23:23
+-- The C compiler identification is MSVC 19.44.35222.0
+-- The CXX compiler identification is MSVC 19.44.35222.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Found Git: C:/Program Files/Git/mingw64/bin/git.exe (found version "2.51.0.windows.1")
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Failed
+-- Looking for pthread_create in pthreads
+-- Looking for pthread_create in pthreads - not found
+-- Looking for pthread_create in pthread
+-- Looking for pthread_create in pthread - not found
+-- Found Threads: TRUE
+-- Found OpenMP_C: -openmp (found version "2.0")
+-- Found OpenMP_CXX: -openmp (found version "2.0")
+-- Found OpenMP: TRUE (found version "2.0")
+-- OpenMP found
+-- Using optimized iqk matrix multiplications
+-- Enabling IQK Flash Attention kernels
+-- CMAKE_SYSTEM_PROCESSOR: AMD64
+-- CMAKE_GENERATOR_PLATFORM: 
+-- x86 detected
+-- Performing Test HAS_AVX_1
+-- Performing Test HAS_AVX_1 - Success
+-- Performing Test HAS_AVX2_1
+-- Performing Test HAS_AVX2_1 - Success
+-- Performing Test HAS_FMA_1
+-- Performing Test HAS_FMA_1 - Success
+-- Performing Test HAS_AVX512_1
+-- Performing Test HAS_AVX512_1 - Failed
+-- Performing Test HAS_AVX512_2
+-- Performing Test HAS_AVX512_2 - Failed
+-- ARCH_FLAGS = 
+TARGET_SRCS contains: C:/Users/esoku/AppData/Local/Temp/claude/D--openbonsai/14b566d0-5e53-4238-9262-1246932509e5/scratchpad/ik/src/examples/server/public/index.html.gz
+TARGET_SRCS contains: C:/Users/esoku/AppData/Local/Temp/claude/D--openbonsai/14b566d0-5e53-4238-9262-1246932509e5/scratchpad/ik/src/examples/server/public_llamacpp/index_llamacpp.html.gz
+TARGET_SRCS contains: C:/Users/esoku/AppData/Local/Temp/claude/D--openbonsai/14b566d0-5e53-4238-9262-1246932509e5/scratchpad/ik/src/examples/server/public_llamacpp/loading.html
+-- Configuring done (13.8s)
+-- Generating done (0.6s)
+-- Build files have been written to: C:/Users/esoku/AppData/Local/Temp/claude/D--openbonsai/14b566d0-5e53-4238-9262-1246932509e5/scratchpad/ik/build-cpu
+[1/163] Building C object ggml\src\CMakeFiles\ggml.dir\ggml-alloc.c.obj
+[2/163] Building C object ggml\src\CMakeFiles\ggml.dir\ggml.c.obj
+C:\Users\esoku\AppData\Local\Temp\claude\D--openbonsai\14b566d0-5e53-4238-9262-1246932509e5\scratchpad\ik\src\ggml\src\ggml.c(4015): warning C4068: unknown pragma 'GCC'
+... (compiler warnings omitted) ...
+[163/163] Linking CXX executable bin\llama-cli.exe
+BUILD_OK
+end 2026-11-02 14:28:04 rc=0

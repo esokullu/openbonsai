@@ -1,0 +1,42 @@
+[
+ {
+  "name": "arith",
+  "content": "468",
+  "tokens_predicted": 4,
+  "stopped_eos": true,
+  "stopped_limit": false,
+  "predicted_per_second": 6.543817401319234,
+  "prompt_per_second": 22.378230457411032,
+  "wall_s": 1.9
+ },
+ {
+  "name": "word_problem",
+  "content": "The baker makes 48 cupcakes in the morning and 24 cupcakes in the afternoon (half of 48). In total, the baker makes **72** cupcakes.",
+  "tokens_predicted": 38,
+  "stopped_eos": true,
+  "stopped_limit": false,
+  "predicted_per_second": 4.183803286377481,
+  "prompt_per_second": 32.03156077131998,
+  "wall_s": 10.5
+ },
+ {
+  "name": "code",
+  "content": "Here’s a simple and efficient implementation of the Fibonacci function in Python:\n\n```python\ndef fib(n: int) -> int:\n    \"\"\"\n    Returns the n-th Fibonacci number, with fib(0) = 0.\n    \n    Fibonacci sequence:\n    fib(0) = 0\n    fib(1) = 1\n    fib(2) = 1\n    fib(3) = 2\n    fib(4) = 3\n    fib(5) = 5\n    ...\n    \"\"\"\n    if n < 0:\n        raise ValueError(\"n",
+  "tokens_predicted": 128,
+  "stopped_eos": false,
+  "stopped_limit": true,
+  "predicted_per_second": 4.966764584360962,
+  "prompt_per_second": 26.490124702262033,
+  "wall_s": 27.2
+ },
+ {
+  "name": "raw_text",
+  "content": " Paris. The Eiffel Tower is a famous landmark in Paris. The Eiffel Tower is a famous landmark in Paris.",
+  "tokens_predicted": 24,
+  "stopped_eos": false,
+  "stopped_limit": true,
+  "predicted_per_second": 5.132563420306046,
+  "prompt_per_second": 18.31659501825249,
+  "wall_s": 5.3
+ }
+]
