@@ -1,6 +1,6 @@
 # Compressing your own Qwen3.5-9B fine-tune
 
-This guide takes a fine-tune of Qwen3.5-9B to a ternary PTQ1_0 GGUF of about 2 GB that runs in Prism's llama.cpp fork. It uses `examples/qwen3_5-9b-reasoning.yaml`, the recipe behind the first model published at [webbrain-one/openbonsai-qwen-3.5-9b](https://huggingface.co/webbrain-one/openbonsai-qwen-3.5-9b) (still at revision `40964de` there, tag `reasoning-mix-v1`). The current model there was made with `examples/qwen3_5-9b-reasoning-code.yaml`, which adds more code traces and takes about 1 h more ([README](../README.md#more-code-in-the-data)); the numbers in this guide are for the reasoning recipe.
+This guide takes a fine-tune of Qwen3.5-9B to a ternary PTQ1_0 GGUF of about 2 GB that runs in Prism's llama.cpp fork and in ik_llama.cpp ([Runtimes](../README.md#runtimes)). It uses `examples/qwen3_5-9b-reasoning.yaml`, the recipe behind the first model published at [webbrain-one/openbonsai-qwen-3.5-9b](https://huggingface.co/webbrain-one/openbonsai-qwen-3.5-9b) (still at revision `40964de` there, tag `reasoning-mix-v1`). The current model there was made with `examples/qwen3_5-9b-reasoning-code.yaml`, which adds more code traces and takes about 1 h more ([README](../README.md#more-code-in-the-data)); the numbers in this guide are for the reasoning recipe.
 
 Independent project, not affiliated with or endorsed by Prism ML. Bonsai is Prism ML's product.
 
@@ -244,7 +244,7 @@ Results are in `runs/mine/eval/<source>.<suite>.json`. For reference, base Qwen3
 
 ## 6. Run the GGUF in Prism's llama.cpp
 
-The file needs Prism's fork ([PrismML-Eng/llama.cpp](https://github.com/PrismML-Eng/llama.cpp), tested at `c9c34bc`); upstream llama.cpp does not know PTQ1_0. Build it as the README's [Install](../README.md#install) section shows, then:
+The file needs Prism's fork ([PrismML-Eng/llama.cpp](https://github.com/PrismML-Eng/llama.cpp), tested at `c9c34bc`) or ik_llama.cpp ([Runtimes](../README.md#runtimes)); upstream llama.cpp does not know PTQ1_0. Build it as the README's [Install](../README.md#install) section shows, then:
 
 ```
 B=third_party/prism-llama.cpp-build/cpu/bin
@@ -258,10 +258,10 @@ On Windows the binaries are `build\bin\Release\llama-cli.exe` and `llama-server.
 
 - **Name.** The file is named `OpenBonsai-<folder name>-PTQ1_0.gguf`. Set your own name with `--set export.name=My-Model-PTQ1_0` (it names the file and `general.name`); some base licences require a name. Do not present it as a Prism ML model: no "Ternary Bonsai" in the name, no Prism branding.
 - **Licence.** The compressed model is a derivative of your fine-tune and of Qwen3.5-9B (Apache-2.0), and keeps their licences.
-- **Model card.** Say what the file is and what it needs: a ternary PTQ1_0 GGUF of your fine-tune that runs only in Prism's llama.cpp fork. Name the recipe and the data, including your prompt source. Put the compressed model's scores next to your BF16 model's on the same suites, with the caveats (small subsets, greedy decoding, one run). Include the attribution and the non-affiliation line:
+- **Model card.** Say what the file is and what it needs: a ternary PTQ1_0 GGUF of your fine-tune that runs in Prism's llama.cpp fork and in ik_llama.cpp, not in upstream llama.cpp. Name the recipe and the data, including your prompt source. Put the compressed model's scores next to your BF16 model's on the same suites, with the caveats (small subsets, greedy decoding, one run). Include the attribution and the non-affiliation line:
 
   ```
-  Compressed with OpenBonsai (https://github.com/esokullu/openbonsai) to Prism ML's PTQ1_0 ternary format; runs in Prism's llama.cpp fork.
+  Compressed with OpenBonsai (https://github.com/esokullu/openbonsai) to Prism ML's PTQ1_0 ternary format; runs in Prism's llama.cpp fork and in ik_llama.cpp.
   OpenBonsai is an independent project, not affiliated with or endorsed by Prism ML. Bonsai is Prism ML's product.
   ```
 

@@ -1,0 +1,40 @@
+2026-11-02 14:30:53 start ik_ppl_a1: llama-perplexity.exe -m D:/openbonsai/runs/2026-10-28-code-gap-1epoch/export/OpenBonsai-Qwen3.5-9B-PTQ1_0.gguf -f D:/openbonsai/runs/qwen3-8b/wikitext/wiki.test.raw -c 512 --chunks 8 -b 512 -t 8
+2026-11-02 14:41:35 done  ik_ppl_a1: exit=0 secs=642.0 mask=0x5555 peak_working_set_mib=2,019 peak_private_mib=1,119
+2026-11-02 14:41:35 start ik_ppl_a1_rtr: llama-perplexity.exe -m D:/openbonsai/runs/2026-10-28-code-gap-1epoch/export/OpenBonsai-Qwen3.5-9B-PTQ1_0.gguf -f D:/openbonsai/runs/qwen3-8b/wikitext/wiki.test.raw -c 512 --chunks 8 -b 512 -t 8 -rtr
+2026-11-02 14:42:25 note: stopping the first launch's outer shell at 14:33 left ppl_runs.sh's loop alive; it logged ik_ppl_a1 above and started ik_ppl_a1_rtr at 14:41:35 (llama-perplexity -m A1 -f wiki.test.raw -c 512 --chunks 8 -b 512 -t 8 -rtr, mask 0x5555); its loop (PID 56072) was stopped now, so that run ends without a done line; ppl_runs2.sh waits for it, then runs its own list
+2026-11-02 14:44:17 ik_ppl_a1 finished (launched by ppl_runs.sh, whose shell was stopped; no peak-memory line)
+2026-11-02 14:44:17 start ik_kld_a1_rtr: llama-perplexity.exe -m D:/openbonsai/runs/2026-10-28-code-gap-1epoch/export/OpenBonsai-Qwen3.5-9B-PTQ1_0.gguf --kl-divergence-base D:/openbonsai/runs/2026-10-29-runtime-parity-9b/runtime_parity.prism-logits --kl-divergence -c 512 --chunks 8 -b 512 -t 8 -rtr
+2026-11-02 14:46:55 done  ik_kld_a1_rtr: exit=0 secs=157.3 mask=0x5555 peak_working_set_mib=1,996 peak_private_mib=1,997
+2026-11-02 14:46:55 start prism_ppl_a1: llama-perplexity.exe -m D:/openbonsai/runs/2026-10-28-code-gap-1epoch/export/OpenBonsai-Qwen3.5-9B-PTQ1_0.gguf -f D:/openbonsai/runs/qwen3-8b/wikitext/wiki.test.raw -c 512 --chunks 8 -b 512 -t 8
+2026-11-02 14:52:40 done  prism_ppl_a1: exit=0 secs=344.5 mask=0x5555 peak_working_set_mib=1,966 peak_private_mib=1,213
+2026-11-02 14:52:40 start ik_ppl_sv1_rtr: llama-perplexity.exe -m D:/openbonsai/runs/2026-10-27-gguf-shared-v1/OpenBonsai-Qwen3.5-9B-PTQ1_0.gguf -f D:/openbonsai/runs/qwen3-8b/wikitext/wiki.test.raw -c 512 --chunks 8 -b 512 -t 8 -rtr
+2026-11-02 14:54:55 done  ik_ppl_sv1_rtr: exit=0 secs=135.2 mask=0x5555 peak_working_set_mib=1,998 peak_private_mib=1,999
+2026-11-02 14:54:55 start ik_ppl_a1_nohad_rtr: llama-perplexity.exe -m D:/openbonsai/runs/2026-10-28-code-gap-1epoch/export/OpenBonsai-Qwen3.5-9B-PTQ1_0.gguf -f D:/openbonsai/runs/qwen3-8b/wikitext/wiki.test.raw -c 512 --chunks 2 -b 512 -t 8 -rtr
+2026-11-02 14:55:39 done  ik_ppl_a1_nohad_rtr: exit=0 secs=42.9 mask=0x5555 peak_working_set_mib=1,998 peak_private_mib=1,999
+2026-11-02 14:55:39 ALL_DONE
+2026-11-02 14:55:54 start bench_t4_rtr: llama-bench -m D:/openbonsai/runs/2026-10-28-code-gap-1epoch/export/OpenBonsai-Qwen3.5-9B-PTQ1_0.gguf -p 512 -n 128 -o md -r 3 -t 4 -rtr 1
+2026-11-02 14:58:45 done  bench_t4_rtr: exit=0 secs=169.9 mask=0x55 peak_working_set_mib=1,996 peak_private_mib=1,997
+2026-11-02 14:58:45 start bench_t8_rtr: llama-bench -m D:/openbonsai/runs/2026-10-28-code-gap-1epoch/export/OpenBonsai-Qwen3.5-9B-PTQ1_0.gguf -p 512 -n 128 -o md -r 3 -t 8 -rtr 1
+2026-11-02 15:09:52 done  bench_t8_rtr: exit=0 secs=667.0 mask=0x5555 peak_working_set_mib=1,996 peak_private_mib=1,997
+2026-11-02 15:09:52 start bench_t8: llama-bench -m D:/openbonsai/runs/2026-10-28-code-gap-1epoch/export/OpenBonsai-Qwen3.5-9B-PTQ1_0.gguf -p 512 -n 128 -o md -r 1 -t 8 -rtr 0
+2026-11-02 15:10:41 done  bench_t8: exit=-1 secs=48.0 mask=0x5555 peak_working_set_mib=1,947 peak_private_mib=861
+2026-11-02 15:10:41 start bench_t4: llama-bench -m D:/openbonsai/runs/2026-10-28-code-gap-1epoch/export/OpenBonsai-Qwen3.5-9B-PTQ1_0.gguf -p 512 -n 128 -o md -r 1 -t 4 -rtr 0
+2026-11-02 15:10:48 note: bench_t8 (8 threads, -rtr 0) was stopped by hand after 48 s: the VM (about 16 cores) plus 8 threads saturated every logical CPU, and bench_t8_rtr had already shown 8 threads slower than 4 under this load (tg128 0.69 vs 3.91 t/s); samples_runs.sh changed to 4 threads (mask 0x55) before it started
+2026-11-02 15:13:45 done  bench_t4: exit=0 secs=183.9 mask=0x55 peak_working_set_mib=1,946 peak_private_mib=861
+2026-11-02 15:13:45 BENCH_DONE
+2026-11-02 15:13:45 start build llama-server
+2026-11-02 15:14:59 done  build_server: rc=0 BUILD_OK
+2026-11-02 15:14:59 start samples_ik_rtr: llama-server -m D:/openbonsai/runs/2026-10-28-code-gap-1epoch/export/OpenBonsai-Qwen3.5-9B-PTQ1_0.gguf -t 4 -c 4096 -rtr
+2026-11-02 15:15:51 done  samples_ik_rtr: client_exit=0 mask=0x55 peak_working_set_mib=2,499 peak_private_mib=3,220
+2026-11-02 15:15:51 start samples_prism: llama-server -m D:/openbonsai/runs/2026-10-28-code-gap-1epoch/export/OpenBonsai-Qwen3.5-9B-PTQ1_0.gguf -t 4 -c 4096
+2026-11-02 15:26:42 done  samples_prism: 
+2026-11-02 15:26:42 SAMPLES_DONE
+2026-11-02 15:26:42 AFTER_PPL_DONE
+2026-11-02 15:27:00 start prism_cli_arith: llama-cli -m D:/openbonsai/runs/2026-10-28-code-gap-1epoch/export/OpenBonsai-Qwen3.5-9B-PTQ1_0.gguf -t 4 -c 4096 -st --reasoning off --temp 0 --top-k 1 --verbose-prompt --simple-io -n 16 -p "What is 17 * 24? Reply with just the number."
+2026-11-02 15:27:08 note: samples_prism did not run: the pinned Prism build has no llama-server.exe (only llama-server-impl.dll, a dependency of its llama-cli); its wrapper waited for /health and was stopped by hand at 15:26; Prism's replies come from llama-cli -st instead (prism_cli_*)
+2026-11-02 15:27:10 done  prism_cli_arith: exit=0 secs=9.0 mask=0x55 peak_working_set_mib=2,044 peak_private_mib=873
+2026-11-02 15:27:10 start prism_cli_word_problem: llama-cli -m D:/openbonsai/runs/2026-10-28-code-gap-1epoch/export/OpenBonsai-Qwen3.5-9B-PTQ1_0.gguf -t 4 -c 4096 -st --reasoning off --temp 0 --top-k 1 --verbose-prompt --simple-io -n 128 -p "A baker makes 48 cupcakes in the morning and half as many in the afternoon. How many cupcakes does the baker make in total? Answer briefly."
+2026-11-02 15:27:30 done  prism_cli_word_problem: exit=0 secs=20.1 mask=0x55 peak_working_set_mib=2,045 peak_private_mib=874
+2026-11-02 15:27:31 start prism_cli_code: llama-cli -m D:/openbonsai/runs/2026-10-28-code-gap-1epoch/export/OpenBonsai-Qwen3.5-9B-PTQ1_0.gguf -t 4 -c 4096 -st --reasoning off --temp 0 --top-k 1 --verbose-prompt --simple-io -n 128 -p "Write a Python function fib(n) that returns the n-th Fibonacci number, with fib(0) = 0."
+2026-11-02 15:28:17 done  prism_cli_code: exit=0 secs=45.9 mask=0x55 peak_working_set_mib=2,044 peak_private_mib=874
+2026-11-02 15:28:17 PRISM_CLI_DONE

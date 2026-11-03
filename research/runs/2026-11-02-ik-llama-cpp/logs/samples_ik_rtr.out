@@ -1,0 +1,39 @@
+INFO [                    main] build info | tid="9712" timestamp=1793621700 build=1 commit="4955387"
+INFO [                    main] system info | tid="9712" timestamp=1793621700 n_threads=4 n_threads_batch=-1 total_threads=32 system_info="AVX = 1 | AVX_VNNI = 0 | AVX2 = 1 | AVX512 = 0 | AVX512_VBMI = 0 | AVX512_VNNI = 0 | AVX512_BF16 = 0 | FMA = 1 | NEON = 0 | SVE = 0 | ARM_FMA = 0 | F16C = 1 | FP16_VA = 0 | WASM_SIMD = 0 | SSE3 = 1 | SSSE3 = 1 | VSX = 0 | MATMUL_INT8 = 0 | "
+INFO [                    init] initializing slots | tid="9712" timestamp=1793621704 n_slots=1
+INFO [                    init] new slot | tid="9712" timestamp=1793621704 id_slot=0 n_ctx_slot=4096
+INFO [                    main] model loaded | tid="9712" timestamp=1793621704
+INFO [                    main] HTTP server listening | tid="9712" timestamp=1793621704 hostname="127.0.0.1" port="8091" n_threads_http="31"
+INFO [              slots_idle] all slots are idle | tid="9712" timestamp=1793621704
+INFO [     process_single_task] slot data | tid="9712" timestamp=1793621704 id_task=0 n_idle_slots=1 n_processing_slots=0
+INFO [              slots_idle] all slots are idle | tid="9712" timestamp=1793621704
+INFO [      log_server_request] request | tid="41472" timestamp=1793621704 remote_addr="127.0.0.1" remote_port=62944 status=200 method="GET" path="/health" params={}
+INFO [     process_single_task] slot data | tid="9712" timestamp=1793621706 id_task=1 n_idle_slots=1 n_processing_slots=0
+INFO [              slots_idle] all slots are idle | tid="9712" timestamp=1793621706
+INFO [      log_server_request] request | tid="62948" timestamp=1793621706 remote_addr="127.0.0.1" remote_port=62955 status=200 method="GET" path="/health" params={}
+WARN [   launch_slot_with_task] %s
+ | ="ctx_shift is not supported by recurrent model, it will be disabled"
+INFO [   launch_slot_with_task] slot is processing task | tid="9712" timestamp=1793621706 id_slot=0 id_task=2
+INFO [    batch_pending_prompt] kv cache rm [p0, end) | tid="9712" timestamp=1793621706 id_slot=0 id_task=2 p0=0
+INFO [    batch_pending_prompt] kv cache rm [p0, end) | tid="9712" timestamp=1793621707 id_slot=0 id_task=2 p0=23
+INFO [           release_slots] slot released | tid="9712" timestamp=1793621708 id_slot=0 id_task=2 n_ctx=4096 n_past=31 n_system_tokens=0 n_cache_tokens=31 truncated=false
+INFO [      log_server_request] request | tid="23492" timestamp=1793621708 remote_addr="127.0.0.1" remote_port=62956 status=200 method="POST" path="/completion" params={}
+INFO [              slots_idle] all slots are idle | tid="9712" timestamp=1793621708
+INFO [   launch_slot_with_task] slot is processing task | tid="9712" timestamp=1793621708 id_slot=0 id_task=8
+INFO [    batch_pending_prompt] kv cache rm [p0, end) | tid="9712" timestamp=1793621708 id_slot=0 id_task=8 p0=0
+INFO [    batch_pending_prompt] kv cache rm [p0, end) | tid="9712" timestamp=1793621709 id_slot=0 id_task=8 p0=38
+INFO [      log_server_request] request | tid="60704" timestamp=1793621718 remote_addr="127.0.0.1" remote_port=62961 status=200 method="POST" path="/completion" params={}
+INFO [           release_slots] slot released | tid="9712" timestamp=1793621719 id_slot=0 id_task=8 n_ctx=4096 n_past=80 n_system_tokens=0 n_cache_tokens=80 truncated=false
+INFO [              slots_idle] all slots are idle | tid="9712" timestamp=1793621719
+INFO [   launch_slot_with_task] slot is processing task | tid="9712" timestamp=1793621719 id_slot=0 id_task=48
+INFO [    batch_pending_prompt] kv cache rm [p0, end) | tid="9712" timestamp=1793621719 id_slot=0 id_task=48 p0=0
+INFO [    batch_pending_prompt] kv cache rm [p0, end) | tid="9712" timestamp=1793621720 id_slot=0 id_task=48 p0=31
+INFO [      log_server_request] request | tid="23144" timestamp=1793621746 remote_addr="127.0.0.1" remote_port=51352 status=200 method="POST" path="/completion" params={}
+INFO [           release_slots] slot released | tid="9712" timestamp=1793621746 id_slot=0 id_task=48 n_ctx=4096 n_past=163 n_system_tokens=0 n_cache_tokens=163 truncated=false
+INFO [              slots_idle] all slots are idle | tid="9712" timestamp=1793621746
+INFO [   launch_slot_with_task] slot is processing task | tid="9712" timestamp=1793621746 id_slot=0 id_task=178
+INFO [    batch_pending_prompt] kv cache rm [p0, end) | tid="9712" timestamp=1793621746 id_slot=0 id_task=178 p0=0
+INFO [    batch_pending_prompt] kv cache rm [p0, end) | tid="9712" timestamp=1793621746 id_slot=0 id_task=178 p0=5
+INFO [      log_server_request] request | tid="46028" timestamp=1793621751 remote_addr="127.0.0.1" remote_port=50673 status=200 method="POST" path="/completion" params={}
+INFO [           release_slots] slot released | tid="9712" timestamp=1793621751 id_slot=0 id_task=178 n_ctx=4096 n_past=33 n_system_tokens=0 n_cache_tokens=33 truncated=false
+INFO [              slots_idle] all slots are idle | tid="9712" timestamp=1793621751
