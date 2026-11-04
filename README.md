@@ -4,6 +4,14 @@
 
 Independent project, not affiliated with or endorsed by Prism ML. Bonsai is Prism ML's product.
 
+<p align="center">
+  <a href="https://webbrain.one">
+    <img src="assets/webbrain-banner.png" alt="WebBrain — open-source AI browser agent" width="720">
+  </a>
+</p>
+
+<p align="center"><strong>This project is funded by <a href="https://webbrain.one">WebBrain</a>, your AI Browser.</strong></p>
+
 OpenBonsai is an open (Apache-2.0) framework that compresses a dense language model to ternary weights in the format of Prism ML's Ternary Bonsai models: Prism's PTQ1_0 GGUF, which runs in Prism's llama.cpp fork and in ik_llama.cpp ([Runtimes](#runtimes)). For Qwen3.5-9B the output is a file of about 2 GB, with the same tensor layout as Ternary-Bonsai-2-9B.
 
 **Why.** Prism publishes finished Bonsai weights for the base models it chooses, and an inference runtime. It has described the format (ternary weights, FP16 group scales, a blockwise Hadamard rotation) but, as far as we know, not a pipeline to compress a model of your own, and Ternary Bonsai 2 ships packed ternary files only, with no BF16 weights. So community fine-tunes adapt Bonsai itself: LoRA adapters on the frozen ternary base, tuning of its scales and norms, ternary quantization-aware training ([overview](docs/your-own-model.md#other-ways-to-adapt-a-bonsai-model)). They keep Prism's stronger compression, but the fine-tune has to be redone on Bonsai, and an adapter adds FP16 weights at inference. OpenBonsai is the other route, in the open: it compresses your own BF16 model or fine-tune, with its own tokenizer and chat template, to a fully ternary file in Bonsai's format, and measures what compression cost against your own BF16 model. The same pipeline can reach models Prism has not compressed, such as Meta's Muse Glimmer 30B, once they have an adapter ([Other models](#other-models)).
